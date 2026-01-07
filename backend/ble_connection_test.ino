@@ -1,190 +1,158 @@
 /*
- * BLE Connection Test for ESP32
- * Simple test to verify BLE connection between ESP32 and Raspberry Pi
- * 
- * This code:
- * - Advertises as a BLE device
- * - Sends periodic test messages when connected
- * - Accepts simple commands from RPI
+ * BLE Connection Test voor ESP32-C3 (NimBLE)
+ * Zonder LED, geoptimaliseerd voor RPi connectie
  */
 
 #include <NimBLEDevice.h>
 
-// BLE UUIDs - must match the Python client
+// BLE UUIDs - moeten overeenkomen met het Python script op de RPi
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHAR_DATA_UUID      "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define CHAR_COMMAND_UUID   "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 
-// Device configuration - CHANGE THIS FOR EACH ESP32
-#define DEVICE_NAME         "BM-Test"
+// Apparaat configuratie
+#define DEVICE_NAME         "BM-Test-C3"
 #define DEVICE_ID           99
 
-// Pins
-#define PIN_LED             2  // Built-in LED on most ESP32 boards
-
 // Timing
-#define MESSAGE_INTERVAL_MS 3000  // Send test message every 3 seconds
+#define MESSAGE_INTERVAL_MS 3000  // Elke 3 seconden een bericht
 
-// BLE objects
+// BLE objecten
 NimBLEServer* pServer = nullptr;
 NimBLECharacteristic* pDataCharacteristic = nullptr;
 NimBLECharacteristic* pCommandCharacteristic = nullptr;
 
-// Connection state
+// Status variabelen
 bool deviceConnected = false;
 bool wasConnected = false;
 
-// Timing
+// Tellers
 unsigned long lastMessageTime = 0;
 uint32_t messageCounter = 0;
 
-// BLE Server Callbacks
+// Functie declaraties
+void sendMessage(std::string message);
+void initBLE();
+
+// --- Callbacks voor Connectie Status ---
 class ServerCallbacks : public NimBLEServerCallbacks {
     void onConnect(NimBLEServer* pServer) {
         deviceConnected = true;
-        Serial.println("\n✅ Client connected!");
-        digitalWrite(PIN_LED, HIGH);
+        Serial.println("\n✅ Client verbonden! (Client connected)");
     }
 
     void onDisconnect(NimBLEServer* pServer) {
         deviceConnected = false;
-        Serial.println("\n❌ Client disconnected");
-        digitalWrite(PIN_LED, LOW);
+        Serial.println("\n❌ Client verbroken (Client disconnected)");
     }
 };
 
-// BLE Command Characteristic Callbacks
+// --- Callbacks voor Ontvangen Commando's ---
 class CommandCallbacks : public NimBLECharacteristicCallbacks {
     void onWrite(NimBLECharacteristic* pCharacteristic) {
         std::string value = pCharacteristic->getValue();
+        
         if (value.length() > 0) {
+            // We lezen de eerste byte als commando
             uint8_t cmd = value[0];
-            Serial.printf("📥 Received command: 0x%02X\n", cmd);
+            Serial.printf("📥 Commando ontvangen: 0x%02X\n", cmd);
             
-            // Echo back a response
-            String response = "ACK:" + String(cmd);
-            sendMessage(response);
+            // Stuur een bevestiging (ACK) terug
+            char responseBuffer[32];
+            snprintf(responseBuffer, sizeof(responseBuffer), "ACK:0x%02X", cmd);
+            sendMessage(std::string(responseBuffer));
         }
     }
 };
 
 void setup() {
+    // Start seriële communicatie (zorg dat 'USB CDC On Boot' aanstaat in IDE!)
     Serial.begin(115200);
-    delay(500);
+    delay(2000); // Wacht even op de USB Serial connectie
     
     Serial.println("\n\n========================================");
-    Serial.println("   BLE Connection Test - ESP32");
-    Serial.printf("   Device: %s (ID: %d)\n", DEVICE_NAME, DEVICE_ID);
+    Serial.println("   BLE Test - ESP32-C3 (No LED)");
+    Serial.printf("   Device: %s\n", DEVICE_NAME);
     Serial.println("========================================\n");
     
-    // Setup LED
-    pinMode(PIN_LED, OUTPUT);
-    digitalWrite(PIN_LED, LOW);
-    
-    // Blink LED on startup
-    for (int i = 0; i < 3; i++) {
-        digitalWrite(PIN_LED, HIGH);
-        delay(100);
-        digitalWrite(PIN_LED, LOW);
-        delay(100);
-    }
-    
-    // Initialize BLE
+    // Initialiseer BLE
     initBLE();
     
-    Serial.println("✅ Setup complete");
-    Serial.println("📡 Waiting for RPI connection...\n");
+    Serial.println("📡 Wachten op RPI verbinding...");
 }
 
 void loop() {
-    // Handle connection state changes
+    // 1. Logica voor herverbinden (Reconnection logic)
     if (deviceConnected && !wasConnected) {
         wasConnected = true;
-        Serial.println("🎉 First connection established!");
-        sendMessage("HELLO from " + String(DEVICE_NAME));
+        Serial.println("🎉 Verbinding gestabiliseerd.");
     }
     
     if (!deviceConnected && wasConnected) {
         wasConnected = false;
-        Serial.println("🔄 Restarting advertising...");
+        Serial.println("🔄 Verbinding verloren, start adverteren opnieuw...");
         delay(500);
         NimBLEDevice::getAdvertising()->start();
     }
     
-    // Send periodic test messages when connected
+    // 2. Stuur periodieke data als we verbonden zijn
     if (deviceConnected && (millis() - lastMessageTime >= MESSAGE_INTERVAL_MS)) {
         lastMessageTime = millis();
         messageCounter++;
         
-        String testMsg = "TEST #" + String(messageCounter) + " from " + String(DEVICE_NAME);
-        sendMessage(testMsg);
+        char msgBuffer[64];
+        snprintf(msgBuffer, sizeof(msgBuffer), "TEST #%d from %s", messageCounter, DEVICE_NAME);
         
-        Serial.printf("📤 Sent: %s\n", testMsg.c_str());
+        sendMessage(std::string(msgBuffer));
+        Serial.printf("📤 Verstuurd: %s\n", msgBuffer);
     }
     
-    delay(10);
+    delay(10); // Korte pauze voor stabiliteit
 }
 
-/**
- * Initialize BLE server and characteristics
- */
 void initBLE() {
-    Serial.println("🔧 Initializing BLE...");
-    
-    // Initialize NimBLE
+    // A. Device initialisatie
     NimBLEDevice::init(DEVICE_NAME);
-    NimBLEDevice::setPower(ESP_PWR_LVL_P9);
+    NimBLEDevice::setPower(ESP_PWR_LVL_P9); // Maximaal zendvermogen
     
-    // Configure security (bonding + encryption)
-    Serial.println("🔐 Configuring BLE security...");
-    NimBLEDevice::setSecurityAuth(true, true, true);
-    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
-    
-    uint8_t key_dist = BLE_SM_PAIR_KEY_DIST_ENC | BLE_SM_PAIR_KEY_DIST_ID;
-    NimBLEDevice::setSecurityInitKey(key_dist);
-    NimBLEDevice::setSecurityRespKey(key_dist);
-    
-    // Create BLE Server
+    // B. Beveiliging (Security) - UITGESCHAKELD voor RPi test
+    // Zet dit pas aan als de basisverbinding werkt.
+    NimBLEDevice::setSecurityAuth(false, false, false);
+
+    // C. Server aanmaken
     pServer = NimBLEDevice::createServer();
     pServer->setCallbacks(new ServerCallbacks());
     
-    // Create BLE Service
+    // D. Dienst (Service) aanmaken
     NimBLEService* pService = pServer->createService(SERVICE_UUID);
     
-    // Create Data Characteristic (for notifications to RPI)
+    // E. Karakteristieken (Characteristics) aanmaken
+    // 1. Data karakteristiek (ESP -> RPi via Notify)
     pDataCharacteristic = pService->createCharacteristic(
         CHAR_DATA_UUID,
         NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::NOTIFY
     );
     
-    // Create Command Characteristic (for commands from RPI)
+    // 2. Commando karakteristiek (RPi -> ESP via Write)
     pCommandCharacteristic = pService->createCharacteristic(
         CHAR_COMMAND_UUID,
         NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR
     );
     pCommandCharacteristic->setCallbacks(new CommandCallbacks());
     
-    // Start the service
+    // F. Start alles
     pService->start();
     
-    // Start advertising
     NimBLEAdvertising* pAdvertising = NimBLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->start();
     
-    Serial.printf("✅ BLE initialized as '%s'\n", DEVICE_NAME);
-    Serial.printf("📡 Service UUID: %s\n", SERVICE_UUID);
-    Serial.println("🔐 Security: Bonding + Encryption enabled");
+    Serial.println("✅ BLE Geïnitialiseerd en aan het adverteren.");
 }
 
-/**
- * Send a text message via BLE notification
- */
-void sendMessage(String message) {
-    if (!deviceConnected || pDataCharacteristic == nullptr) {
-        return;
+void sendMessage(std::string message) {
+    if (deviceConnected && pDataCharacteristic != nullptr) {
+        pDataCharacteristic->setValue(message);
+        pDataCharacteristic->notify();
     }
-    
-    pDataCharacteristic->setValue(message.c_str());
-    pDataCharacteristic->notify();
 }
