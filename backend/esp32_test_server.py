@@ -1,12 +1,20 @@
 #!/usr/bin/env python3
 """
-ESP32 Test Server - Receives and displays test button messages from ESP32 devices
+ESP32 BLE Server - Receives messages from ESP32 devices via Bluetooth Low Energy
 """
 
-import socket
+import asyncio
 import struct
-import time
 from datetime import datetime
+from bleak import BleakClient, BleakScanner
+
+# BLE UUIDs - must match ESP32 firmware
+SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+CHAR_DATA_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+CHAR_COMMAND_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9"
+
+# Device name prefix to scan for
+DEVICE_PREFIX = "BM-"
 
 # Message types (matching ESP32 firmware)
 MSG_STATUS = 0x01
@@ -29,15 +37,11 @@ STATUS_PONG = 0x04
 
 # Device names by ID
 DEVICE_NAMES = {
-    0: "esp-blue",
-    1: "esp-red",
-    2: "esp-yellow",
-    3: "esp-green"
+    0: "BM-Blue",
+    1: "BM-Red",
+    2: "BM-Yellow",
+    3: "BM-Green"
 }
-
-# Server configuration
-SERVER_IP = "0.0.0.0"  # Listen on all interfaces
-SERVER_PORT = 5000
 
 
 class MessageParser:
@@ -133,48 +137,45 @@ def format_timestamp():
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
 
 
-def handle_message(data):
+def handle_message(device_name: str, data: bytes):
     """Parse and handle incoming message"""
     if len(data) < 8:
         print(f"[{format_timestamp()}] ERROR: Message too short ({len(data)} bytes)")
         return
     
-    # Parse header to get message type
     header = MessageParser.parse_header(data)
     if not header:
         print(f"[{format_timestamp()}] ERROR: Failed to parse message header")
         return
     
     msg_type = header['message_type']
-    device_name = header['device_name']
+    device_id = header['device_id']
     timestamp_ms = header['timestamp']
     
-    # Handle different message types
     if msg_type == MSG_STATUS:
         msg = MessageParser.parse_status_message(data)
         if msg:
-            print(f"[{format_timestamp()}] 📊 STATUS from {device_name}: {msg['status_event']} (timestamp: {timestamp_ms}ms)")
+            print(f"[{format_timestamp()}] 📊 STATUS from {device_name} (ID:{device_id}): {msg['status_event']}")
     
     elif msg_type == MSG_DETECTION:
         msg = MessageParser.parse_detection_message(data)
         if msg:
-            print(f"[{format_timestamp()}] 🎯 DETECTION from {device_name}: {msg['distance_mm']} mm (timestamp: {timestamp_ms}ms)")
+            print(f"[{format_timestamp()}] 🎯 DETECTION from {device_name} (ID:{device_id}): {msg['distance_mm']} mm")
     
     elif msg_type == MSG_BATTERY:
         msg = MessageParser.parse_battery_message(data)
         if msg:
-            print(f"[{format_timestamp()}] 🔋 BATTERY from {device_name}: {msg['battery_percent']}% (timestamp: {timestamp_ms}ms)")
+            print(f"[{format_timestamp()}] 🔋 BATTERY from {device_name} (ID:{device_id}): {msg['battery_percent']}%")
     
     elif msg_type == MSG_KEEPALIVE:
-        # Keepalive messages are not printed to reduce spam
-        pass
+        pass  # Don't print keepalives
     
     elif msg_type == MSG_TEST:
         msg = MessageParser.parse_test_message(data)
         if msg:
             print(f"\n{'='*70}")
             print(f"[{format_timestamp()}] 🧪 TEST BUTTON PRESSED!")
-            print(f"  Device: {device_name} (ID: {header['device_id']})")
+            print(f"  Device: {device_name} (ID: {device_id})")
             print(f"  Test ID: {msg['test_id']}")
             print(f"  Device timestamp: {timestamp_ms} ms")
             print(f"{'='*70}\n")
@@ -183,102 +184,185 @@ def handle_message(data):
         print(f"[{format_timestamp()}] ⚠️  Unknown message type: 0x{msg_type:02X} from {device_name}")
 
 
-def send_command(client_socket, command_type):
-    """Send a command to the ESP32"""
-    # Command message is 4 bytes: command_type + 3 reserved bytes
-    cmd_data = struct.pack('<BBBB', command_type, 0, 0, 0)
-    try:
-        client_socket.send(cmd_data)
-        return True
-    except Exception as e:
-        print(f"[{format_timestamp()}] ERROR: Failed to send command: {e}")
-        return False
-
-
-def handle_client(client_socket, client_address):
-    """Handle a connected ESP32 client"""
-    print(f"\n[{format_timestamp()}] ✅ New connection from {client_address[0]}:{client_address[1]}")
+class ESP32Device:
+    """Manages BLE connection to a single ESP32 device"""
     
-    try:
-        while True:
-            # Receive data (ESP32 messages are 8 or 12 bytes)
-            data = client_socket.recv(1024)
+    def __init__(self, address: str, name: str):
+        self.address = address
+        self.name = name
+        self.client: BleakClient = None
+        self.connected = False
+    
+    def notification_handler(self, sender, data: bytearray):
+        """Handle incoming BLE notifications"""
+        handle_message(self.name, bytes(data))
+    
+    async def connect(self):
+        """Connect to the ESP32 device"""
+        try:
+            self.client = BleakClient(self.address)
+            await self.client.connect()
+            self.connected = True
             
-            if not data:
-                print(f"[{format_timestamp()}] 🔌 Connection closed by {client_address[0]}")
-                break
+            print(f"[{format_timestamp()}] ✅ Connected to {self.name} ({self.address})")
             
-            # Process messages (there might be multiple in the buffer)
-            offset = 0
-            while offset < len(data):
-                # Peek at message type to determine message length
-                if offset + 8 <= len(data):
-                    msg_type = data[offset]
-                    
-                    # Determine message length based on type
-                    if msg_type == MSG_KEEPALIVE:
-                        msg_length = 8
-                    elif msg_type in [MSG_STATUS, MSG_DETECTION, MSG_BATTERY, MSG_TEST]:
-                        msg_length = 12
-                    else:
-                        # Unknown message type, try 12 bytes
-                        msg_length = 12
-                    
-                    # Extract and handle this message
-                    if offset + msg_length <= len(data):
-                        message_data = data[offset:offset + msg_length]
-                        handle_message(message_data)
-                        offset += msg_length
-                    else:
-                        # Not enough data for complete message
-                        break
+            await self.client.start_notify(CHAR_DATA_UUID, self.notification_handler)
+            print(f"[{format_timestamp()}] 📡 Subscribed to notifications from {self.name}")
+            
+            return True
+        except Exception as e:
+            print(f"[{format_timestamp()}] ❌ Failed to connect to {self.name}: {e}")
+            self.connected = False
+            return False
+    
+    async def disconnect(self):
+        """Disconnect from the ESP32 device"""
+        if self.client and self.connected:
+            try:
+                await self.client.stop_notify(CHAR_DATA_UUID)
+                await self.client.disconnect()
+            except:
+                pass
+            self.connected = False
+            print(f"[{format_timestamp()}] 👋 Disconnected from {self.name}")
+    
+    async def send_command(self, command: int):
+        """Send a command to the ESP32"""
+        if not self.connected:
+            print(f"[{format_timestamp()}] ❌ Cannot send command - not connected to {self.name}")
+            return False
+        
+        try:
+            cmd_data = bytes([command])
+            await self.client.write_gatt_char(CHAR_COMMAND_UUID, cmd_data)
+            
+            cmd_names = {CMD_START: "START", CMD_STOP: "STOP", CMD_SLEEP: "SLEEP", CMD_PING: "PING"}
+            print(f"[{format_timestamp()}] 📤 Sent {cmd_names.get(command, 'UNKNOWN')} to {self.name}")
+            return True
+        except Exception as e:
+            print(f"[{format_timestamp()}] ❌ Failed to send command to {self.name}: {e}")
+            return False
+
+
+async def scan_for_devices():
+    """Scan for BrainMove ESP32 devices"""
+    print(f"[{format_timestamp()}] 🔍 Scanning for BrainMove devices (prefix: {DEVICE_PREFIX})...")
+    
+    devices = await BleakScanner.discover(timeout=5.0)
+    
+    brainmove_devices = []
+    for device in devices:
+        if device.name and device.name.startswith(DEVICE_PREFIX):
+            brainmove_devices.append((device.address, device.name))
+            print(f"[{format_timestamp()}] 📱 Found: {device.name} ({device.address})")
+    
+    return brainmove_devices
+
+
+async def handle_user_input(connected_devices: dict):
+    """Handle user commands from stdin"""
+    print("\nCommands: 'start <device>', 'stop <device>', 'sleep <device>', 'ping <device>', 'scan', 'list', 'quit'")
+    print("Example: 'start BM-Blue' or 'start all'\n")
+    
+    while True:
+        try:
+            loop = asyncio.get_event_loop()
+            user_input = await loop.run_in_executor(None, input)
+            
+            if not user_input.strip():
+                continue
+            
+            parts = user_input.strip().lower().split()
+            cmd = parts[0]
+            
+            if cmd == 'quit' or cmd == 'exit':
+                return False
+            
+            elif cmd == 'list':
+                print(f"\n[{format_timestamp()}] Connected devices:")
+                for name, device in connected_devices.items():
+                    status = "✅ Connected" if device.connected else "❌ Disconnected"
+                    print(f"  {name}: {status}")
+                print()
+            
+            elif cmd == 'scan':
+                new_devices = await scan_for_devices()
+                for addr, name in new_devices:
+                    if name not in connected_devices:
+                        device = ESP32Device(addr, name)
+                        if await device.connect():
+                            connected_devices[name] = device
+            
+            elif cmd in ['start', 'stop', 'sleep', 'ping']:
+                if len(parts) < 2:
+                    print(f"Usage: {cmd} <device_name|all>")
+                    continue
+                
+                target = parts[1]
+                command_map = {'start': CMD_START, 'stop': CMD_STOP, 'sleep': CMD_SLEEP, 'ping': CMD_PING}
+                
+                if target == 'all':
+                    for device in connected_devices.values():
+                        await device.send_command(command_map[cmd])
                 else:
-                    # Not enough data for header
-                    break
+                    found = None
+                    for name, device in connected_devices.items():
+                        if target in name.lower():
+                            found = device
+                            break
+                    
+                    if found:
+                        await found.send_command(command_map[cmd])
+                    else:
+                        print(f"[{format_timestamp()}] ❌ Device '{target}' not found")
+            
+            else:
+                print(f"Unknown command: {cmd}")
+                
+        except EOFError:
+            return False
+        except Exception as e:
+            print(f"Error: {e}")
     
-    except Exception as e:
-        print(f"[{format_timestamp()}] ❌ Error handling client {client_address[0]}: {e}")
-    
-    finally:
-        client_socket.close()
-        print(f"[{format_timestamp()}] 👋 Disconnected from {client_address[0]}")
+    return True
 
 
-def main():
-    """Main server loop"""
+async def main():
+    """Main BLE client loop"""
     print("=" * 70)
-    print("ESP32 Test Server")
+    print("ESP32 BLE Server - BrainMoveG1")
     print("=" * 70)
-    print(f"Listening on {SERVER_IP}:{SERVER_PORT}")
-    print("Waiting for ESP32 devices to connect...")
+    print("Scanning for ESP32 devices via Bluetooth Low Energy...")
     print("Press Ctrl+C to stop\n")
     
-    # Create TCP server socket
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    connected_devices = {}
     
     try:
-        server_socket.bind((SERVER_IP, SERVER_PORT))
-        server_socket.listen(5)
+        devices = await scan_for_devices()
         
-        while True:
-            # Accept incoming connections
-            client_socket, client_address = server_socket.accept()
-            
-            # Handle the client (blocking - for simplicity)
-            # For production, you'd want to use threading or async
-            handle_client(client_socket, client_address)
-    
+        if not devices:
+            print(f"[{format_timestamp()}] ⚠️  No BrainMove devices found. Make sure ESP32s are advertising.")
+            print(f"[{format_timestamp()}] 💡 Tip: Use 'scan' command to search again.\n")
+        
+        for address, name in devices:
+            device = ESP32Device(address, name)
+            if await device.connect():
+                connected_devices[name] = device
+        
+        if connected_devices:
+            print(f"\n[{format_timestamp()}] 🎉 Ready! Connected to {len(connected_devices)} device(s).\n")
+        
+        await handle_user_input(connected_devices)
+        
     except KeyboardInterrupt:
-        print(f"\n[{format_timestamp()}] 🛑 Server stopped by user")
-    
-    except Exception as e:
-        print(f"\n[{format_timestamp()}] ❌ Server error: {e}")
+        print(f"\n[{format_timestamp()}] 🛑 Stopped by user")
     
     finally:
-        server_socket.close()
-        print(f"[{format_timestamp()}] 🔒 Server socket closed")
+        for device in connected_devices.values():
+            await device.disconnect()
+        
+        print(f"[{format_timestamp()}] 🔒 All connections closed")
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
