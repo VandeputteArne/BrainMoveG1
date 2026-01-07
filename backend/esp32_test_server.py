@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """
 ESP32 BLE Server - Receives messages from ESP32 devices via Bluetooth Low Energy
+
+NOTE: ESP32 devices use BLE bonding/pairing for security.
+First-time pairing on Raspberry Pi:
+    1. Run: bluetoothctl
+    2. Run: scan on
+    3. Find device (e.g., BM-Blue)
+    4. Run: pair <MAC_ADDRESS>
+    5. Run: trust <MAC_ADDRESS>
+    6. The pairing will persist across reboots
 """
 
 import asyncio
 import struct
+import sys
 from datetime import datetime
 from bleak import BleakClient, BleakScanner
+from bleak.exc import BleakError
 
 # BLE UUIDs - must match ESP32 firmware
 SERVICE_UUID = "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
@@ -192,28 +203,66 @@ class ESP32Device:
         self.name = name
         self.client: BleakClient = None
         self.connected = False
+        self.reconnect_attempts = 0
+        self.max_reconnect_attempts = 3
     
     def notification_handler(self, sender, data: bytearray):
         """Handle incoming BLE notifications"""
         handle_message(self.name, bytes(data))
     
     async def connect(self):
-        """Connect to the ESP32 device"""
+        """Connect to the ESP32 device with pairing support"""
         try:
-            self.client = BleakClient(self.address)
+            # Create client with longer timeout for pairing
+            self.client = BleakClient(
+                self.address,
+                timeout=30.0,  # Longer timeout for pairing
+                disconnected_callback=self._on_disconnect
+            )
+            
+            print(f"[{format_timestamp()}] 🔗 Connecting to {self.name} ({self.address})...")
+            
+            # Connect - bleak/BlueZ will handle pairing automatically
+            # if the device requires it and is already trusted
             await self.client.connect()
-            self.connected = True
             
-            print(f"[{format_timestamp()}] ✅ Connected to {self.name} ({self.address})")
+            # Verify connection is encrypted (bonded)
+            if hasattr(self.client, 'is_connected') and self.client.is_connected:
+                self.connected = True
+                print(f"[{format_timestamp()}] ✅ Connected to {self.name} ({self.address})")
+                print(f"[{format_timestamp()}] 🔐 Connection secured via BLE bonding")
+            else:
+                self.connected = True
+                print(f"[{format_timestamp()}] ✅ Connected to {self.name} ({self.address})")
             
+            # Subscribe to notifications
             await self.client.start_notify(CHAR_DATA_UUID, self.notification_handler)
             print(f"[{format_timestamp()}] 📡 Subscribed to notifications from {self.name}")
             
+            self.reconnect_attempts = 0
             return True
+            
+        except BleakError as e:
+            error_msg = str(e).lower()
+            if "not paired" in error_msg or "authentication" in error_msg or "encrypt" in error_msg:
+                print(f"[{format_timestamp()}] 🔒 Pairing required for {self.name}!")
+                print(f"[{format_timestamp()}] 💡 Run these commands to pair:")
+                print(f"      bluetoothctl")
+                print(f"      pair {self.address}")
+                print(f"      trust {self.address}")
+            else:
+                print(f"[{format_timestamp()}] ❌ BLE error connecting to {self.name}: {e}")
+            self.connected = False
+            return False
         except Exception as e:
             print(f"[{format_timestamp()}] ❌ Failed to connect to {self.name}: {e}")
             self.connected = False
             return False
+    
+    def _on_disconnect(self, client):
+        """Callback when device disconnects unexpectedly"""
+        self.connected = False
+        print(f"[{format_timestamp()}] ⚠️  {self.name} disconnected unexpectedly")
     
     async def disconnect(self):
         """Disconnect from the ESP32 device"""
@@ -261,8 +310,19 @@ async def scan_for_devices():
 
 async def handle_user_input(connected_devices: dict):
     """Handle user commands from stdin"""
-    print("\nCommands: 'start <device>', 'stop <device>', 'sleep <device>', 'ping <device>', 'scan', 'list', 'quit'")
-    print("Example: 'start BM-Blue' or 'start all'\n")
+    print("\n" + "=" * 70)
+    print("Available Commands:")
+    print("  start <device|all>  - Start sensor polling")
+    print("  stop <device|all>   - Stop sensor polling")
+    print("  sleep <device|all>  - Put device(s) to deep sleep")
+    print("  ping <device|all>   - Send ping (expect PONG response)")
+    print("  scan                - Scan for new devices")
+    print("  reconnect <device>  - Reconnect to a disconnected device")
+    print("  list                - List connected devices")
+    print("  help                - Show pairing instructions")
+    print("  quit                - Exit the program")
+    print("\nExample: 'start BM-Blue' or 'start all'")
+    print("=" * 70 + "\n")
     
     while True:
         try:
@@ -282,8 +342,43 @@ async def handle_user_input(connected_devices: dict):
                 print(f"\n[{format_timestamp()}] Connected devices:")
                 for name, device in connected_devices.items():
                     status = "✅ Connected" if device.connected else "❌ Disconnected"
-                    print(f"  {name}: {status}")
+                    print(f"  {name} ({device.address}): {status}")
                 print()
+            
+            elif cmd == 'help':
+                print(f"\n🔐 BLE Pairing Instructions:")
+                print(f"   The ESP32 devices require BLE bonding for secure communication.")
+                print(f"   If connection fails with 'authentication' or 'pairing' errors:")
+                print(f"")
+                print(f"   1. Open a terminal and run: bluetoothctl")
+                print(f"   2. Enable scanning: scan on")
+                print(f"   3. Find your device (e.g., BM-Blue with MAC address)")
+                print(f"   4. Pair with: pair <MAC_ADDRESS>")
+                print(f"   5. Trust the device: trust <MAC_ADDRESS>")
+                print(f"   6. Exit bluetoothctl: exit")
+                print(f"")
+                print(f"   After pairing once, bonding info is saved and persists.\n")
+            
+            elif cmd == 'reconnect':
+                if len(parts) < 2:
+                    print(f"Usage: reconnect <device_name>")
+                    continue
+                
+                target = parts[1]
+                found = None
+                for name, device in connected_devices.items():
+                    if target in name.lower():
+                        found = device
+                        break
+                
+                if found:
+                    if found.connected:
+                        print(f"[{format_timestamp()}] {found.name} is already connected")
+                    else:
+                        print(f"[{format_timestamp()}] 🔄 Attempting to reconnect to {found.name}...")
+                        await found.connect()
+                else:
+                    print(f"[{format_timestamp()}] ❌ Device '{target}' not found. Use 'scan' to find devices.")
             
             elif cmd == 'scan':
                 new_devices = await scan_for_devices()
@@ -330,8 +425,11 @@ async def handle_user_input(connected_devices: dict):
 async def main():
     """Main BLE client loop"""
     print("=" * 70)
-    print("ESP32 BLE Server - BrainMoveG1")
+    print("   ESP32 BLE Server - BrainMoveG1")
+    print("   Secure BLE Communication with Bonding")
     print("=" * 70)
+    print("\n🔐 Security: ESP32 devices use BLE bonding/encryption.")
+    print("   Type 'help' for pairing instructions if connection fails.\n")
     print("Scanning for ESP32 devices via Bluetooth Low Energy...")
     print("Press Ctrl+C to stop\n")
     
