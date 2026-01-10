@@ -1,7 +1,3 @@
-# =============================================================================
-# BMAJM Project Dependencies
-# =============================================================================
-
 # Web Framework
 annotated-types==0.7.0
 anyio==4.8.0
@@ -26,7 +22,7 @@ wsproto==1.2.0
 # Database
 mysql-connector-python==9.1.0
 
-# BLE Test Server (for test_server.py)
+# BLE
 bless>=0.2.5
 aioconsole>=0.7.0
 
