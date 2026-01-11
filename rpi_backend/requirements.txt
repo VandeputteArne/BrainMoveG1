@@ -21,10 +21,19 @@ wsproto==1.2.0
 
 # Database
 mysql-connector-python==9.1.0
+SQLAlchemy>=2.0
+alembic>=1.10
+aiosqlite>=0.19
+sqlmodel>=0.0.8
+aiomysql>=0.1
+
+# Env
+python-dotenv>=1.0.0
 
 # BLE
 bless>=0.2.5
 aioconsole>=0.7.0
+bleak>=0.20.0
 
 # Raspberry Pi GPIO (uncomment when on RPi)
 #lgpio==0.2.2.0
