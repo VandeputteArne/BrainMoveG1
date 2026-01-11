@@ -101,6 +101,9 @@ agent on
 default-agent
 scan on
 # Wait for MAC address...
+connect XX:XX:XX:XX:XX:XX
+trust XX:XX:XX:XX:XX:XX
+pair XX:XX:XX:XX:XX:XX
 scan off
 
 ```
@@ -219,6 +222,9 @@ agent on
 default-agent
 scan on
 # Wait for MAC address...
+connect XX:XX:XX:XX:XX:XX
+trust XX:XX:XX:XX:XX:XX
+pair XX:XX:XX:XX:XX:XX
 scan off
 ```
 

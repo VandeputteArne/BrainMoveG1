@@ -196,6 +196,7 @@ void playCorrectSound();
 void playIncorrectSound();
 void playConnectionSound();
 void playDisconnectSound();
+void playWakeupSound();
 void buzzerTone(uint32_t frequency, uint32_t duration);
 void buzzerOff();
 
@@ -247,10 +248,16 @@ void setup() {
     Serial.begin(115200);
     delay(100);
 
+    esp_sleep_wakeup_cause_t wakeupCause = esp_sleep_get_wakeup_cause();
     printWakeupReason();
     
     initHardware();
     initBLE();
+    
+    // Play sound if waking from deep sleep
+    if (wakeupCause == ESP_SLEEP_WAKEUP_GPIO) {
+        playWakeupSound();
+    }
     
     stateEntryTime = millis();
     lastActivityTime = millis();
@@ -502,13 +509,13 @@ void initBLE() {
     BLEDevice::init(DEVICE_NAME);
 
     BLESecurity *pSecurity = new BLESecurity();
-    pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_MITM_BOND);
-    pSecurity->setCapability(ESP_IO_CAP_OUT);
+    pSecurity->setAuthenticationMode(ESP_LE_AUTH_REQ_SC_BOND);
+    pSecurity->setCapability(ESP_IO_CAP_NONE);
     pSecurity->setKeySize(16);
     pSecurity->setInitEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
     pSecurity->setRespEncryptionKey(ESP_BLE_ENC_KEY_MASK | ESP_BLE_ID_KEY_MASK);
     
-    Serial.println("[BLE] Bonding enabled");
+    Serial.println("[BLE] Bonding enabled (Just Works pairing)");
     Serial.printf("[BLE] Pairing XIAO ESP32-C3\n");
     
     pServer = BLEDevice::createServer();
@@ -897,6 +904,17 @@ void playDisconnectSound() {
     buzzerTone(600, 150);
     delay(50);
     buzzerTone(400, 200);
+    buzzerOff();
+}
+
+void playWakeupSound() {
+    Serial.println("[BUZZER] Playing wake-up sound");
+    
+    buzzerTone(500, 100);
+    delay(30);
+    buzzerTone(800, 100);
+    delay(30);
+    buzzerTone(1200, 120);
     buzzerOff();
 }
 
