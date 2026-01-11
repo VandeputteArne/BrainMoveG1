@@ -6,7 +6,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-#define DEVICE_ID 0
+#define DEVICE_ID 3
 const char* DEVICE_NAMES[] = {"BM-Blue", "BM-Red", "BM-Yellow", "BM-Green"};
 #define DEVICE_NAME DEVICE_NAMES[DEVICE_ID]
 
@@ -766,7 +766,7 @@ float readBatteryVoltage(bool useAverage) {
         return (v1 < v2) ? v1 : v2;
     }
 }
-2
+
 uint8_t readBatteryPercentage() {
     float voltage = readBatteryVoltage();
     
