@@ -7,6 +7,7 @@ from datetime import datetime
 sys.path.insert(0, "classes")
 
 from bleak import BleakScanner
+
 from config_env import (
     TRUSTED_DEVICES,
     STRICT_WHITELIST,
@@ -14,6 +15,7 @@ from config_env import (
     CONNECTION_TIMEOUT,
     MAGIC_BYTE,
 )
+
 from classes.esp32_device import (
     ESP32Device,
     DetectionEvent,
@@ -27,15 +29,15 @@ devices = {}
 
 
 def on_detection(event: DetectionEvent):
-    print(f"\nDETECTION from {event.device_name}: {event.distance_mm} mm")
-
+    if event.distance_mm < 1800: # Distnace treshold
+        print(f"\nDETECTION from {event.device_name}: {event.distance_mm} mm", flush=True)
 
 def on_battery(event: BatteryEvent):
-    print(f"\nBATTERY from {event.device_name}: {event.percent}%")
+    print(f"\nBATTERY from {event.device_name}: {event.percent}%", flush=True)
 
 
 def on_status(event: StatusEvent_):
-    print(f"\nSTATUS from {event.device_name}: {event.event}")
+    print(f"\nSTATUS from {event.device_name}: {event.event}", flush=True)
 
 
 def timestamp():
@@ -82,16 +84,18 @@ async def scan_for_devices():
     found = []
     
     for ble_device in discovered:
+        # Filter by prefix
         if not ble_device.name or not ble_device.name.startswith(DEVICE_PREFIX):
             continue
         
         mac = ble_device.address
         name = ble_device.name
         
-        if STRICT_WHITELIST:
+        if STRICT_WHITELIST: # If True
+            # TRUSTED_DEVICES dict = {mac: name, ...}
             trusted_macs = [m.upper() for m in TRUSTED_DEVICES.keys()]
             if mac.upper() not in trusted_macs:
-                print(f"  Rejected: {name} ({mac}) - not in whitelist")
+                print(f"  Rejected: {name} ({mac}), not in whitelist")
                 continue
         
         if name in devices:

@@ -15,8 +15,9 @@ from esp32_device import (
 logger = logging.getLogger(__name__)
 
 
-class DeviceManager:  
+class DeviceManager:
     def __init__(self, trusted_macs: Optional[Dict[str, str]] = None, strict_whitelist: bool = False):
+        # Key: device name, Value: ESP32Device instance
         self._devices: Dict[str, ESP32Device] = {}
         self._trusted_macs = trusted_macs or {}
         self._strict_whitelist = strict_whitelist
