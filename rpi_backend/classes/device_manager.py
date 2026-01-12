@@ -16,7 +16,6 @@ from esp32_device import (
 
 logger = logging.getLogger(__name__)
 
-
 class DeviceManager:
     def __init__(self, trusted_macs: Optional[Dict[str, str]] = None, strict_whitelist: Optional[bool] = None, 
                  scan_timeout: Optional[float] = None, connection_timeout: Optional[float] = None):
@@ -62,7 +61,6 @@ class DeviceManager:
         return self._devices.get(name)
     
     def _add_device(self, device: ESP32Device) -> None:
-        """Internal method to add a device and apply callbacks."""
         # Apply callbacks if set
         if self._detection_callback:
             device.on_detection = self._detection_callback
