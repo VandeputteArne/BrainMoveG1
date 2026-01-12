@@ -90,7 +90,7 @@ class DeviceManager:
             
             # Count how many trusted devices we've already found
             trusted_found = sum(1 for device in self._devices.values() 
-                              if device.mac.upper() in [m.upper() for m in self._trusted_macs.keys()])
+                              if device.address.upper() in [m.upper() for m in self._trusted_macs.keys()])
             
             if self._strict_whitelist and trusted_found >= total_devices_needed:
                 logger.info(f"All {total_devices_needed} trusted devices found!")
@@ -130,7 +130,7 @@ class DeviceManager:
                 logger.info(f"Discovered: {name} ({mac})")
         
         trusted_found = sum(1 for device in self._devices.values() 
-                          if device.mac.upper() in [m.upper() for m in self._trusted_macs.keys()])
+                          if device.address.upper() in [m.upper() for m in self._trusted_macs.keys()])
         
         if self._strict_whitelist and trusted_found < total_devices_needed:
             logger.warning(f"Scan stopped after {attempts} attempts: Only found {trusted_found}/{total_devices_needed} trusted devices")
