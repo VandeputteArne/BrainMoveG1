@@ -57,6 +57,7 @@ sudo nmcli con mod "Wired connection 1" ipv4.addresses 192.168.137.50/24 ipv4.ga
 sudo nmcli con down "Wired connection 1" && sudo nmcli con up "Wired connection 1"
 
 # (Optional) Share internet from eth0 or connect to WiFi on wlan0 to get internet access:
+sudo nmcli connection modify "Wired connection 1" ipv4.never-default yes
 sudo ip route del default via 192.168.137.1
 
 ```
@@ -205,6 +206,13 @@ Transform the WiFi adapter (wlan1 - external USB adapter) into an access point (
 sudo raspi-config nonint do_wifi_country BE
 sudo nmcli con add type wifi ifname wlan1 con-name "BrainMoveAJM" autoconnect yes ssid "BrainMoveAJM" mode ap ipv4.method shared wifi-sec.key-mgmt wpa-psk wifi-sec.psk "bmSecure1998"
 sudo nmcli connection up "BrainMoveAJM"
+```
+
+# (Optional) Share internet from eth0 or connect to WiFi on wlan0 to get internet access:
+
+```bash
+sudo nmcli connection modify "Wired connection 1" ipv4.never-default yes
+sudo ip route del default via 192.168.137.1
 ```
 
 **Parameters:**

@@ -23,6 +23,7 @@ def print_menu():
     print("  2. start     - Start polling on connected devices")
     print("  3. stop      - Stop polling on connected devices")
     print("  4. sound     - Play sound on connected devices")
+    print("  5. disconnect - Disconnect all devices")
     print("  0. quit      - Exit")
     print("-" * 40)
 
@@ -36,6 +37,8 @@ async def main():
             choice = input("\n> ").strip()
 
             if choice == "1":
+                # Disconnect first if already connected to avoid "Notify acquired" error
+                await device_manager.disconnect_all()
                 await device_manager.scan()
                 results = await device_manager.connect_all()
                 for name, ok in results.items():
@@ -59,6 +62,10 @@ async def main():
                             await device.play_correct_sound()
                         elif c == "2":
                             await device.play_incorrect_sound()
+
+            elif choice == "5":
+                await device_manager.disconnect_all()
+                print("All devices disconnected")
 
             elif choice == "0":
                 break

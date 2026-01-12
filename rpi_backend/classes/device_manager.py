@@ -6,7 +6,7 @@ from typing import Optional, Dict, List
 from bleak import BleakScanner
 from dotenv import load_dotenv
 
-from esp32_device import (
+from classes.esp32_device import (
     ESP32Device,
     DetectionCallback,
     BatteryCallback,
@@ -74,46 +74,69 @@ class DeviceManager:
         self._devices[device.name] = device
         logger.info(f"Added device: {device.name}")
     
-    async def scan(self, timeout: Optional[float] = None) -> List[ESP32Device]:
+    async def scan(self, timeout: Optional[float] = None, max_attempts: int = 10) -> List[ESP32Device]:
         scan_timeout = timeout if timeout is not None else self.scan_timeout
-        logger.info(f"Scanning for BrainMove devices (timeout={scan_timeout}s)...")
+        logger.info(f"Scanning for BrainMove devices (timeout={scan_timeout}s per scan)...")
         
         if self._strict_whitelist:
-            logger.info("MAC whitelist ENABLED")
+            logger.info("MAC whitelist ENABLED - will scan until all 4 trusted devices are found")
         
-        discovered = await BleakScanner.discover(timeout=scan_timeout)
+        total_devices_needed = len(self._trusted_macs)
         new_devices = []
+        attempts = 0
         
-        for ble_device in discovered:
-            if not ble_device.name or not ble_device.name.startswith(DEVICE_PREFIX):
-                continue
+        while attempts < max_attempts:
+            attempts += 1
             
-            mac = ble_device.address
-            name = ble_device.name
+            # Count how many trusted devices we've already found
+            trusted_found = sum(1 for device in self._devices.values() 
+                              if device.mac.upper() in [m.upper() for m in self._trusted_macs.keys()])
             
-            # Check whitelist
-            if self._strict_whitelist:
-                if mac.upper() not in [m.upper() for m in self._trusted_macs.keys()]:
-                    logger.warning(f"REJECTED: {name} ({mac}) - not in whitelist")
+            if self._strict_whitelist and trusted_found >= total_devices_needed:
+                logger.info(f"All {total_devices_needed} trusted devices found!")
+                break
+            
+            logger.info(f"Scan attempt {attempts}/{max_attempts} - Found {trusted_found}/{total_devices_needed} trusted devices")
+            
+            discovered = await BleakScanner.discover(timeout=scan_timeout)
+            
+            for ble_device in discovered:
+                if not ble_device.name or not ble_device.name.startswith(DEVICE_PREFIX):
                     continue
                 
-                expected_name = self._trusted_macs.get(mac.upper())
-                if expected_name and expected_name != name:
-                    logger.warning(f"SECURITY: {mac} advertising as '{name}' but expected '{expected_name}'")
+                mac = ble_device.address
+                name = ble_device.name
+                
+                # Check whitelist
+                if self._strict_whitelist:
+                    if mac.upper() not in [m.upper() for m in self._trusted_macs.keys()]:
+                        logger.warning(f"REJECTED: {name} ({mac}) - not in whitelist")
+                        continue
+                    
+                    expected_name = self._trusted_macs.get(mac.upper())
+                    if expected_name and expected_name != name:
+                        logger.warning(f"SECURITY: {mac} advertising as '{name}' but expected '{expected_name}'")
+                        continue
+                
+                # Check if already managed
+                if name in self._devices:
+                    logger.debug(f"Already managing: {name}")
                     continue
-            
-            # Check if already managed
-            if name in self._devices:
-                logger.debug(f"Already managing: {name}")
-                continue
-            
-            # Create device and add it (callbacks auto-applied)
-            device = ESP32Device(mac, name)
-            self._add_device(device)
-            new_devices.append(device)
-            logger.info(f"Discovered: {name} ({mac})")
+                
+                # Create device and add it (callbacks auto-applied)
+                device = ESP32Device(mac, name)
+                self._add_device(device)
+                new_devices.append(device)
+                logger.info(f"Discovered: {name} ({mac})")
         
-        logger.info(f"Scan complete: {len(new_devices)} new device(s) found")
+        trusted_found = sum(1 for device in self._devices.values() 
+                          if device.mac.upper() in [m.upper() for m in self._trusted_macs.keys()])
+        
+        if self._strict_whitelist and trusted_found < total_devices_needed:
+            logger.warning(f"Scan stopped after {attempts} attempts: Only found {trusted_found}/{total_devices_needed} trusted devices")
+        else:
+            logger.info(f"Scan complete after {attempts} attempt(s): {len(new_devices)} new device(s) found")
+        
         return new_devices
     
     async def connect_all(self) -> Dict[str, bool]:
