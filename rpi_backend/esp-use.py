@@ -11,8 +11,7 @@ from classes.esp32_device import DetectionEvent
 device_manager = DeviceManager()
 
 def on_detection(event: DetectionEvent):
-    if event.detection_bool < 1800:
-        print(f"\nDETECTION from {event.device_name}: {event.detection_bool} mm", flush=True)
+    print(f"\nDETECTION from {event.device_name}: {event.detection_bool} mm", flush=True)
 
 
 def print_menu():

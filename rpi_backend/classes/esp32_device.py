@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import asyncio
+import os
 import struct
 import logging
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Callable, Optional
 from enum import IntEnum
+from webbrowser import get
 from bleak import BleakClient
 from bleak.exc import BleakError
 
@@ -18,8 +20,8 @@ SERVICE_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a7"
 CHAR_DATA_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 CHAR_COMMAND_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 
-MAGIC_BYTE = 0x42
-DEVICE_PREFIX = "BM-"
+MAGIC_BYTE = int(os.getenv("MAGIC_BYTE", "0x42"), 0)
+DEVICE_PREFIX = os.getenv("DEVICE_PREFIX", "BM-")
 
 class MessageType(IntEnum):
     STATUS = 0x01
@@ -31,7 +33,6 @@ class Command(IntEnum):
     START = 0x01
     STOP = 0x02
     SLEEP = 0x03
-    PING = 0x04
     SOUND_CORRECT = 0x10
     SOUND_INCORRECT = 0x11
 
@@ -251,10 +252,7 @@ class ESP32Device:
             self._polling = False
             logger.info(f"{self.name}: Entering sleep mode")
         return result
-    
-    async def ping(self) -> bool:
-        return await self._send_command(Command.PING)
-    
+      
     async def play_correct_sound(self) -> bool:
         return await self._send_command(Command.SOUND_CORRECT)
     
