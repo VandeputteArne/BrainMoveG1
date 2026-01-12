@@ -6,30 +6,18 @@ from datetime import datetime
 
 sys.path.insert(0, "classes")
 
-from bleak import BleakScanner
-
-from config_env import (
-    TRUSTED_DEVICES,
-    STRICT_WHITELIST,
-    SCAN_TIMEOUT,
-    CONNECTION_TIMEOUT,
-    MAGIC_BYTE,
-)
-
+from classes.device_manager import DeviceManager
 from classes.esp32_device import (
-    ESP32Device,
     DetectionEvent,
     BatteryEvent,
     StatusEvent_,
-    DEVICE_PREFIX,
 )
 
-
-devices = {}
-
+# Global DeviceManager instance
+device_manager = DeviceManager()
 
 def on_detection(event: DetectionEvent):
-    if event.distance_mm < 1800: # Distnace treshold
+    if event.distance_mm < 1800: # Distance threshold
         print(f"\nDETECTION from {event.device_name}: {event.distance_mm} mm", flush=True)
 
 def on_battery(event: BatteryEvent):
@@ -52,19 +40,20 @@ def print_header(title: str):
 
 def print_config():
     print_header("Current Configuration")
-    print(f"  MAGIC_BYTE:           0x{MAGIC_BYTE:02X}")
-    print(f"  SCAN_TIMEOUT:         {SCAN_TIMEOUT}s")
-    print(f"  CONNECTION_TIMEOUT:   {CONNECTION_TIMEOUT}s")
-    print(f"  STRICT_WHITELIST:     {STRICT_WHITELIST}")
+    print(f"  MAGIC_BYTE:           0x{device_manager.magic_byte:02X}")
+    print(f"  SCAN_TIMEOUT:         {device_manager.scan_timeout}s")
+    print(f"  CONNECTION_TIMEOUT:   {device_manager.connection_timeout}s")
+    print(f"  STRICT_WHITELIST:     {device_manager.strict_whitelist}")
     print(f"\n  Trusted Devices:")
-    if TRUSTED_DEVICES:
-        for mac, name in TRUSTED_DEVICES.items():
+    if device_manager.trusted_macs:
+        for mac, name in device_manager.trusted_macs.items():
             print(f"    {name}: {mac}")
     else:
         print("    (none configured)")
 
 
 def print_devices():
+    devices = device_manager.devices
     if not devices:
         print("  No devices yet.")
         return
@@ -78,101 +67,64 @@ def print_devices():
 
 
 async def scan_for_devices():
-    print_header(f"Scanning ({SCAN_TIMEOUT}s)...")
+    print_header(f"Scanning ({device_manager.scan_timeout}s)...")
     
-    discovered = await BleakScanner.discover(timeout=SCAN_TIMEOUT)
-    found = []
+    new_devices = await device_manager.scan()
     
-    for ble_device in discovered:
-        # Filter by prefix
-        if not ble_device.name or not ble_device.name.startswith(DEVICE_PREFIX):
-            continue
-        
-        mac = ble_device.address
-        name = ble_device.name
-        
-        if STRICT_WHITELIST: # If True
-            # TRUSTED_DEVICES dict = {mac: name, ...}
-            trusted_macs = [m.upper() for m in TRUSTED_DEVICES.keys()]
-            if mac.upper() not in trusted_macs:
-                print(f"  Rejected: {name} ({mac}), not in whitelist")
-                continue
-        
-        if name in devices:
-            print(f"  Already have: {name}")
-            continue
-        
-        device = ESP32Device(mac, name)
-        device.on_detection = on_detection
-        device.on_battery = on_battery
-        device.on_status = on_status
-        
-        devices[name] = device
-        found.append(name)
-        print(f"  Found: {name} ({mac})")
-    
-    if not found:
+    if not new_devices:
         print("  No new devices found.")
     else:
-        print(f"\n  Found {len(found)} device(s).")
+        print(f"\n  Found {len(new_devices)} device(s).")
 
 
 async def connect_all():
+    devices = device_manager.devices
     if not devices:
         print("  No devices to connect. Run 'scan' first.")
         return
     
     print_header("Connecting...")
     
-    for name, device in devices.items():
-        if device.connected:
-            print(f"  {name}: already connected")
-            continue
-        
-        print(f"  Connecting to {name}...", end=" ", flush=True)
-        success = await device.connect(timeout=CONNECTION_TIMEOUT)
-        
+    results = await device_manager.connect_all()
+    
+    for name, success in results.items():
         if success:
-            print("OK")
+            print(f"  {name}: OK")
         else:
-            print("FAILED")
+            print(f"  {name}: FAILED")
 
 
 async def disconnect_all():
     print_header("Disconnecting...")
-    
-    for name, device in list(devices.items()):
-        if device.connected:
-            await device.disconnect()
-            print(f"  {name}: disconnected")
+    await device_manager.disconnect_all()
+    print("  All devices disconnected")
 
 
 async def start_polling():
     print_header("Starting polling...")
     
-    count = 0
-    for name, device in devices.items():
-        if device.connected:
-            await device.start_polling()
-            print(f"  {name}: polling started")
-            count += 1
+    results = await device_manager.start_all()
     
-    if count == 0:
+    if not results:
         print("  No connected devices.")
+    else:
+        for name, success in results.items():
+            print(f"  {name}: {'polling started' if success else 'failed'}")
 
 
 async def stop_polling():
     print_header("Stopping polling...")
     
-    for name, device in devices.items():
-        if device.connected:
-            await device.stop_polling()
-            print(f"  {name}: stopped")
+    results = await device_manager.stop_all()
+    
+    for name, success in results.items():
+        print(f"  {name}: {'stopped' if success else 'failed'}")
 
 
 async def ping_devices():
     print_header("Pinging...")
     
+    devices = device_manager.devices
     for name, device in devices.items():
         if device.connected:
             await device.ping()
@@ -185,6 +137,7 @@ async def play_sounds():
     
     choice = input("\n  Choose (1/2): ").strip()
     
+    devices = device_manager.devices
     for name, device in devices.items():
         if device.connected:
             if choice == "1":
@@ -204,6 +157,7 @@ async def sleep_devices():
         print("  Cancelled.")
         return
     
+    devices = device_manager.devices
     for name, device in devices.items():
         if device.connected:
             await device.sleep()
@@ -261,6 +215,11 @@ async def main():
     print("  1. Type 'scan' to find devices")
     print("  2. Type 'connect' to connect")
     print("  3. Type 'start' to begin detection\n")
+    
+    # Set callbacks once for all devices (current and future)
+    device_manager.set_detection_callback(on_detection)
+    device_manager.set_battery_callback(on_battery)
+    device_manager.set_status_callback(on_status)
     
     try:
         while True:

@@ -108,6 +108,7 @@ class ESP32Device:
         
         # Internal state
         self._reconnect_task: Optional[asyncio.Task] = None
+        self._last_keepalive: Optional[datetime] = None
     
 
     # Properties----------------------------------------------------------------------
@@ -288,7 +289,8 @@ class ESP32Device:
         elif msg_type == MessageType.BATTERY:
             self._handle_battery_message(data, device_id, timestamp, now)
         elif msg_type == MessageType.KEEPALIVE:
-            pass  # Keepalives are silent
+            self._last_keepalive = now
+            logger.debug(f"{self.name} keepalive")
         else:
             logger.warning(f"Unknown message type 0x{msg_type:02X} from {self.name}")
     
@@ -352,6 +354,20 @@ class ESP32Device:
             self.on_battery(event)
     
     
+    # Health Monitoring----------------------------------------------------------------
+    def is_alive(self, timeout_seconds: float = 60.0) -> bool:
+        if not self._connected:
+            return False
+        if self._last_keepalive is None:
+            # No keepalive yet, but connected recently
+            return True
+        time_since = (datetime.now() - self._last_keepalive).total_seconds()
+        return time_since < timeout_seconds
+    
+    def time_since_keepalive(self) -> Optional[float]:
+        if self._last_keepalive is None:
+            return None
+        return (datetime.now() - self._last_keepalive).total_seconds()
 
     # Representation-------------------------------------------------------------------
     def __str__(self) -> str:

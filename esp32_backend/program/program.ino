@@ -46,12 +46,14 @@ const char* DEVICE_NAMES[] = {"BM-Blue", "BM-Red", "BM-Yellow", "BM-Green"};
 #define DEBUG_SERIAL    true
 
 // Timing
-#define BUTTON_DEBOUNCE_MS  200
+#define BUTTON_DEBOUNCE_MS  150
 #define ADVERTISING_TIMEOUT_MS  (5UL * 60UL * 1000UL)
 #define BATTERY_REPORT_INTERVAL (5UL * 60UL * 1000UL)
 #define KEEPALIVE_INTERVAL  (30UL * 1000UL)
 #define GLOBAL_IDLE_TIMEOUT_MS  (10UL * 60UL * 1000UL)
-#define TOF_POLL_INTERVAL_MS    50
+#define TOF_POLL_INTERVAL_MS    25
+#define TOF_TOP_DETECTION_THRESHOLD 1400
+#define TOF_BOTTOM_DETECTION_THRESHOLD 50
 #define TOF_DETECTION_THRESHOLD 300
 
 // Battery Config
@@ -139,6 +141,7 @@ RpiCommand pendingCommand = RpiCommand::NONE;
 // Hardware
 VL53L0X tofSensor;
 bool tofInitialized = false;
+uint16_t lastTofDistance = 9999;  // Track last distance for delta detection
 
 // USB & Charging State
 bool rgbCommonAnode = false;
@@ -414,6 +417,10 @@ void handleStatePolling() {
         return;
     }
     
+    if (previousState != SystemState::POLLING) {
+        lastTofDistance = readTofDistance();
+    }
+    
     // Check for stop/sleep commands
     if (newCommandReceived) {
         newCommandReceived = false;
@@ -453,12 +460,17 @@ void handleStatePolling() {
     if (millis() - lastTofPollTime >= TOF_POLL_INTERVAL_MS) {
         lastTofPollTime = millis();
         
-        if (isObjectDetected()) {
-            uint16_t distance = readTofDistance();
-            Serial.printf("[POLLING] Object detected at %d mm!\n", distance);
-            lastActivityTime = millis();
+        uint16_t distance = readTofDistance();
+        
+        if (distance > TOF_BOTTOM_DETECTION_THRESHOLD && distance < TOF_TOP_DETECTION_THRESHOLD) {
+            int16_t difference = abs((int16_t)distance - (int16_t)lastTofDistance);
             
-            sendDetectionMessage(distance);
+            if (difference > 300) {
+                Serial.printf("[POLLING] Object detected at %d mm (delta: %d mm)!\n", distance, difference);
+                lastActivityTime = millis();
+                sendDetectionMessage(distance);
+                lastTofDistance = distance;
+            }
         }
     }
     
