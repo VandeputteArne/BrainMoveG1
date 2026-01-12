@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 
 from classes.esp32_device import (
     ESP32Device,
+    DetectionEvent,
     DetectionCallback,
     BatteryCallback,
     StatusCallback,
@@ -44,6 +45,8 @@ class DeviceManager:
         self._detection_callback: Optional[DetectionCallback] = None
         self._battery_callback: Optional[BatteryCallback] = None
         self._status_callback: Optional[StatusCallback] = None
+        # Per-device last detections
+        self._last_detections: Dict[str, DetectionEvent] = {}
     
 
     # Properties----------------------------------------------------------------------
@@ -62,10 +65,21 @@ class DeviceManager:
     def get_device(self, name: str) -> Optional[ESP32Device]:
         return self._devices.get(name)
     
+    def _bind_detection_to_device(self, device: ESP32Device) -> None:
+        def _wrapper(event: DetectionEvent):
+            try:
+                self._last_detections[device.name] = event
+            except Exception:
+                logger.exception(f"Failed to store detection for {device.name}")
+            if self._detection_callback:
+                try:
+                    self._detection_callback(event)
+                except Exception:
+                    logger.exception(f"Detection callback threw for {device.name}")
+        device.on_detection = _wrapper
+
     def _add_device(self, device: ESP32Device) -> None:
-        # Apply callbacks if set
-        if self._detection_callback:
-            device.on_detection = self._detection_callback
+        self._bind_detection_to_device(device)
         if self._battery_callback:
             device.on_battery = self._battery_callback
         if self._status_callback:
@@ -165,8 +179,15 @@ class DeviceManager:
     
     def set_detection_callback(self, callback: DetectionCallback) -> None:
         self._detection_callback = callback
+        # Re-bind wrapper for all existing devices so events are stored + forwarded to callback
         for device in self._devices.values():
-            device.on_detection = callback
+            self._bind_detection_to_device(device)
+
+    def get_last_detection(self, name: str) -> Optional[DetectionEvent]:
+        return self._last_detections.get(name)
+
+    def get_all_last_detections(self) -> Dict[str, DetectionEvent]:
+        return self._last_detections.copy()
     
     def set_battery_callback(self, callback: BatteryCallback) -> None:
         self._battery_callback = callback

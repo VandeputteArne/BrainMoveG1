@@ -11,8 +11,8 @@ from classes.esp32_device import DetectionEvent
 device_manager = DeviceManager()
 
 def on_detection(event: DetectionEvent):
-    if event.distance_mm < 1800:
-        print(f"\nDETECTION from {event.device_name}: {event.distance_mm} mm", flush=True)
+    if event.detection_bool < 1800:
+        print(f"\nDETECTION from {event.device_name}: {event.detection_bool} mm", flush=True)
 
 
 def print_menu():
@@ -24,9 +24,16 @@ def print_menu():
     print("  3. stop      - Stop polling on connected devices")
     print("  4. sound     - Play sound on connected devices")
     print("  5. disconnect - Disconnect all devices")
+    print("  6. last-detections - Show last detection per device")
     print("  0. quit      - Exit")
     print("-" * 40)
 
+async def get_first_seen(device_manager):
+    detections = device_manager.get_all_last_detections()
+    for name, ev in detections.items():
+        if ev and ev.detection_bool:
+            return name
+    return None
 
 async def main():
     device_manager.set_detection_callback(on_detection)
@@ -66,6 +73,10 @@ async def main():
             elif choice == "5":
                 await device_manager.disconnect_all()
                 print("All devices disconnected")
+
+            elif choice == "6":
+                first = await get_first_seen(device_manager)
+                print(first)
 
             elif choice == "0":
                 break

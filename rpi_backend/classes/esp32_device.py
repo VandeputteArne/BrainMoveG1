@@ -54,7 +54,7 @@ DEVICE_NAMES = {
 class DetectionEvent:
     device_name: str
     device_id: int
-    distance_mm: int
+    detection_bool: int
     timestamp_ms: int
     received_at: datetime
 
@@ -109,6 +109,8 @@ class ESP32Device:
         # Internal state
         self._reconnect_task: Optional[asyncio.Task] = None
         self._last_keepalive: Optional[datetime] = None
+        # Last received detection event (updated immediately on notification)
+        self.last_detection: Optional[DetectionEvent] = None
     
 
     # Properties----------------------------------------------------------------------
@@ -281,7 +283,7 @@ class ESP32Device:
         
         now = datetime.now()
         
-        # Dispatch by message type
+        # Send by message type
         if msg_type == MessageType.STATUS:
             self._handle_status_message(data, device_id, timestamp, now)
         elif msg_type == MessageType.DETECTION:
@@ -307,7 +309,6 @@ class ESP32Device:
         }
         status_name = status_names.get(status_code, f"UNKNOWN({status_code})")
         
-        logger.debug(f"{self.name} STATUS: {status_name}")
         
         if self.on_status:
             event = StatusEvent_(
@@ -323,25 +324,28 @@ class ESP32Device:
         if len(data) < 10:
             return
         
-        distance = struct.unpack('<H', data[8:10])[0]
-        logger.debug(f"{self.name} DETECTION: {distance}mm")
+        detection_true = struct.unpack('<H', data[8:10])[0]
+        logger.debug(f"{self.name} DETECTION: {detection_true}")
         
+        event = DetectionEvent(
+            device_name=self.name,
+            device_id=device_id,
+            detection_bool=detection_true,
+            timestamp_ms=timestamp,
+            received_at=now
+        )
+        self.last_detection = event
         if self.on_detection:
-            event = DetectionEvent(
-                device_name=self.name,
-                device_id=device_id,
-                distance_mm=distance,
-                timestamp_ms=timestamp,
-                received_at=now
-            )
-            self.on_detection(event)
+            try:
+                self.on_detection(event)
+            except Exception as e:
+                logger.exception(f"Error in detection callback for {self.name}: {e}")
     
     def _handle_battery_message(self, data: bytes, device_id: int, timestamp: int, now: datetime) -> None:
         if len(data) < 9:
             return
         
         percent = data[8]
-        logger.info(f"{self.name} BATTERY: {percent}%")
         
         if self.on_battery:
             event = BatteryEvent(
