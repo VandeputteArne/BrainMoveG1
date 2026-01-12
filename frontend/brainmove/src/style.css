@@ -1,5 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+
+:root {
+  /* Base colors */
+  --color-black: #000000;
+  --color-white: #ffffff;
+
+  --color-yellow: #ffc400;
+  --color-green: #66bb6a;
+  --color-orange: #ff8f00;
+  --color-red: #f91818;
+
+  /* Yellow scale */
+  --color-yellow-100: #eeff00;
+
+  /* Green scale */
+  --color-green-100: #00b709;
+
+  /* Gray scale */
+  --color-gray-90: #171717;
+  --color-gray-80: #2e2e2e;
+  --color-gray-70: #464646;
+  --color-gray-60: #5d5d5d;
+  --color-gray-50: #747474;
+  --color-gray-40: #888888;
+  --color-gray-30: #a2a2a2;
+  --color-gray-20: #b9b9b9;
+  --color-gray-10: #d1d1d1;
+
+  /* Blue scale */
+  --color-blue-100: #2979ff;
+  --color-blue-90: #3c85ff;
+  --color-blue-80: #5091ff;
+  --color-blue-70: #639eff;
+  --color-blue-60: #77aaff;
+  --color-blue-50: #8ab6ff;
+  --color-blue-40: #8ab6ff;
+  --color-blue-30: #b1ceff;
+  --color-blue-20: #c5daff;
+  --color-blue-10: #d8e7ff;
+
+  /* Spacing */
+  --spacing-blocks: 1rem;
+  --spacing-title: 1.5rem;
+
+  /* Fonts */
+  --font-family: 'Poppins', sans-serif;
+}
+
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+p {
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+.small {
+  font-size: 0.75rem;
+  font-weight: normal;
 }
