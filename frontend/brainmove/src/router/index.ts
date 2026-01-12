@@ -24,6 +24,7 @@ const routes = [
     path: '/games',
     name: 'games',
     component: AppGames,
+    meta: { showTopbar: true, showNav: true },
   },
 ];
 
