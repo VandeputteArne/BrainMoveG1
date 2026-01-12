@@ -135,3 +135,5 @@ dmypy.json
 !.vscode/extensions.json
 
 *.code-workspace
+
+esp32-backend

@@ -45,6 +45,8 @@ class DeviceManager:
         self._battery_callback: Optional[BatteryCallback] = None
         self._status_callback: Optional[StatusCallback] = None
     
+
+    # Properties----------------------------------------------------------------------
     @property
     def devices(self) -> Dict[str, ESP32Device]:
         return self._devices.copy()
