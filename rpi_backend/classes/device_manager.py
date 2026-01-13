@@ -24,9 +24,8 @@ class DeviceManager:
         
         self._apparaten: Dict[str, ESP32Device] = {}
         
-        # Laden van env
         load_dotenv()
-        self.magic_byte = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
+        self.veiligheids_byte = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
         self.scan_timeout = float(os.getenv("SCAN_TIMEOUT", "5.0"))
         self.verbindings_timeout = float(os.getenv("VERBINDING_TIMEOUT", "10.0"))
         self._strikte_whitelist = os.getenv("STRIKTE_WHITELIST", "").lower() == "true"
@@ -36,12 +35,10 @@ class DeviceManager:
             if mac:
                 self._vertrouwde_macs[mac] = f"BM-{kleur.capitalize()}"
         
-        # Callback sjablonen om toe te passen op nieuwe apparaten
         self._detectie_callback: Optional[DetectieCallback] = None
         self._batterij_callback: Optional[BatterijCallback] = None
         self._status_callback: Optional[StatusCallback] = None
 
-        # Per-apparaat laatste detecties
         self._laatste_detecties: Dict[str, dict] = {}
     
 
@@ -62,24 +59,29 @@ class DeviceManager:
     
 
     # Methoden--------------------------------------------------------------------------    
+    # Nog te bekijken
     def _bind_detectie_aan_apparaat(self, apparaat: ESP32Device) -> None:
         def _wrapper(gebeurtenis: dict):
             try:
                 self._laatste_detecties[apparaat.naam] = gebeurtenis
             except Exception:
-                logger.exception(f"Mislukt om detectie op te slaan voor {apparaat.naam}")
+                logger.exception(f"Mislukt detectie opslaan voor {apparaat.naam}")
+            
             if self._detectie_callback:
                 try:
                     self._detectie_callback(gebeurtenis)
                 except Exception:
                     logger.exception(f"Detectie callback wierp fout voor {apparaat.naam}")
+        
         apparaat.bij_detectie = _wrapper
 
 
     def _voeg_apparaat_toe(self, apparaat: ESP32Device) -> None:
         self._bind_detectie_aan_apparaat(apparaat)
+
         if self._batterij_callback:
             apparaat.bij_batterij = self._batterij_callback
+
         if self._status_callback:
             apparaat.bij_status = self._status_callback
         
@@ -89,10 +91,10 @@ class DeviceManager:
 
     async def scannen(self, max_pogingen: int = 10) -> List[ESP32Device]:
         scan_timeout = self.scan_timeout
-        logger.info(f"Scannen naar BrainMove apparaten (timeout={scan_timeout}s per scan)...")
+        logger.info(f"Scannen BM apparaten")
         
         if self._strikte_whitelist:
-            logger.info("MAC whitelist INGESCHAKELD - zal scannen tot alle 4 vertrouwde apparaten gevonden zijn")
+            logger.info("MAC whitelist INGESCHAKELD")
         
         totaal_apparaten_nodig = len(self._vertrouwde_macs)
         nieuwe_apparaten = []
@@ -101,10 +103,12 @@ class DeviceManager:
         while pogingen < max_pogingen:
             pogingen += 1
             
-            # Tel hoeveel vertrouwde apparaten we al gevonden hebben
-            vertrouwde_gevonden = sum(1 for apparaat in self._apparaten.values() 
-                              if apparaat.adres.upper() in [m.upper() for m in self._vertrouwde_macs.keys()])
-            
+            vertrouwd = {m.upper() for m in self._vertrouwde_macs.keys()}
+            vertrouwde_gevonden = 0
+            for apparaat in self._apparaten.values():
+                if apparaat.mac_adres.upper() in vertrouwd:
+                    vertrouwde_gevonden += 1
+
             if self._strikte_whitelist and vertrouwde_gevonden >= totaal_apparaten_nodig:
                 logger.info(f"Alle {totaal_apparaten_nodig} vertrouwde apparaten gevonden!")
                 break
@@ -143,12 +147,12 @@ class DeviceManager:
                 logger.info(f"Ontdekt: {naam} ({mac})")
         
         vertrouwde_gevonden = sum(1 for apparaat in self._apparaten.values() 
-                          if apparaat.adres.upper() in [m.upper() for m in self._vertrouwde_macs.keys()])
+                          if apparaat.mac_adres.upper() in [m.upper() for m in self._vertrouwde_macs.keys()])
         
         if self._strikte_whitelist and vertrouwde_gevonden < totaal_apparaten_nodig:
-            logger.warning(f"Scan gestopt na {pogingen} pogingen: Alleen {vertrouwde_gevonden}/{totaal_apparaten_nodig} vertrouwde apparaten gevonden")
+            logger.warning(f"Scan gestopt, {vertrouwde_gevonden}/{totaal_apparaten_nodig} apparaten gevonden")
         else:
-            logger.info(f"Scan voltooid na {pogingen} poging(en): {len(nieuwe_apparaten)} nieuwe apparaat/apparaten gevonden")
+            logger.info(f"Scan voltooid, {len(nieuwe_apparaten)} nieuwe apparaat/apparaten gevonden")
         
         return nieuwe_apparaten
 
@@ -180,7 +184,6 @@ class DeviceManager:
 
     def zet_detectie_callback(self, callback: DetectieCallback) -> None:
         self._detectie_callback = callback
-        # Herbind wrapper voor alle bestaande apparaten zodat gebeurtenissen worden opgeslagen + doorgestuurd naar callback
         for apparaat in self._apparaten.values():
             self._bind_detectie_aan_apparaat(apparaat)
 
@@ -191,27 +194,43 @@ class DeviceManager:
 
     def zet_batterij_callback(self, callback: BatterijCallback) -> None:
         self._batterij_callback = callback
+
         for apparaat in self._apparaten.values():
             apparaat.bij_batterij = callback
 
 
     def zet_status_callback(self, callback: StatusCallback) -> None:
         self._status_callback = callback
+
         for apparaat in self._apparaten.values():
             apparaat.bij_status = callback
 
 
     def verkrijg_apparaat_gezondheid(self, timeout_seconden: float = 60.0) -> Dict[str, bool]:
-        return {naam: apparaat.is_actief(timeout_seconden) for naam, apparaat in self._apparaten.items()}
+        gezondheid: Dict[str, bool] = {}
+        for naam, apparaat in self._apparaten.items():
+            actief = apparaat.is_actief(timeout_seconden)
+            gezondheid[naam] = actief
+            
+        return gezondheid
 
 
     def verkrijg_actieve_apparaten(self, timeout_seconden: float = 60.0) -> List[str]:
-        return [naam for naam, apparaat in self._apparaten.items() if apparaat.is_actief(timeout_seconden)]
+        actieve: List[str] = []
+        for naam, apparaat in self._apparaten.items():
+            if apparaat.is_actief(timeout_seconden):
+                actieve.append(naam)
+
+        return actieve
 
 
     def verkrijg_dode_apparaten(self, timeout_seconden: float = 60.0) -> List[str]:
-        return [naam for naam, apparaat in self._apparaten.items() if not apparaat.is_actief(timeout_seconden)]
+        dode: List[str] = []
+        for naam, apparaat in self._apparaten.items():
+            if not apparaat.is_actief(timeout_seconden):
+                dode.append(naam)
 
+        return dode
 
     def log_gezondheid_status(self, timeout_seconden: float = 60.0) -> None:
         gezondheid = self.verkrijg_apparaat_gezondheid(timeout_seconden)
@@ -221,5 +240,6 @@ class DeviceManager:
         logger.info(f"Apparaat gezondheid: {len(actief)} actief, {len(dood)} dood")
         if actief:
             logger.info(f"  Actief: {', '.join(actief)}")
+
         if dood:
             logger.warning(f"  Dood/Niet-responsief: {', '.join(dood)}")

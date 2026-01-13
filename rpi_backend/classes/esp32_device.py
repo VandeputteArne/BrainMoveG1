@@ -64,8 +64,8 @@ VerbreekCallback = Callable[[], None]
 
 # ESP32 Apparaat Class-----------------------------------------------------------------------
 class ESP32Device:
-    def __init__(self, adres: str, naam: str, auto_herverbinden: bool = True):
-        self.adres = adres
+    def __init__(self, mac_adres: str, naam: str, auto_herverbinden: bool = True):
+        self.mac_adres = mac_adres
         self.naam = naam
         self.auto_herverbinden = auto_herverbinden
         
@@ -112,12 +112,12 @@ class ESP32Device:
     async def verbind(self, timeout: float = 30.0) -> bool:
         try:
             self._client = BleakClient(
-                self.adres,
+                self.mac_adres,
                 timeout=timeout,
                 disconnected_callback=self._verwerk_verbreek
             )
             
-            logger.info(f"Verbinden met {self.naam} ({self.adres})")
+            logger.info(f"Verbinden met {self.naam} ({self.mac_adres})")
             await self._client.connect()
             
             if self._client.is_connected:
@@ -360,9 +360,9 @@ class ESP32Device:
     # Representatie-------------------------------------------------------------------
     def __str__(self) -> str:
         status = "verbonden" if self._verbonden else "verbroken"
-        return f"{self.naam} ({self.adres}) - {status}"
+        return f"{self.naam} ({self.mac_adres}) - {status}"
 
 
     def __repr__(self) -> str:
         status = "verbonden" if self._verbonden else "verbroken"
-        return f"ESP32Device({self.naam!r}, {self.adres!r}, {status})"
+        return f"ESP32Device({self.naam!r}, {self.mac_adres!r}, {status})"
