@@ -44,6 +44,11 @@
 
   /* Fonts */
   --font-family: 'Poppins', sans-serif;
+
+  /* Border Radius */
+  --radius-40: 2.5rem;
+  --radius-20: 1.25rem;
+  --radius-15: 0.625rem;
 }
 
 * {
@@ -80,4 +85,8 @@ p {
 .small {
   font-size: 0.75rem;
   font-weight: normal;
+}
+
+.title {
+  margin-bottom: var(--spacing-blocks);
 }
