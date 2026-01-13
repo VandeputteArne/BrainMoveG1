@@ -18,8 +18,7 @@ from classes.esp32_device import (
 logger = logging.getLogger(__name__)
 
 class DeviceManager:
-    def __init__(self, trusted_macs: Optional[Dict[str, str]] = None, strict_whitelist: Optional[bool] = None, 
-                 scan_timeout: Optional[float] = None, connection_timeout: Optional[float] = None):
+    def __init__(self) -> None:
         # Load .env file
         load_dotenv()
         
@@ -32,14 +31,14 @@ class DeviceManager:
         
         # Load config from environment with defaults
         self.magic_byte = int(os.getenv("MAGIC_BYTE", "0x42"), 0)
-        self.scan_timeout = scan_timeout if scan_timeout is not None else float(os.getenv("SCAN_TIMEOUT", "5.0"))
-        self.connection_timeout = connection_timeout if connection_timeout is not None else float(os.getenv("CONNECTION_TIMEOUT", "10.0"))
+        self.scan_timeout = float(os.getenv("SCAN_TIMEOUT", "5.0"))
+        self.connection_timeout = float(os.getenv("CONNECTION_TIMEOUT", "10.0"))
         env_strict_whitelist = os.getenv("STRICT_WHITELIST", "").lower() == "true"
         
         # Key: device name, Value: ESP32Device instance
         self._devices: Dict[str, ESP32Device] = {}
-        self._trusted_macs = trusted_macs if trusted_macs is not None else env_trusted_devices
-        self._strict_whitelist = strict_whitelist if strict_whitelist is not None else env_strict_whitelist
+        self._trusted_macs = env_trusted_devices
+        self._strict_whitelist = env_strict_whitelist
         
         # Callback templates to apply to new devices
         self._detection_callback: Optional[DetectionCallback] = None
@@ -88,8 +87,8 @@ class DeviceManager:
         self._devices[device.name] = device
         logger.info(f"Added device: {device.name}")
     
-    async def scan(self, timeout: Optional[float] = None, max_attempts: int = 10) -> List[ESP32Device]:
-        scan_timeout = timeout if timeout is not None else self.scan_timeout
+    async def scan(self, max_attempts: int = 10) -> List[ESP32Device]:
+        scan_timeout = self.scan_timeout
         logger.info(f"Scanning for BrainMove devices (timeout={scan_timeout}s per scan)...")
         
         if self._strict_whitelist:

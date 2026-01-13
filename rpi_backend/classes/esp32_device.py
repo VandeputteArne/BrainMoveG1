@@ -98,8 +98,8 @@ class ESP32Device:
         
         # Reconnection settings
         self._reconnect_attempts = 0
-        self._max_reconnect_attempts = 3
-        self._reconnect_delay = 2.0  # seconds
+        self._max_reconnect_attempts = 4
+        self._reconnect_delay = 55.0  # seconds
         
         # Callbacks incoming data
         self.on_detection: Optional[DetectionCallback] = None
