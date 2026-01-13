@@ -3,6 +3,7 @@ import time
 import asyncio
 import typing
 import logging
+from enum import IntEnum
 from classes.device_manager import DeviceManager
 from classes.esp32_device import ESP32Device
 from bleak import BleakClient, BleakScanner
@@ -10,12 +11,17 @@ from bleak import BleakClient, BleakScanner
 # configureer basic logging zodat logger.info/debug zichtbaar wordt
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(name)s: %(message)s')
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.ERROR)
+logger.setLevel(logging.WARNING)
+
 
 device_manager = DeviceManager()
+
  
-lijstkleuren = ['blauw', 'rood', 'geel', 'groen']
-template_apparaten = {0: 'blauw', 1: 'rood', 2: 'geel', 3: 'groen'}
+class APPARATEN(IntEnum):
+    BLAUW = 0
+    ROOD = 1
+    GEEL = 2
+    GROEN = 3
 
 # Connect to esp
 async def colorgame(aantal_rondes, kleuren, snelheid):

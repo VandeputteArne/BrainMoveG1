@@ -5,7 +5,7 @@ import os
 import struct
 import logging
 from datetime import datetime
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 from enum import IntEnum
 from webbrowser import get
 from bleak import BleakClient
@@ -14,43 +14,45 @@ from bleak.exc import BleakError
 
 # Constanten, Enums & Logging-------------------------------------------------------
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 SERVICE_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a7"
 CHAR_DATA_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 CHAR_COMMAND_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 
-
-APPARAATNAMEN = {
-    0: "BM-Blauw",
-    1: "BM-Rood",
-    2: "BM-Geel",
-    3: "BM-Groen"
-}
-
-
-MAGIC_BYTE = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
+VEILIGHEIDS_BYTE = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
 APPARAAT_PREFIX = os.getenv("APPARAAT_PREFIX", "BM-")
 
 
+# Bericht Classes----------------------------------------------------------------------------
+#   StrEnum, IntEnum, Enum
+#   MessageType.STATUS = 0x01   ->   Door IntEnum kan je direct waarde opvragen
+#   MessageType.STATUS.Name = STATUS
+#   MessageType.STATUS.Value = 0x01
+class Kegel(IntEnum):
+    BLAUW = 0
+    ROOD = 1
+    GEEL = 2
+    GROEN = 3
+
 class MessageType(IntEnum):
     STATUS = 0x01
-    DETECTION = 0x02
-    BATTERY = 0x03
-    KEEPALIVE = 0x04
+    DETECTIE = 0x02
+    BATTERIJ = 0x03
+    HOUD_WAKKER = 0x04
 
 class Command(IntEnum):
     START = 0x01
     STOP = 0x02
-    SLEEP = 0x03
-    SOUND_CORRECT = 0x10
-    SOUND_INCORRECT = 0x11
+    SLAAP = 0x03
+    GELUID_CORRECT = 0x10
+    GELUID_INCORRECT = 0x11
 
 class StatusEvent(IntEnum):
-    CONNECTED = 0x01
-    RECONNECTED = 0x02
-    SLEEPING = 0x03
-    PONG = 0x04
+    VERBONDEN = 0x01
+    HERVERBIND = 0x02
+    SLAAPT = 0x03
 
 
 # Type aliassen voor callbacks------------------------------------------------------------------
@@ -115,16 +117,15 @@ class ESP32Device:
                 disconnected_callback=self._verwerk_verbreek
             )
             
-            logger.info(f"Verbinden met {self.naam} ({self.adres})...")
+            logger.info(f"Verbinden met {self.naam} ({self.adres})")
             await self._client.connect()
             
             if self._client.is_connected:
                 self._verbonden = True
                 logger.info(f"Verbonden met {self.naam}")
                 
-                # Abonneren
                 await self._client.start_notify(CHAR_DATA_UUID, self._notificatie_handler)
-                logger.debug(f"Ontvangen notificaties van {self.naam}")
+                logger.debug(f"Berichten worden ontvangen van {self.naam}")
                 
                 self._herverbind_pogingen = 0
                 return True
@@ -134,9 +135,9 @@ class ESP32Device:
         except BleakError as e:
             foutmelding = str(e).lower()
             if any(x in foutmelding for x in ["not paired", "authentication", "encrypt"]):
-                logger.error(f"Koppelen vereist voor {self.naam}. Gebruik bluetoothctl om te koppelen.")
+                logger.error(f"Apparaat nog niet gepaired {self.naam}.")
             else:
-                logger.error(f"BLE fout bij verbinden met {self.naam}: {e}")
+                logger.error(f"Fout bij verbinden met {self.naam}: {e}")
             self._verbonden = False
             return False
             
@@ -147,7 +148,7 @@ class ESP32Device:
     
 
     async def verbreek(self) -> None:
-        self.auto_herverbinden = False  # Voorkom auto-herverbinden
+        self.auto_herverbinden = False
         
         if self._herverbind_taak:
             self._herverbind_taak.cancel()
@@ -166,7 +167,7 @@ class ESP32Device:
             logger.info(f"Verbroken van {self.naam}")
     
 
-    def _verwerk_verbreek(self, client: BleakClient) -> None:
+    def _verwerk_verbreek(self, _client: BleakClient) -> None:
         self._verbonden = False
         self._geauthenticeerd = False
         self._aan_het_pollen = False
@@ -181,47 +182,47 @@ class ESP32Device:
 
     async def _herverbind(self) -> None:
         self._herverbind_pogingen += 1
-        logger.info(f"Poging tot herverbinden met {self.naam} ({self._herverbind_pogingen}/{self._max_herverbind_pogingen})...")
+        logger.info(f"Poging herverbinden {self.naam} ({self._herverbind_pogingen}/{self._max_herverbind_pogingen})")
         
         await asyncio.sleep(self._herverbind_vertraging)
         
         if await self.verbind():
             logger.info(f"Herverbonden met {self.naam}")
-            # Hervat pollen als het actief was
-            if self._aan_het_pollen:
-                await self.start_pollen()
         elif self._herverbind_pogingen < self._max_herverbind_pogingen:
             self._herverbind_taak = asyncio.create_task(self._herverbind())
         else:
-            logger.error(f"Mislukt om te herverbinden met {self.naam} na {self._max_herverbind_pogingen} pogingen")
+            logger.error(f"Herverbinden mislukt met {self.naam}")
 
 
     # Commando Methoden ---------------------------------------------------------------------    
     async def _stuur_commando(self, commando: Command, data: bytes = b'') -> bool:
         if not self._verbonden:
-            logger.error(f"Kan commando niet sturen - niet verbonden met {self.naam}")
+            logger.error(f"Commando niet mogelijk, niet verbonden met {self.naam}")
             return False
         
         if not self._geauthenticeerd:
-            logger.warning(f"Apparaat {self.naam} nog niet geauthenticeerd")
+            logger.warning(f"Apparaat {self.naam} niet geauthenticeerd")
         
         try:
-            # Combineer commando byte met extra data
-            payload = bytes([commando]) + data
-            await self._client.write_gatt_char(CHAR_COMMAND_UUID, payload)
-            logger.debug(f"Verzonden {commando.name} naar {self.naam} ({len(payload)} bytes)")
+            volledig_commando = bytes([commando]) + data
+            await self._client.write_gatt_char(CHAR_COMMAND_UUID, volledig_commando)
+
+            logger.debug(f"Verzonden {commando.name} naar {self.naam}")
             return True
         except Exception as e:
-            logger.error(f"Mislukt om commando te sturen naar {self.naam}: {e}")
+            logger.error(f"Commando mislukt naar {self.naam}: {e}")
             return False
     
 
-    async def start_pollen(self, correcte_kegel: int) -> None:
-        # Stuur kegel ID als byte (0=Blauw, 1=Rood, 2=Geel, 3=Groen)
-        kegel_byte = bytes([correcte_kegel & 0xFF])
+    async def start_pollen(self, correcte_kegel: int = 0) -> None:
+        correcte_kegel = int(correcte_kegel)
+        if not 0 <= correcte_kegel <= 255:
+            raise ValueError("correcte_kegel moet 0..255 zijn")
+        kegel_byte = bytes([correcte_kegel])
+
         if await self._stuur_commando(Command.START, kegel_byte):
             self._aan_het_pollen = True
-            logger.info(f"{self.naam}: Pollen gestart (correcte_kegel={correcte_kegel})")
+            logger.info(f"{self.naam}: Pollen gestart")
     
 
     async def stop_pollen(self) -> None:
@@ -231,13 +232,13 @@ class ESP32Device:
     
 
     async def slaap(self) -> None:
-        if await self._stuur_commando(Command.SLEEP):
+        if await self._stuur_commando(Command.SLAAP):
             self._aan_het_pollen = False
             logger.info(f"{self.naam}: Slaapstand ingaan")
 
 
     async def speel_correct_geluid(self) -> None:
-        await self._stuur_commando(Command.SOUND_CORRECT)
+        await self._stuur_commando(Command.GELUID_CORRECT)
     
 
     async def speel_incorrect_geluid(self) -> None:
@@ -251,28 +252,27 @@ class ESP32Device:
             return
         
         # Parse inkomende data header
-        bericht_type, apparaat_id, magic, gereserveerd, timestamp = struct.unpack('<BBBBI', data[:8])
+        bericht_type, apparaat_id, veiligheid_byte, gereserveerd, timestamp = struct.unpack('<BBBBI', data[:8])
         
         # Verifieer magic byte
-        if magic == MAGIC_BYTE:
+        if veiligheid_byte == VEILIGHEIDS_BYTE:
             if not self._geauthenticeerd:
                 self._geauthenticeerd = True
                 logger.info(f"{self.naam} succesvol geauthenticeerd")
         else:
-            logger.warning(f"Ongeldige magic byte van {self.naam}: 0x{magic:02X}")
+            logger.warning(f"Ongeldige veiligheid byte van {self.naam}: 0x{veiligheid_byte:02X}")
             self._geauthenticeerd = False
             return
         
         nu = datetime.now()
         
-        # Verstuur per bericht type
         if bericht_type == MessageType.STATUS:
             self._verwerk_status_bericht(data, apparaat_id, timestamp, nu)
-        elif bericht_type == MessageType.DETECTION:
+        elif bericht_type == MessageType.DETECTIE:
             self._verwerk_detectie_bericht(data, apparaat_id, timestamp, nu)
-        elif bericht_type == MessageType.BATTERY:
+        elif bericht_type == MessageType.BATTERIJ:
             self._verwerk_batterij_bericht(data, apparaat_id, timestamp, nu)
-        elif bericht_type == MessageType.KEEPALIVE:
+        elif bericht_type == MessageType.HOUD_WAKKER:
             self._laatste_keepalive = nu
             logger.debug(f"{self.naam} keepalive")
         else:
@@ -285,10 +285,9 @@ class ESP32Device:
         
         status_code = data[8]
         status_namen = {
-            StatusEvent.CONNECTED: "VERBONDEN",
-            StatusEvent.RECONNECTED: "HERVERBONDEN",
-            StatusEvent.SLEEPING: "SLAAPT",
-            StatusEvent.PONG: "PONG"
+            StatusEvent.VERBONDEN: "VERBONDEN",
+            StatusEvent.HERVERBIND: "HERVERBONDEN",
+            StatusEvent.SLAAPT: "SLAAPT",
         }
         status_naam = status_namen.get(status_code, f"ONBEKEND({status_code})")
         
@@ -347,7 +346,6 @@ class ESP32Device:
         if not self._verbonden:
             return False
         if self._laatste_keepalive is None:
-            # Nog geen keepalive, maar recent verbonden
             return True
         tijd_sinds = (datetime.now() - self._laatste_keepalive).total_seconds()
         return tijd_sinds < timeout_seconden
@@ -364,7 +362,7 @@ class ESP32Device:
         status = "verbonden" if self._verbonden else "verbroken"
         return f"{self.naam} ({self.adres}) - {status}"
 
-        
+
     def __repr__(self) -> str:
         status = "verbonden" if self._verbonden else "verbroken"
         return f"ESP32Device({self.naam!r}, {self.adres!r}, {status})"

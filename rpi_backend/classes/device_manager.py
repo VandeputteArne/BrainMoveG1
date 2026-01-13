@@ -15,6 +15,7 @@ from classes.esp32_device import (
 
 # Logging------------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 # DeviceManager class------------------------------------------------
@@ -211,7 +212,7 @@ class DeviceManager:
     def verkrijg_dode_apparaten(self, timeout_seconden: float = 60.0) -> List[str]:
         return [naam for naam, apparaat in self._apparaten.items() if not apparaat.is_actief(timeout_seconden)]
 
-    
+
     def log_gezondheid_status(self, timeout_seconden: float = 60.0) -> None:
         gezondheid = self.verkrijg_apparaat_gezondheid(timeout_seconden)
         actief = [naam for naam, status in gezondheid.items() if status]
