@@ -15,13 +15,13 @@ logger.setLevel(logging.ERROR)
 device_manager = DeviceManager()
  
 lijstkleuren = ['blauw', 'rood', 'geel', 'groen']
-template_apparaten = {1: 'blauw', 2: 'rood', 3: 'geel', 4: 'groen'}
+template_apparaten = {0: 'blauw', 1: 'rood', 2: 'geel', 3: 'groen'}
 
 # Connect to esp
 async def colorgame(aantal_rondes, kleuren, snelheid):
     global device_manager
     # maak mapping esp-id -> kleur
-    apparaten = {i: kleuren[i - 1] for i in range(1, len(kleuren) + 1)}
+    apparaten = {i: kleuren[i] for i in range(len(kleuren))}
     colorgame_rondes = []
 
     aantal_correct = 0
@@ -84,8 +84,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             })
             continue
 
-        # Device IDs zijn 0-based; apparaten keys zijn 1-based -> pas aan
-        esp_lookup_id = gedetecteerde_esp_id + 1
+        esp_lookup_id = gedetecteerde_esp_id
         apparaatkleur = apparaten.get(esp_lookup_id)
 
         print(f"Gedetecteerde kleur is: {apparaatkleur} (device_id {gedetecteerde_esp_id} -> key {esp_lookup_id})")
