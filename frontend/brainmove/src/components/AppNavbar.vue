@@ -50,7 +50,7 @@ function isActive(targetPath) {
   transform: translateX(-50%);
   width: 100vw;
 
-  & .c-navbar__list {
+  .c-navbar__list {
     display: flex;
     justify-content: space-around;
     gap: 1rem;
@@ -59,7 +59,7 @@ function isActive(targetPath) {
     margin: 0;
   }
 
-  & .c-navbar__item a {
+  .c-navbar__item a {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -70,7 +70,7 @@ function isActive(targetPath) {
     gap: 0.25rem;
   }
 
-  & .c-nav__item--active a {
+  .c-nav__item--active a {
     color: var(--blue-100);
   }
 }
