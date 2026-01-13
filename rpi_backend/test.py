@@ -16,8 +16,8 @@ logger.setLevel(logging.WARNING)
 
 device_manager = DeviceManager()
 
- 
-class APPARATEN(IntEnum):
+
+class KEGELS(IntEnum):
     BLAUW = 0
     ROOD = 1
     GEEL = 2
@@ -41,14 +41,15 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
     for ronde in range(aantal_rondes):
         device_manager.remove_all_last_detections()
 
-        gekozenkleur = random.choice(kleuren)
+        gekozen_kleur = random.choice(kleuren).upper()
+        gekozen_kegel_id = KEGELS[gekozen_kleur]
 
         # Sturen naar frontend via socketio
-        print("Frontend socketio:", gekozenkleur.upper())
+        print("Frontend socketio:", gekozen_kleur.upper())
 
         # Start polling esp en meet reactietijd
         starttijd = time.time()
-        await device_manager.start_all()
+        await device_manager.start_all(gekozen_kegel_id)
         esp_dict = device_manager.get_all_last_detections()
         while not esp_dict:
             await asyncio.sleep(0.1)
@@ -96,7 +97,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         print(f"Gedetecteerde kleur is: {apparaatkleur} (device_id {gedetecteerde_esp_id} -> key {esp_lookup_id})")
 
         # Vergelijk genormaliseerde strings
-        if apparaatkleur.strip().lower() == gekozenkleur.strip().lower():
+        if apparaatkleur.strip().lower() == gekozen_kleur.strip().lower():
             print("Correcte kleur gedetecteerd!")
             status = "correct"
             aantal_correct += 1

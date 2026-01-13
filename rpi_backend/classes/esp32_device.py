@@ -30,12 +30,6 @@ APPARAAT_PREFIX = os.getenv("APPARAAT_PREFIX", "BM-")
 #   MessageType.STATUS = 0x01   ->   Door IntEnum kan je direct waarde opvragen
 #   MessageType.STATUS.Name = STATUS
 #   MessageType.STATUS.Value = 0x01
-class Kegel(IntEnum):
-    BLAUW = 0
-    ROOD = 1
-    GEEL = 2
-    GROEN = 3
-
 class MessageType(IntEnum):
     STATUS = 0x01
     DETECTIE = 0x02
