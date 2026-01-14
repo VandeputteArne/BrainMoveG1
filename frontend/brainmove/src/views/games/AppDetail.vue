@@ -23,17 +23,17 @@ watch(username, (v) => {
 });
 
 const difficulties = ref([
-  { id: '1', snelheid: 1 },
-  { id: '2', snelheid: 2 },
-  { id: '3', snelheid: 3 },
+  { id: 1, snelheid: 1 },
+  { id: 2, snelheid: 2 },
+  { id: 3, snelheid: 3 },
 ]);
 
-const selectedDifficulty = ref('2');
+const selectedDifficulty = ref(2);
 
 const roundsOptions = ref([
-  { id: '1', rondes: 3 },
-  { id: '2', rondes: 5 },
-  { id: '3', rondes: 10 },
+  { id: 1, rondes: 3 },
+  { id: 2, rondes: 5 },
+  { id: 3, rondes: 10 },
 ]);
 
 const smallLeaderboardData = ref([
@@ -42,7 +42,7 @@ const smallLeaderboardData = ref([
   { name: 'Sophie', time: 60 },
 ]);
 
-const selectedRounds = ref('1');
+const selectedRounds = ref(1);
 const selectedColor = ref([]);
 const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
 const excludedColor = ref('geel');
@@ -58,16 +58,12 @@ function buildPayload() {
   const rnd = roundsOptions.value.find((r) => r.id === selectedRounds.value) || { id: selectedRounds.value };
 
   return {
-    gameId: 'color-sprint',
-    username: username.value || null,
-    moeilijkheid: {
-      id: String(diff.id),
-      snelheid: diff.snelheid ?? null,
-    },
-    rondes: {
-      id: String(rnd.id),
-      rondes: rnd.rondes ?? null,
-    },
+    game_id: 1,
+    gebruikersnaam: username.value || null,
+    moeilijkheids_id: diff.id,
+    snelheid: diff.snelheid ?? null,
+    ronde_id: rnd.id,
+    rondes: rnd.rondes ?? null,
     kleuren: selectedColor.value.map(String),
   };
 }
