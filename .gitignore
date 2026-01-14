@@ -135,3 +135,4 @@ dmypy.json
 !.vscode/extensions.json
 
 *.code-workspace
+node_modules/
