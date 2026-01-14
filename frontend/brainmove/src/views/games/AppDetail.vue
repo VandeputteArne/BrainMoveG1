@@ -3,12 +3,26 @@ import InputGebruikersnaam from '../../components/inputs/InputGebruikersnaam.vue
 import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
 import FiltersRounds from '../../components/filters/FiltersRounds.vue';
 import FiltersColor from '../../components/filters/FiltersColor.vue';
-import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue';
 
 import { Play } from 'lucide-vue-next';
 
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
+
+const username = ref('');
+// validation state: only show error when user tried to start without a name
+const usernameError = ref(false);
+const usernameInput = ref(null);
+
+const isUsernameValid = computed(() => (username.value || '').toString().trim().length > 0);
+
+// clear error when user types
+watch(username, (v) => {
+  if ((v || '').toString().trim().length > 0) usernameError.value = false;
+});
 
 const difficulties = ref([
   { id: '1', snelheid: 1 },
@@ -32,24 +46,84 @@ const smallLeaderboardData = ref([
 
 const selectedRounds = ref('1');
 const selectedColor = ref([]);
-const backendColors = ref(['1', '2', '3', '4']);
-const excludedColor = ref('4');
+const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
+const excludedColor = ref('geel');
 
 onMounted(async () => {
-  // voorbeeld: haal difficulties vanuit API en map naar { id, snelheid }
-  // const res = await fetch('/api/games/123/difficulties');
-  // const data = await res.json();
-  // difficulties.value = data.map(d => ({ id: d.id, snelheid: d.snelheid }));
-  // Initialize default selected colors when backendColors are present and selectedColor is empty
   if (Array.isArray(backendColors.value) && backendColors.value.length && selectedColor.value.length === 0) {
     selectedColor.value = backendColors.value.filter((id) => id !== excludedColor.value);
   }
 });
+
+function buildPayload() {
+  const diff = difficulties.value.find((d) => d.id === selectedDifficulty.value) || { id: selectedDifficulty.value };
+  const rnd = roundsOptions.value.find((r) => r.id === selectedRounds.value) || { id: selectedRounds.value };
+
+  return {
+    username: username.value || null,
+    moeilijkheid: {
+      id: String(diff.id),
+      snelheid: diff.snelheid ?? null,
+    },
+    rondes: {
+      id: String(rnd.id),
+      rondes: rnd.rondes ?? null,
+    },
+    kleuren: selectedColor.value.map(String),
+  };
+}
+
+async function startGame() {
+  const name = (username.value || '').toString().trim();
+  if (!name) {
+    usernameError.value = true;
+    await nextTick();
+    // focus het input-component als het expose focus() heeft
+    usernameInput.value?.focus?.();
+    return;
+  }
+
+  usernameError.value = false;
+
+  const payload = buildPayload();
+
+  try {
+    localStorage.setItem('lastGamePayload', JSON.stringify(payload));
+  } catch (e) {
+    // opslag niet beschikbaar, ga verder zonder opslaan
+  }
+
+  try {
+    const res = await fetch('/api/games/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const gameId = data?.id || data?.gameId;
+      if (gameId) {
+        router.push(`/game/${gameId}`);
+        return;
+      }
+      router.push('/game/id');
+      return;
+    }
+  } catch (e) {
+    // netwerk/backend niet beschikbaar -> fallback
+  }
+
+  router.push('/game/id');
+}
 </script>
 
 <template>
   <div class="c-game-detail">
-    <InputGebruikersnaam />
+    <div>
+      <InputGebruikersnaam ref="usernameInput" v-model="username" />
+      <p v-if="usernameError" class="error">Gebruikersnaam is verplicht</p>
+    </div>
 
     <div class="c-game-detail__options">
       <h3>Instellingen</h3>
@@ -73,7 +147,10 @@ onMounted(async () => {
       </div>
     </div>
 
-    <ButtonsPrimary url="/game/id" title="Start het spel" :icon="Play" />
+    <button class="c-button" type="button" @click="startGame" aria-label="Start het spel">
+      <span class="c-button__icon" aria-hidden="true"><component :is="Play" /></span>
+      <h3>Start het spel</h3>
+    </button>
 
     <img class="c-game-detail__img" src="/cards/color-sprint.png" alt="Game illustration" />
     <div class="c-game-detail__info">

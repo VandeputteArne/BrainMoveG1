@@ -1,5 +1,25 @@
 <script setup>
 import { User } from 'lucide-vue-next';
+
+import { defineProps, defineEmits, ref, defineExpose } from 'vue';
+
+const props = defineProps({
+  modelValue: { type: String, default: '' },
+});
+
+const emit = defineEmits(['update:modelValue']);
+
+const inputRef = ref(null);
+
+function onInput(e) {
+  emit('update:modelValue', e.target.value);
+}
+
+function focus() {
+  inputRef.value?.focus();
+}
+
+defineExpose({ focus });
 </script>
 
 <template>
@@ -7,7 +27,7 @@ import { User } from 'lucide-vue-next';
     <h3>Gebruikersnaam</h3>
     <div class="c-input-gebruiker">
       <label for="gebruikersnaam" class="c-input-gebruiker__label"><User /></label>
-      <input id="gebruikersnaam" type="text" placeholder="Gebruikersnaam" class="c-input-gebruiker__input" />
+      <input ref="inputRef" id="gebruikersnaam" type="text" :value="props.modelValue" @input="onInput" placeholder="Gebruikersnaam" class="c-input-gebruiker__input" />
     </div>
   </div>
 </template>

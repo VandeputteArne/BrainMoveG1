@@ -14,10 +14,10 @@ const emit = defineEmits(['update:modelValue']);
 const isChecked = computed(() => props.modelValue.includes(String(props.id)));
 
 const colorMap = {
-  1: '#2979ff', // blauw
-  2: '#f91818', // rood
-  3: '#ffc400', // geel
-  4: '#00b709', // groen
+  blauw: '#2979ff', // blauw
+  rood: '#f91818', // rood
+  geel: '#ffc400', // geel
+  groen: '#00b709', // groen
 };
 
 const inputId = computed(() => {
@@ -41,7 +41,7 @@ function onChange(event) {
 </script>
 
 <template>
-  <label :for="inputId" class="c-filter-color__label" :class="{ 'is-checked': isChecked, 'is-unchecked': !isChecked }" :style="{ backgroundColor: colorMap[props.id] }">
+  <label :for="inputId" :data-id="props.id" class="c-filter-color__label" :class="{ 'is-checked': isChecked, 'is-unchecked': !isChecked }" :style="{ backgroundColor: colorMap[props.id] }">
     <input :id="inputId" class="c-filter-color__input" type="checkbox" :checked="isChecked" @change="onChange" />
     <Check v-if="isChecked" class="c-filter-color__check" size="16" color="white" />
   </label>

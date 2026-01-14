@@ -27,7 +27,7 @@ const stars = Array.from({ length: MAX_STARS }, (_, i) => i + 1);
 </script>
 
 <template>
-  <label class="c-filter-difficulty" :data-id="props.id">
+  <label class="c-filter-difficulty" :data-id="props.id" :data-snelheid="props.snelheid">
     <input class="c-filter-difficulty__input" type="radio" :name="props.name" :value="props.id" :checked="isChecked" @change="select" />
     <span class="c-filter-difficulty__visual" role="none">
       <span class="c-filter-difficulty__stars">
@@ -51,6 +51,7 @@ const stars = Array.from({ length: MAX_STARS }, (_, i) => i + 1);
   display: inline-block;
   cursor: pointer;
   margin-top: 0.3125rem;
+  flex: 1;
 
   .c-filter-difficulty__input {
     position: absolute;
@@ -61,13 +62,15 @@ const stars = Array.from({ length: MAX_STARS }, (_, i) => i + 1);
   }
 
   .c-filter-difficulty__visual {
-    display: inline-flex;
+    display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.5rem;
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-40);
     border: 1px solid var(--blue-50);
     background: transparent;
+    width: 100%;
   }
 
   .c-filter-difficulty__stars {
