@@ -10,6 +10,13 @@ const showCountdown = ref(true);
 onMounted(async () => {
   for (let i = 3; i >= 1; i--) {
     countdown.value = i;
+    if (i === 1) {
+      try {
+        await fetch('http://10.42.0.1:8000/games/1/play', { method: 'GET' });
+      } catch (e) {
+        // ignore network/CORS errors for this signal
+      }
+    }
     await new Promise((r) => setTimeout(r, 700));
   }
   showCountdown.value = false;

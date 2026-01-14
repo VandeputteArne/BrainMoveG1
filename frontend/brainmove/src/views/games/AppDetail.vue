@@ -23,9 +23,9 @@ watch(username, (v) => {
 });
 
 const difficulties = ref([
-  { id: 1, snelheid: 1 },
-  { id: 2, snelheid: 2 },
-  { id: 3, snelheid: 3 },
+  { id: 1, snelheid: 5 },
+  { id: 2, snelheid: 10 },
+  { id: 3, snelheid: 15 },
 ]);
 
 const selectedDifficulty = ref(2);
@@ -89,7 +89,7 @@ async function startGame() {
   }
 
   try {
-    const res = await fetch('/api/games/options', {
+    const res = await fetch('http://10.42.0.1:8000/games/1/instellingen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
