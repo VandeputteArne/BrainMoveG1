@@ -8,11 +8,13 @@ const route = useRoute();
 const showTopbar = computed(() => !!route.meta.showTopbar);
 const showNav = computed(() => !!route.meta.showNav);
 const showBack = computed(() => !!route.meta.showBack);
+const fullScreen = computed(() => !!route.meta.fullScreen);
+const paddingbottom = computed(() => !!route.meta.paddingbottom);
 </script>
 
 <template>
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
-  <div class="c-body">
+  <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom }">
     <router-view />
   </div>
   <AppNav v-if="showNav" />
@@ -23,5 +25,9 @@ const showBack = computed(() => !!route.meta.showBack);
   padding: 1.25rem 1.25rem;
   margin-bottom: 4.375rem;
   margin-top: 3.5625rem;
+}
+
+.c-body--no-padding-bottom {
+  margin-bottom: 0;
 }
 </style>
