@@ -13,13 +13,11 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 const username = ref('');
-// validation state: only show error when user tried to start without a name
 const usernameError = ref(false);
 const usernameInput = ref(null);
 
 const isUsernameValid = computed(() => (username.value || '').toString().trim().length > 0);
 
-// clear error when user types
 watch(username, (v) => {
   if ((v || '').toString().trim().length > 0) usernameError.value = false;
 });
@@ -60,6 +58,7 @@ function buildPayload() {
   const rnd = roundsOptions.value.find((r) => r.id === selectedRounds.value) || { id: selectedRounds.value };
 
   return {
+    gameId: 'color-sprint',
     username: username.value || null,
     moeilijkheid: {
       id: String(diff.id),
@@ -94,7 +93,7 @@ async function startGame() {
   }
 
   try {
-    const res = await fetch('/api/games/start', {
+    const res = await fetch('/api/games/options', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -107,14 +106,14 @@ async function startGame() {
         router.push(`/game/${gameId}`);
         return;
       }
-      router.push('/game/id');
+      router.push(`/games/${gameId}/play`);
       return;
     }
   } catch (e) {
     // netwerk/backend niet beschikbaar -> fallback
   }
 
-  router.push('/game/id');
+  router.push('/games/1/play');
 }
 </script>
 
