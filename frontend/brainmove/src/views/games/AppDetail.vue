@@ -28,7 +28,7 @@ const difficulties = ref([
   { id: 3, snelheid: 15 },
 ]);
 
-const selectedDifficulty = ref(2);
+const selectedDifficulty = ref('2');
 
 const roundsOptions = ref([
   { id: 1, rondes: 3 },
@@ -42,7 +42,7 @@ const smallLeaderboardData = ref([
   { name: 'Sophie', time: 60 },
 ]);
 
-const selectedRounds = ref(1);
+const selectedRounds = ref('1');
 const selectedColor = ref([]);
 const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
 const excludedColor = ref('geel');
@@ -54,8 +54,8 @@ onMounted(async () => {
 });
 
 function buildPayload() {
-  const diff = difficulties.value.find((d) => d.id === selectedDifficulty.value) || { id: selectedDifficulty.value };
-  const rnd = roundsOptions.value.find((r) => r.id === selectedRounds.value) || { id: selectedRounds.value };
+  const diff = difficulties.value.find((d) => String(d.id) === String(selectedDifficulty.value)) || { id: selectedDifficulty.value };
+  const rnd = roundsOptions.value.find((r) => String(r.id) === String(selectedRounds.value)) || { id: selectedRounds.value };
 
   return {
     game_id: 1,
@@ -125,13 +125,13 @@ async function startGame() {
       <div class="c-game-detail__dif">
         <p>Moeilijkheidsgraad</p>
         <div class="c-game-detail__row">
-          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="opt.id" :snelheid="opt.snelheid" v-model="selectedDifficulty" name="difficulty" />
+          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :snelheid="opt.snelheid" v-model="selectedDifficulty" name="difficulty" />
         </div>
       </div>
 
       <div class="c-game-detail__rounds">
         <p>Aantal rondes</p>
-        <div class="c-game-detail__row"><FiltersRounds v-for="r in roundsOptions" :key="r.id" :id="r.id" :rondes="r.rondes" v-model="selectedRounds" name="rounds" /></div>
+        <div class="c-game-detail__row"><FiltersRounds v-for="r in roundsOptions" :key="r.id" :id="String(r.id)" :rondes="r.rondes" v-model="selectedRounds" name="rounds" /></div>
       </div>
 
       <div class="c-game-detail__colors">
