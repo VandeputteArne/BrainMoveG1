@@ -1,18 +1,28 @@
 <script setup>
 import { Zap, Crown } from 'lucide-vue-next';
+import { computed } from 'vue';
+
+const props = defineProps({
+  id: { type: String, required: true },
+  title: { type: String, default: 'Color Sprint' },
+  tag: { type: String, default: 'Reactiesnelheid' },
+  bestTime: { type: Number, default: 0 },
+  unit: { type: String, default: 's' },
+  image: { type: String, default: '/cards/color-sprint.png' },
+});
 </script>
 
 <template>
-  <router-link to="/games/color-sprint" class="c-game-card">
+  <router-link :to="`/games/${props.id}`" class="c-game-card" :style="{ backgroundImage: `url(${props.image})` }">
     <div class="c-game-card__tag">
       <Zap class="c-game-card__icon" />
-      <p>Reactiesnelheid</p>
+      <p>{{ props.tag }}</p>
     </div>
     <div class="c-game-card__info">
-      <p class="c-game-card__title">Color Sprint</p>
+      <p class="c-game-card__title">{{ props.title }}</p>
       <div class="c-game-card__best">
         <Crown class="c-game-card__icon c-game-card__icon--yellow" />
-        <p class="small">0.5s</p>
+        <p class="small">{{ props.bestTime }}{{ props.unit }}</p>
       </div>
     </div>
   </router-link>
@@ -25,7 +35,7 @@ import { Zap, Crown } from 'lucide-vue-next';
   flex-direction: column;
   height: 12.875rem;
   width: 100%;
-  background-image: url('cards/1a288a89-5db3-4151-ae80-218962a7eaed.png');
+  background-image: url('cards/color-sprint.png');
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;

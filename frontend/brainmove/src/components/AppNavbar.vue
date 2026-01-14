@@ -49,6 +49,8 @@ function isActive(targetPath) {
   left: 50%;
   transform: translateX(-50%);
   width: 100vw;
+  background-color: var(--color-white);
+  z-index: 100;
 
   .c-navbar__list {
     display: flex;
