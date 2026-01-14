@@ -15,7 +15,7 @@ from classes.esp32_device import (
 
 # Logging------------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 
 # DeviceManager class------------------------------------------------
@@ -109,7 +109,7 @@ class DeviceManager:
                 if apparaat.mac_adres.upper() in vertrouwd:
                     vertrouwde_gevonden += 1
 
-            if self._strikte_whitelist and vertrouwde_gevonden >= totaal_apparaten_nodig:
+            if vertrouwde_gevonden >= totaal_apparaten_nodig and totaal_apparaten_nodig > 0:
                 logger.info(f"Alle {totaal_apparaten_nodig} vertrouwde apparaten gevonden!")
                 break
             
@@ -124,7 +124,6 @@ class DeviceManager:
                 mac = ble_apparaat.address
                 naam = ble_apparaat.name
                 
-                # Controleer whitelist
                 if self._strikte_whitelist:
                     if mac.upper() not in [m.upper() for m in self._vertrouwde_macs.keys()]:
                         logger.warning(f"AFGEWEZEN: {naam} ({mac}) - niet in whitelist")
@@ -135,12 +134,10 @@ class DeviceManager:
                         logger.warning(f"BEVEILIGING: {mac} adverteert als '{naam}' maar verwachtte '{verwachte_naam}'")
                         continue
                 
-                # Controleer of al beheerd
                 if naam in self._apparaten:
                     logger.debug(f"Reeds beheerd: {naam}")
                     continue
                 
-                # Maak apparaat en voeg toe (callbacks automatisch toegepast)
                 apparaat = ESP32Device(mac, naam)
                 self._voeg_apparaat_toe(apparaat)
                 nieuwe_apparaten.append(apparaat)
@@ -170,10 +167,8 @@ class DeviceManager:
     async def start_alle(self, correcte_kegel: str) -> Dict[str, bool]:
         for naam, apparaat in self._apparaten.items():
             if apparaat.verbonden:
-                if naam.endswith(correcte_kegel):
-                    await apparaat.start_pollen(True)
-                else:
-                    await apparaat.start_pollen(False)
+                is_correcte = str(correcte_kegel).lower() in naam.lower()
+                await apparaat.start_pollen(is_correcte)
 
 
     async def stop_alle(self) -> Dict[str, bool]:
@@ -190,6 +185,10 @@ class DeviceManager:
 
     def verkrijg_alle_laatste_detecties(self) -> Dict[str, dict]:
         return self._laatste_detecties.copy()
+    
+    
+    def verwijder_alle_laatste_detecties(self) -> None:
+        self._laatste_detecties.clear()
 
 
     def zet_batterij_callback(self, callback: BatterijCallback) -> None:

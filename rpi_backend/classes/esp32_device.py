@@ -14,12 +14,13 @@ from bleak.exc import BleakError
 
 # Constanten, Enums & Logging-------------------------------------------------------
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 
 SERVICE_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a7"
 CHAR_DATA_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 CHAR_COMMAND_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a9"
+
 
 VEILIGHEIDS_BYTE = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
 APPARAAT_PREFIX = os.getenv("APPARAAT_PREFIX", "BM-")
@@ -222,6 +223,7 @@ class ESP32Device:
     async def stop_pollen(self) -> None:
         if await self._stuur_commando(Command.STOP):
             self._aan_het_pollen = False
+            self.laatste_detectie = None  # Clear last detection
             logger.info(f"{self.naam}: Pollen gestopt")
     
 
@@ -236,7 +238,7 @@ class ESP32Device:
     
 
     async def speel_incorrect_geluid(self) -> None:
-        await self._stuur_commando(Command.SOUND_INCORRECT)
+        await self._stuur_commando(Command.GELUID_INCORRECT)
     
 
     # Notificatie Verwerking------------------------------------------------------
