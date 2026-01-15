@@ -45,9 +45,9 @@ onMounted(() => {
 
     // Update counts
     counts.value = [
-      { type: 'correct', value: data.aantal_correct || 0 },
-      { type: 'wrong', value: data.aantal_fout || 0 },
-      { type: 'late', value: data.aantal_telaat || 0 },
+      { type: 'correct', label: 'Correct', value: data.aantal_correct || 0 },
+      { type: 'telaat', label: 'Te laat', value: data.aantal_telaat || 0 },
+      { type: 'fout', label: 'Fout', value: data.aantal_fout || 0 },
     ];
 
     // Rounds blijven hardcoded tot backend deze levert
@@ -116,7 +116,7 @@ function exportCsv() {
     <div class="c-overzicht__counts">
       <h3>Totale uitslag</h3>
       <div class="c-overzicht__counts-inner">
-        <OverzichtCountItem v-for="count of counts" :counts="count.value" :type="count.type" />
+        <OverzichtCountItem v-for="count of counts" :counts="count.value" :label="count.label" :type="count.type" />
       </div>
     </div>
 

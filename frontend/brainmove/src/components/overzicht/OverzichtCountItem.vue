@@ -8,13 +8,16 @@ const props = defineProps({
   type: {
     type: String,
   },
+  label: {
+    type: String,
+  },
 });
 </script>
 
 <template>
   <div :class="`c-overzicht__count-item c-overzicht__count-item--${props.type}`">
     <h2 class="c-overzicht__count-num">{{ props.counts }}</h2>
-    <p class="small">{{ props.type }}</p>
+    <p class="small">{{ props.label }}</p>
   </div>
 </template>
 
@@ -36,11 +39,11 @@ const props = defineProps({
   background-color: #83d087;
 }
 
-.c-overzicht__count-item--wrong {
-  background-color: #ffb961;
+.c-overzicht__count-item--fout {
+  background-color: #ff7b7b;
 }
 
-.c-overzicht__count-item--late {
-  background-color: #ff7b7b;
+.c-overzicht__count-item--telaat {
+  background-color: #ffb961;
 }
 </style>
