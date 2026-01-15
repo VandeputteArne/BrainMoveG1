@@ -136,3 +136,5 @@ dmypy.json
 
 *.code-workspace
 node_modules/
+
+config.py
