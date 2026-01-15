@@ -19,13 +19,13 @@ const routes = [
     path: '/setup',
     name: 'setup',
     component: OnboardingSetup,
-    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: true, paddingbottom: false, paddingtop: false },
+    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false },
   },
   {
     path: '/warning',
     name: 'warning',
     component: OnboardingWarning,
-    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: true, paddingbottom: false, paddingtop: false },
+    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false },
   },
   {
     path: '/games',

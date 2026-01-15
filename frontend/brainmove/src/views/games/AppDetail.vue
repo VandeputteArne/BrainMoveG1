@@ -162,7 +162,7 @@ async function startGame() {
       <h3>Start het spel</h3>
     </button>
 
-    <img class="c-game-detail__img" src="/cards/color-sprint.png" alt="Game illustration" />
+    <img class="c-game-detail__img" src="/images/cards/color-sprint.png" alt="Game illustration" />
     <div class="c-game-detail__info">
       <h1>Color Sprint</h1>
       <p>Blijf scherp! Zodra een kleur op het scherm verschijnt, moet je onmiddellijk in actie komen en naar de bijpassende kleur bewegen. Elke seconde telt. Verbeter je reactietijd, versla je eigen records en word steeds sneller.</p>
