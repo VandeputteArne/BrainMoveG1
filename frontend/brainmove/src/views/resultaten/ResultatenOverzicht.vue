@@ -1,6 +1,6 @@
 // ...existing code...
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { Download, ChartNoAxesCombined } from 'lucide-vue-next';
 
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
@@ -8,14 +8,15 @@ import OverzichtCountItem from '../../components/overzicht/OverzichtCountItem.vu
 import OverzichtCard from '../../components/overzicht/OverzichtCard.vue';
 import OverzichtGraph from '../../components/overzicht/OverzichtGraph.vue';
 
-// Hardcoded data (later vervang door API)
+// Data uit localStorage
 const stats = ref([
-  { waarde: 0.24, label: 'Gemiddelde' },
-  { waarde: 0.13, label: 'Beste' },
-  { waarde: 10, label: 'Ranking' },
-  { waarde: 70, label: 'Exactheid' },
+  { waarde: 0, label: 'Gemiddelde' },
+  { waarde: 0, label: 'Beste' },
+  { waarde: 0, label: 'Ranking' },
+  { waarde: 0, label: 'Exactheid' },
 ]);
-// Hardcoded per-round reactietijden
+
+// Hardcoded per-round reactietijden (komt later van backend)
 const rounds = ref([
   { round: 1, time: 0.24 },
   { round: 2, time: 0.3 },
@@ -24,27 +25,57 @@ const rounds = ref([
   { round: 5, time: 0.28 },
 ]);
 
-// Hardcoded counts (correct / wrong / late)
 const counts = ref([
-  { type: 'correct', value: 12 },
-  { type: 'wrong', value: 2 },
-  { type: 'late', value: 1 },
+  { type: 'correct', value: 0 },
+  { type: 'wrong', value: 0 },
+  { type: 'late', value: 0 },
 ]);
+
+onMounted(() => {
+  try {
+    const data = JSON.parse(localStorage.getItem('laatste_rondewaarden') || '{}');
+
+    // Update stats
+    stats.value = [
+      { waarde: data.gemiddelde_waarde || 0, label: 'Gemiddelde' },
+      { waarde: data.beste_waarde || 0, label: 'Beste' },
+      { waarde: data.ranking || 0, label: 'Ranking' },
+      { waarde: data.exactheid || 0, label: 'Exactheid' },
+    ];
+
+    // Update counts
+    counts.value = [
+      { type: 'correct', value: data.aantal_correct || 0 },
+      { type: 'wrong', value: data.aantal_fout || 0 },
+      { type: 'late', value: data.aantal_telaat || 0 },
+    ];
+
+    // Rounds blijven hardcoded tot backend deze levert
+  } catch (error) {
+    console.error('Error loading results from localStorage:', error);
+  }
+});
 
 // derive values from arrays (keeps UI consistent if you later replace with API data)
 const computedAverage = computed(() => {
-  if (!rounds.value.length) return 0;
+  if (!rounds.value.length) return stats.value[0]?.waarde || 0;
   const sum = rounds.value.reduce((s, r) => s + r.time, 0);
   return +(sum / rounds.value.length).toFixed(2);
 });
 const computedBest = computed(() => {
-  if (!rounds.value.length) return 0;
+  if (!rounds.value.length) return stats.value[1]?.waarde || 0;
   return Math.min(...rounds.value.map((r) => r.time));
 });
 
 // CSV export (simple)
 function exportCsv() {
-  const rows = [['Stat', 'Value'], ['Average', stats.value.average], ['Best', stats.value.best], ['Ranking', stats.value.ranking], ['Accuracy (%)', stats.value.accuracyPct], [], ['Round', 'Time (s)'], ...rounds.value.map((r) => [r.round, r.time]), [], ['Correct', counts.value.correct], ['Wrong', counts.value.wrong], ['Late', counts.value.late]];
+  const data = stats.value;
+  const rows = [['Stat', 'Value'], ['Gemiddelde', data[0]?.waarde || 0], ['Beste', data[1]?.waarde || 0], ['Ranking', data[2]?.waarde || 0], ['Exactheid (%)', data[3]?.waarde || 0], [], ['Type', 'Count'], ['Correct', counts.value[0]?.value || 0], ['Wrong', counts.value[1]?.value || 0], ['Late', counts.value[2]?.value || 0]];
+
+  if (rounds.value.length) {
+    rows.push([], ['Round', 'Time (s)']);
+    rounds.value.forEach((r) => rows.push([r.round, r.time]));
+  }
 
   const csv = rows.map((r) => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
