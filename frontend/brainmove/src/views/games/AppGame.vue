@@ -59,16 +59,14 @@ onMounted(async () => {
       const norm = color.toLowerCase();
       if (chosenColors.length === 0 || chosenColors.includes(norm)) {
         const newColor = kleuren[norm] || color;
-        // trigger fast animation: shrink current color to invisible circle
         prevColor.value = bgColor.value;
         isAnimating.value = true;
         setTimeout(() => {
-          // switch to new color at smallest point and expand
           bgColor.value = newColor;
           setTimeout(() => {
             isAnimating.value = false;
-          }, 100);
-        }, 100);
+          }, 60);
+        }, 60);
       }
       if (round !== null && typeof round === 'number') currentRound.value = round;
       if (total !== null && typeof total === 'number') totalRounds.value = total;
