@@ -24,7 +24,10 @@ const props = defineProps({
       </span>
     </div>
     <h2>
-      {{ props.label === 'Gemiddelde' || props.label === 'Beste' ? props.waarde + 's' : props.waarde }}
+      <template v-if="props.label === 'Gemiddelde' || props.label === 'Beste'">{{ props.waarde }}s</template>
+      <template v-else-if="props.label === 'Ranking'">#{{ props.waarde }}</template>
+      <template v-else-if="props.label === 'Exactheid'">{{ props.waarde }}%</template>
+      <template v-else>{{ props.waarde }}</template>
     </h2>
   </div>
 </template>
