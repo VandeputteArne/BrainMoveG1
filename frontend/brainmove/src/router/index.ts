@@ -52,7 +52,7 @@ const routes = [
     meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: true, paddingbottom: false, paddingtop: false },
   },
   {
-    path: '/resultaten/overzicht/:id',
+    path: '/resultaten/overzicht',
     name: 'resultaten-overzicht',
     component: ResultatenOverzicht,
     meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false },

@@ -1,5 +1,21 @@
 <script setup>
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
+import { onMounted } from 'vue';
+
+onMounted(async () => {
+  try {
+    const response = await fetch('http://10.42.0.1:8000/laatste_rondewaarden');
+
+    if (response.ok) {
+      const data = await response.json();
+      localStorage.setItem('laatste_rondewaarden', JSON.stringify(data));
+    } else {
+      console.error('Failed to fetch round values:', response.statusText);
+    }
+  } catch (error) {
+    console.error('Error fetching round values:', error);
+  }
+});
 </script>
 
 <template>
@@ -11,7 +27,7 @@ import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 
     <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" />
 
-    <ButtonsPrimary to="/resultaten/overzicht/12345" title="Bekijk je resultaten"></ButtonsPrimary>
+    <ButtonsPrimary to="/resultaten/overzicht" title="Bekijk je resultaten"></ButtonsPrimary>
   </div>
 </template>
 
