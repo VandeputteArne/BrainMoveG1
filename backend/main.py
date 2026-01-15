@@ -248,8 +248,8 @@ async def get_laatste_rondewaarden():
 
     return Resultaat(
         ranking=ranking or 0,
-        gemiddelde_waarde=gemiddelde_tijd,
-        beste_waarde=beste_tijd,
+        gemiddelde_waarde=round(gemiddelde_tijd, 2),
+        beste_waarde=round(beste_tijd, 2),
         exactheid=exactheid,
         aantal_correct=aantal_correct,
         aantal_fout=aantal_fout,
