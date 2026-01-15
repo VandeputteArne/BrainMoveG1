@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import threading
 import fastapi
 import socketio
@@ -11,6 +12,7 @@ from models.models import (
 from classes.device_manager import DeviceManager
 import random
 import time
+from repositories.DataRepository import DataRepository
 
 app = FastAPI()
 app.add_middleware(
@@ -34,9 +36,14 @@ global ronde_id
 global rondes
 global kleuren
 
+global starttijd
+
+
 async def colorgame(aantal_rondes, kleuren, snelheid):
     # maak mapping esp-id -> kleur
+    global vorige_kleur
     apparaten = {i: kleuren[i] for i in range(len(kleuren))}
+    
     colorgame_rondes = []
 
     aantal_correct = 0
@@ -59,8 +66,6 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         #device_manager.verwijder_alle_laatste_detecties()
 
         gekozen_kleur = random.choice(kleuren).upper()
-
-        vorige_kleur = gekozen_kleur
         await sio.emit('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
         print("Frontend socketio:", gekozen_kleur.upper())
 
@@ -158,7 +163,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 @app.post("/games/{game_id}/instellingen",response_model=Instellingen, summary="Haal de instellingen op voor een specifiek spel",tags=["Spelletjes"])
 async def get_game_instellingen (json: Instellingen):
     #alles vanuit de json globaal zetten zodat ik die in de andere functie kan gebruiken
-    global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren
+    global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren, starttijd
 
     game_id = json.game_id 
     gebruikersnaam = json.gebruikersnaam
@@ -167,6 +172,8 @@ async def get_game_instellingen (json: Instellingen):
     ronde_id = json.ronde_id
     rondes = json.rondes
     kleuren = json.kleuren
+
+    starttijd = datetime.datetime.now()
 
     await device_manager.scannen(1)
     await device_manager.verbind_alle()
@@ -177,13 +184,29 @@ async def run_colorgame_background():
     try:
         colorgame_rondes = await colorgame(rondes, kleuren, snelheid)
         
+        newuserid = DataRepository.add_gebruiker(gebruikersnaam)
+        print(f"Nieuwe gebruiker toegevoegd met ID: {newuserid}")
+
+        # Voeg training toe
+        training_id = DataRepository.add_training(
+            starttijd=starttijd,
+            aantalKleuren=len(kleuren),
+            gebruikersId=newuserid,
+            rondeId=ronde_id,
+            moeilijkheidsId=moeilijkheids_id,
+            gameId=game_id
+        )
+        print(f"Nieuwe training toegevoegd met ID: {training_id}")
         # Database opslag
         for ronde in colorgame_rondes:
-            rondenummer = ronde["rondenummer"]
-            waarde = ronde["waarde"]
-            uitkomst = ronde["uitkomst"]
-            # InsertIntoDatabase(colorgames_rondes.training_id, rondenummer, waarde, uitkomst, training_id)
-            print(f"Invoegen ronde {rondenummer}: waarde={waarde} seconden, uitkomst={uitkomst}")
+            DataRepository.add_ronde_waarde(
+                trainingsId=training_id,
+                rondeNummer=ronde["rondenummer"],
+                waarde=ronde["waarde"],
+                uitkomst=ronde["uitkomst"]
+            )
+            
+        
         
     except Exception as e:
         print(f"Fout in colorgame: {e}")
@@ -207,5 +230,5 @@ async def read_root():
     return {"Hello": "World"}
 
 if __name__ == "__main__":
-
+    
     uvicorn.run("main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])

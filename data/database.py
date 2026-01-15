@@ -55,10 +55,10 @@ def create_database():
     );
     """)
 
-    # 5. Tabel: Trainings
+    # 5. Tabel: Trainingen
     # Start is nu DATETIME
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS Trainings (
+    CREATE TABLE IF NOT EXISTS Trainingen (
         TrainingsId INTEGER PRIMARY KEY AUTOINCREMENT,
         Start DATETIME DEFAULT CURRENT_TIMESTAMP,
         AantalKleuren INTEGER,
@@ -82,7 +82,7 @@ def create_database():
         RondeNummer INTEGER,
         Waarde TEXT,
         Uitkomst TEXT,
-        FOREIGN KEY (TrainingsId) REFERENCES Trainings(TrainingsId)
+        FOREIGN KEY (TrainingsId) REFERENCES Trainingen(TrainingsId)
     );
     """)
 
