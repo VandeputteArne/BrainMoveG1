@@ -8,7 +8,7 @@ const props = defineProps({
   tag: { type: String, default: 'Reactiesnelheid' },
   bestTime: { type: Number, default: 0 },
   unit: { type: String, default: 's' },
-  image: { type: String, default: '/cards/color-sprint.png' },
+  image: { type: String, default: 'images/cards/color-sprint.png' },
 });
 </script>
 
@@ -35,7 +35,7 @@ const props = defineProps({
   flex-direction: column;
   height: 12.875rem;
   width: 100%;
-  background-image: url('cards/color-sprint.png');
+  background-image: url('/images/cards/color-sprint.png');
   background-repeat: no-repeat;
   background-size: cover;
   background-position: center;

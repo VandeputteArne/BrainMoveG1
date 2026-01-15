@@ -2,7 +2,7 @@
 import { ref, onMounted } from 'vue';
 import GameCard from '../../components/cards/CardsGame.vue';
 
-const games = ref([{ id: '1', title: 'Color Sprint', tag: 'Reactiesnelheid', bestTime: 0.5, unit: 's', image: '/cards/color-sprint.png' }]);
+const games = ref([{ id: '1', title: 'Color Sprint', tag: 'Reactiesnelheid', bestTime: 0.5, unit: 's', image: 'images/cards/color-sprint.png' }]);
 
 onMounted(async () => {
   // als je data vanaf een API wilt laden, doe dat hier en zet games.value = fetchedData

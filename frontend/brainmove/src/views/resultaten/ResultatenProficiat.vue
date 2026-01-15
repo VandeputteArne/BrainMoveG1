@@ -9,7 +9,7 @@ import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
       <h3>Goed gedaan! Je hebt de training afgerond</h3>
     </div>
 
-    <img class="c-proficiat__img" src="/training-afgerond.png" alt="Proficiat" />
+    <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" />
 
     <ButtonsPrimary to="/resultaten/overzicht/12345" title="Bekijk je resultaten"></ButtonsPrimary>
   </div>
