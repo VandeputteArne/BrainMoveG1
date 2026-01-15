@@ -3,8 +3,8 @@ import os
 from typing import Optional, Dict, List
 from bleak import BleakScanner
 from dotenv import load_dotenv
-from esp32_device import (
-    ESP32Device,
+from backend.src.services.cone import (
+    Cone,
     DetectieCallback,
     BatterijCallback,
     StatusCallback,
@@ -13,14 +13,14 @@ from esp32_device import (
 
 # Logging------------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 # DeviceManager class------------------------------------------------
 class DeviceManager:
     def __init__(self) -> None:
         
-        self._apparaten: Dict[str, ESP32Device] = {}
+        self._apparaten: Dict[str, Cone] = {}
         
         load_dotenv()
         self.veiligheids_byte = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
@@ -42,7 +42,7 @@ class DeviceManager:
 
     # Eigenschappen----------------------------------------------------------------------
     @property
-    def apparaten(self) -> Dict[str, ESP32Device]:
+    def apparaten(self) -> Dict[str, Cone]:
         return self._apparaten.copy()
     
 
@@ -57,8 +57,7 @@ class DeviceManager:
     
 
     # Methoden--------------------------------------------------------------------------    
-    # Nog te bekijken
-    def _bind_detectie_aan_apparaat(self, apparaat: ESP32Device) -> None:
+    def _bind_detectie_aan_apparaat(self, apparaat: Cone) -> None:
         def _wrapper(gebeurtenis: dict):
             try:
                 self._laatste_detecties[apparaat.naam] = gebeurtenis
@@ -74,7 +73,7 @@ class DeviceManager:
         apparaat.bij_detectie = _wrapper
 
 
-    def _voeg_apparaat_toe(self, apparaat: ESP32Device) -> None:
+    def _voeg_apparaat_toe(self, apparaat: Cone) -> None:
         self._bind_detectie_aan_apparaat(apparaat)
 
         if self._batterij_callback:
@@ -87,7 +86,7 @@ class DeviceManager:
         logger.info(f"Apparaat toegevoegd: {apparaat.naam}")
 
 
-    async def scannen(self, max_pogingen: int = 10) -> List[ESP32Device]:
+    async def scannen(self, max_pogingen: int = 10) -> List[Cone]:
         scan_timeout = self.scan_timeout
         logger.info(f"Scannen BM apparaten")
         
@@ -136,7 +135,7 @@ class DeviceManager:
                     logger.debug(f"Reeds beheerd: {naam}")
                     continue
                 
-                apparaat = ESP32Device(mac, naam)
+                apparaat = Cone(mac, naam)
                 self._voeg_apparaat_toe(apparaat)
                 nieuwe_apparaten.append(apparaat)
                 logger.info(f"Ontdekt: {naam} ({mac})")

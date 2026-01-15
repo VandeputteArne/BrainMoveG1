@@ -1,6 +1,6 @@
 from typing import List, Optional, Any
 from database import Database
-from models.models import (
+from backend.src.models.models import (
     RondeWaarde,
     Instellingen,
     Resultaat

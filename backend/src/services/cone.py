@@ -5,14 +5,13 @@ import logging
 from datetime import datetime
 from typing import Callable, Dict, Optional
 from enum import IntEnum
-from webbrowser import get
 from bleak import BleakClient
 from bleak.exc import BleakError
 
 
 # Constanten, Enums & Logging-------------------------------------------------------
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 SERVICE_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a7"
@@ -52,7 +51,7 @@ VerbreekCallback = Callable[[], None]
 
 
 # ESP32 Apparaat Class-----------------------------------------------------------------------
-class ESP32Device:
+class Cone:
     def __init__(self, mac_adres: str, naam: str, auto_herverbinden: bool = True):
         self.mac_adres = mac_adres
         self.naam = naam

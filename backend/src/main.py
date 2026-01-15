@@ -4,17 +4,18 @@ import threading
 import fastapi
 import socketio
 import uvicorn
+import random
+import time
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from models.models import (
+
+from backend.src.services.device_manager import DeviceManager
+from backend.src.repositories.data_repository import DataRepository
+from backend.src.models.models import (
     Instellingen,
     RondeWaarde,
     Resultaat,
 )
-from backend.src.services.device_manager import DeviceManager
-import random
-import time
-from DataRepository import DataRepository
 
 app = FastAPI()
 app.add_middleware(
@@ -202,8 +203,8 @@ async def run_colorgame_background():
         # Database opslag
         for ronde in colorgame_rondes:
             DataRepository.add_ronde_waarde(
-                trainingsId=training_id,
-                rondeNummer=ronde["rondenummer"],
+                trainings_id=training_id,
+                ronde_nummer=ronde["rondenummer"],
                 waarde=ronde["waarde"],
                 uitkomst=ronde["uitkomst"]
             )
@@ -231,8 +232,8 @@ async def play_game(background_tasks: BackgroundTasks):
 async def get_laatste_rondewaarden():
     list_rondewaarden = DataRepository.get_last_rondewaarden_from_last_training()
 
-    gemiddelde_tijd = list_rondewaarden and sum(float(item['Waarde']) for item in list_rondewaarden) / len(list_rondewaarden) or 0
-    beste_tijd = list_rondewaarden and min(float(item['Waarde']) for item in list_rondewaarden) or 0
+    gemiddelde_tijd = list_rondewaarden and sum(float(item.waarde) for item in list_rondewaarden) / len(list_rondewaarden) or 0
+    beste_tijd = list_rondewaarden and min(float(item.waarde) for item in list_rondewaarden) or 0
 
     # Bepaal ID van de laatst toegevoegde training en vraag ranking op
     last_training_id = DataRepository.get_last_training_id()
@@ -240,11 +241,11 @@ async def get_laatste_rondewaarden():
     if last_training_id:
         ranking = DataRepository.get_ranking_for_onetraining(last_training_id)
     
-    exactheid = len([item for item in list_rondewaarden if item['Uitkomst'] == 'correct']) / len(list_rondewaarden) * 100 if list_rondewaarden else 0
+    exactheid = len([item for item in list_rondewaarden if item.uitkomst == 'correct']) / len(list_rondewaarden) * 100 if list_rondewaarden else 0
 
-    aantal_correct = len([item for item in list_rondewaarden if item['Uitkomst'] == 'correct'])
-    aantal_fout = len([item for item in list_rondewaarden if item['Uitkomst'] == 'fout'])
-    aantal_telaat = len([item for item in list_rondewaarden if item['Uitkomst'] == 'te laat'])
+    aantal_correct = len([item for item in list_rondewaarden if item.uitkomst == 'correct'])
+    aantal_fout = len([item for item in list_rondewaarden if item.uitkomst == 'fout'])
+    aantal_telaat = len([item for item in list_rondewaarden if item.uitkomst == 'te laat'])
 
     return Resultaat(
         ranking=ranking or 0,
@@ -261,5 +262,4 @@ async def read_root():
     return {"Hello": "World"}
 
 if __name__ == "__main__":
-    
     uvicorn.run("main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])
