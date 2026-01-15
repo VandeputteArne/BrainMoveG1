@@ -10,6 +10,8 @@ const showCountdown = ref(true);
 const bgColor = ref('');
 const currentRound = ref(1);
 const totalRounds = ref(5);
+const isAnimating = ref(false);
+const prevColor = ref('');
 
 const kleuren = {
   blauw: '#2979ff', // blauw
@@ -56,7 +58,17 @@ onMounted(async () => {
       if (!color || typeof color !== 'string') return;
       const norm = color.toLowerCase();
       if (chosenColors.length === 0 || chosenColors.includes(norm)) {
-        bgColor.value = kleuren[norm] || color;
+        const newColor = kleuren[norm] || color;
+        // trigger fast animation: shrink current color to invisible circle
+        prevColor.value = bgColor.value;
+        isAnimating.value = true;
+        setTimeout(() => {
+          // switch to new color at smallest point and expand
+          bgColor.value = newColor;
+          setTimeout(() => {
+            isAnimating.value = false;
+          }, 100);
+        }, 100);
       }
       if (round !== null && typeof round === 'number') currentRound.value = round;
       if (total !== null && typeof total === 'number') totalRounds.value = total;
@@ -121,7 +133,8 @@ function goBack() {
     </div>
 
     <div class="c-game__bot">
-      <div class="c-game__color" :style="{ backgroundColor: bgColor }"></div>
+      <div class="c-game__background"></div>
+      <div class="c-game__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
 
       <div class="c-game__round">
         <h3>Ronde {{ currentRound }} / {{ totalRounds }}</h3>
@@ -215,11 +228,29 @@ function goBack() {
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+  }
+
+  .c-game__background {
+    position: absolute;
+    inset: 0;
+    background: var(--gray-80);
+    z-index: 0;
   }
 
   .c-game__color {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
+    transition: border-radius 0.2s ease-out, transform 0.2s ease-out;
+    border-radius: 0;
+    z-index: 1;
+  }
+
+  .c-game__color.is-animating {
+    border-radius: 50%;
+    transform: scale(0);
   }
 
   .c-game__round {
@@ -231,6 +262,7 @@ function goBack() {
     width: 90%;
     color: var(--color-white);
     text-align: center;
+    z-index: 30;
 
     display: flex;
     flex-direction: column;
