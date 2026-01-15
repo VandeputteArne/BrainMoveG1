@@ -18,6 +18,8 @@ const usernameInput = ref(null);
 
 const isUsernameValid = computed(() => (username.value || '').toString().trim().length > 0);
 
+const kleurenError = ref(false);
+
 watch(username, (v) => {
   if ((v || '').toString().trim().length > 0) usernameError.value = false;
 });
@@ -45,12 +47,17 @@ const smallLeaderboardData = ref([
 const selectedRounds = ref('1');
 const selectedColor = ref([]);
 const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
-const excludedColor = ref('geel');
+const excludedColor = ref('');
 
 onMounted(async () => {
   if (Array.isArray(backendColors.value) && backendColors.value.length && selectedColor.value.length === 0) {
     selectedColor.value = backendColors.value.filter((id) => id !== excludedColor.value);
   }
+});
+
+// clear kleuren error when user selects enough colors
+watch(selectedColor, (v) => {
+  if (Array.isArray(v) && v.length >= 2) kleurenError.value = false;
 });
 
 function buildPayload() {
@@ -69,15 +76,21 @@ function buildPayload() {
 }
 
 async function startGame() {
+  // gecombineerde validatie: toon beide foutmeldingen tegelijk indien nodig
   const name = (username.value || '').toString().trim();
-  if (!name) {
-    usernameError.value = true;
+  const colorsValid = Array.isArray(selectedColor.value) && selectedColor.value.length >= 2;
+
+  usernameError.value = !name;
+  kleurenError.value = !colorsValid;
+
+  // zet focus op gebruikersnaam indien die ontbreekt
+  if (usernameError.value) {
     await nextTick();
     usernameInput.value?.focus?.();
-    return;
   }
 
-  usernameError.value = false;
+  // stop als één van de validaties faalt
+  if (usernameError.value || kleurenError.value) return;
 
   const payload = buildPayload();
 
@@ -135,8 +148,11 @@ async function startGame() {
 
       <div class="c-game-detail__colors">
         <p>Kleuren</p>
-        <div class="c-game-detail__color-row">
-          <FiltersColor v-for="id in backendColors" :key="id" :id="id" v-model="selectedColor" name="colors" />
+        <div class="c-game-detail__color-col">
+          <div class="c-game-detail__color-row">
+            <FiltersColor v-for="id in backendColors" :key="id" :id="id" v-model="selectedColor" name="colors" />
+          </div>
+          <p v-if="kleurenError" class="error">Selecteer minstens 2 kleuren</p>
         </div>
       </div>
     </div>
@@ -176,6 +192,11 @@ async function startGame() {
     display: flex;
     flex-direction: row;
     gap: 0.75rem;
+  }
+
+  .c-game-detail__color-col {
+    display: flex;
+    flex-direction: column;
   }
 
   .c-game-detail__options {

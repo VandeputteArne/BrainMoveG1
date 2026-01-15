@@ -126,6 +126,7 @@ p {
   border-radius: var(--radius-15);
   margin-left: 0.5rem;
   margin-top: 0.2rem;
+  width: fit-content;
 }
 .error::before {
   content: '';
