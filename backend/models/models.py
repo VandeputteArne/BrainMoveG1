@@ -8,3 +8,18 @@ class Instellingen(BaseModel):
     ronde_id : int
     rondes: int
     kleuren: list[str]
+
+class RondeWaarde(BaseModel):
+    TrainingsId: int
+    RondeNummer: int
+    Waarde: int
+    Uitkomst: str
+
+class Resultaat(BaseModel):
+    ranking: int
+    gemiddelde_waarde: float
+    beste_waarde: float
+    exactheid: float
+    aantal_correct: int
+    aantal_fout: int
+    aantal_telaat: int
