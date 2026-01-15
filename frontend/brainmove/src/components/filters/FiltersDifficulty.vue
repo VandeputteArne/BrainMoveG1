@@ -19,9 +19,12 @@ function select() {
 
 const MAX_STARS = 3;
 const filled = computed(() => {
+  const idNum = parseInt(props.id, 10);
+  if (Number.isFinite(idNum) && idNum > 0) return Math.min(MAX_STARS, idNum);
+
   if (Number.isFinite(props.snelheid)) return Math.min(MAX_STARS, props.snelheid);
-  const parsed = parseInt(props.id, 10);
-  return Number.isFinite(parsed) ? Math.min(MAX_STARS, parsed) : 1;
+
+  return 1;
 });
 const stars = Array.from({ length: MAX_STARS }, (_, i) => i + 1);
 </script>

@@ -73,7 +73,6 @@ async function startGame() {
   if (!name) {
     usernameError.value = true;
     await nextTick();
-    // focus het input-component als het expose focus() heeft
     usernameInput.value?.focus?.();
     return;
   }

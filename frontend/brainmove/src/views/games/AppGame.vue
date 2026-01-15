@@ -36,14 +36,12 @@ try {
 }
 
 onMounted(async () => {
-  // connect socket and listen for color events
   try {
     _socket = connectSocket();
     _socket.on('connect', () => {
       console.log('[socket] connected', _socket && _socket.id);
     });
 
-    // listen ONLY for the 'gekozen_kleur' event and log payload
     _socket.on('gekozen_kleur', (payload) => {
       console.log('[socket] gekozen_kleur received:', payload);
       let color = null;
@@ -72,7 +70,6 @@ onMounted(async () => {
       if (total !== null && typeof total === 'number') totalRounds.value = total;
     });
 
-    // listen for game end event
     _socket.on('game_einde', () => {
       console.log('[socket] game_einde received');
       router.push('/resultaten/proficiat');
