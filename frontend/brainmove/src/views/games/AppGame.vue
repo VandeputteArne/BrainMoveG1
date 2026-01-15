@@ -3,11 +3,20 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Timer, OctagonX } from 'lucide-vue-next';
-import { connectSocket, disconnectSocket, getSocket } from '../../services/socket.js';
+import { connectSocket, disconnectSocket } from '../../services/socket.js';
 
 const countdown = ref(3);
 const showCountdown = ref(true);
 const bgColor = ref('');
+const currentRound = ref(1);
+const totalRounds = ref(5);
+
+const kleuren = {
+  blauw: '#2979ff', // blauw
+  rood: '#f91818', // rood
+  geel: '#ffc400', // geel
+  groen: '#00b709', // groen
+};
 
 let _socket = null;
 // read chosen colors from last saved payload (from AppDetail)
@@ -29,25 +38,35 @@ onMounted(async () => {
   try {
     _socket = connectSocket();
     _socket.on('connect', () => {
-      // console.debug('socket connected', _socket?.id);
+      console.log('[socket] connected', _socket && _socket.id);
     });
-    function handleIncomingColor(payload) {
+
+    // listen ONLY for the 'gekozen_kleur' event and log payload
+    _socket.on('gekozen_kleur', (payload) => {
+      console.log('[socket] gekozen_kleur received:', payload);
       let color = null;
+      let round = null;
+      let total = null;
       if (typeof payload === 'string') color = payload;
       else if (payload && typeof payload === 'object') {
-        // payload may be { color: '#fff' } or {kleur: 'red'}
-        color = payload.color || payload.kleur || payload.value || null;
+        color = payload.gekozen_kleur || payload.kleur || payload.color || null;
+        round = payload.rondenummer || payload.ronde || payload.round || null;
+        total = payload.maxronden || payload.totaal || payload.total || null;
       }
       if (!color || typeof color !== 'string') return;
       const norm = color.toLowerCase();
-      // if chosenColors defined, only accept colors that are chosen
       if (chosenColors.length === 0 || chosenColors.includes(norm)) {
-        bgColor.value = color;
+        bgColor.value = kleuren[norm] || color;
       }
-    }
+      if (round !== null && typeof round === 'number') currentRound.value = round;
+      if (total !== null && typeof total === 'number') totalRounds.value = total;
+    });
 
-    // also listen to a generic "color" event in case backend uses that
-    _socket.on('gekozenKleur', handleIncomingColor);
+    // listen for game end event
+    _socket.on('game_einde', () => {
+      console.log('[socket] game_einde received');
+      router.push('/resultaten/proficiat');
+    });
   } catch (e) {
     // socket connect may fail (CORS, network) — ignore here
   }
@@ -69,8 +88,8 @@ onMounted(async () => {
 onUnmounted(() => {
   try {
     if (_socket) {
-      _socket.off('colorChange');
-      _socket.off('color');
+      _socket.off('gekozen_kleur');
+      _socket.off('game_einde');
     }
   } finally {
     disconnectSocket();
@@ -105,9 +124,9 @@ function goBack() {
       <div class="c-game__color" :style="{ backgroundColor: bgColor }"></div>
 
       <div class="c-game__round">
-        <h3>Ronde 1 / 5</h3>
+        <h3>Ronde {{ currentRound }} / {{ totalRounds }}</h3>
         <div class="c-game__progressbar">
-          <div class="c-game__progressbar-fill" style="width: 20%"></div>
+          <div class="c-game__progressbar-fill" :style="{ width: (currentRound / totalRounds) * 100 + '%' }"></div>
         </div>
       </div>
     </div>
