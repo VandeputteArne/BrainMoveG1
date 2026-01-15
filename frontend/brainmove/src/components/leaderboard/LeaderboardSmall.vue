@@ -14,11 +14,16 @@ const medalClass = computed(() => {
   if (props.count === 3) return 'is-bronze';
   return '';
 });
+
+const borderClass = computed(() => {
+  if (props.count === 3) return 'last-of-type';
+  return '';
+});
 </script>
 
 <template>
   <div class="c-leaderboard">
-    <div class="c-leaderboard__item">
+    <div class="c-leaderboard__item" :class="borderClass">
       <div class="c-leaderboard__left">
         <p :class="['c-leaderboard__rank', medalClass]">{{ props.count }}</p>
 
@@ -50,6 +55,10 @@ const medalClass = computed(() => {
     justify-content: space-between;
     padding: 0.5rem 0;
     border-bottom: solid 1px var(--gray-20);
+  }
+
+  .c-leaderboard__item.last-of-type {
+    border-bottom: none;
   }
 
   .c-leaderboard__right {
