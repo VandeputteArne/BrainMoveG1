@@ -12,7 +12,7 @@ from models.models import (
 from classes.device_manager import DeviceManager
 import random
 import time
-from repositories.DataRepository import DataRepository
+from backend.DataRepository import DataRepository
 
 app = FastAPI()
 app.add_middleware(
