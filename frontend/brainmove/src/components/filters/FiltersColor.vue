@@ -27,6 +27,8 @@ const inputId = computed(() => {
   return `filter-color-${nameSafe}-${String(props.id)}`;
 });
 
+const selectedCount = computed(() => (props.modelValue || []).length);
+
 function onChange(event) {
   const value = String(props.id);
   const newValue = [...props.modelValue];

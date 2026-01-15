@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Timer, OctagonX } from 'lucide-vue-next';
@@ -10,6 +10,35 @@ const showCountdown = ref(true);
 const bgColor = ref('');
 const currentRound = ref(1);
 const totalRounds = ref(5);
+
+// Timer state (counts seconds from game start)
+const elapsedSeconds = ref(0);
+let timerInterval = null;
+
+const formattedTime = computed(() => {
+  const total = elapsedSeconds.value;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  if (hours > 0) return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+});
+
+function startTimer() {
+  if (timerInterval) return;
+  // ensure elapsedSeconds is 0 at start
+  elapsedSeconds.value = 0;
+  timerInterval = setInterval(() => {
+    elapsedSeconds.value += 1;
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
 const isAnimating = ref(false);
 const prevColor = ref('');
 
@@ -72,6 +101,8 @@ onMounted(async () => {
 
     _socket.on('game_einde', () => {
       console.log('[socket] game_einde received');
+      // stop timer before navigating
+      stopTimer();
       router.push('/resultaten/proficiat');
     });
   } catch (e) {
@@ -90,6 +121,8 @@ onMounted(async () => {
     await new Promise((r) => setTimeout(r, 700));
   }
   showCountdown.value = false;
+  // start local elapsed timer when countdown finished
+  startTimer();
 });
 
 onUnmounted(() => {
@@ -99,6 +132,8 @@ onUnmounted(() => {
       _socket.off('game_einde');
     }
   } finally {
+    // stop timer and disconnect socket when component unmounts
+    stopTimer();
     disconnectSocket();
   }
 });
@@ -123,7 +158,7 @@ function goBack() {
         <span class="c-game__span"><OctagonX class="c-game__close-icon" /></span> stop
       </button>
       <p class="c-game__timer">
-        <span class="c-game__span"><Timer class="c-game__timer-icon" /></span>10:22:00
+        <span class="c-game__span"><Timer class="c-game__timer-icon" /></span>{{ formattedTime }}
       </p>
     </div>
 
