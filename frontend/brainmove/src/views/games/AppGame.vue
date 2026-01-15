@@ -1,18 +1,99 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 
 import { Timer, OctagonX } from 'lucide-vue-next';
+import { connectSocket, disconnectSocket } from '../../services/socket.js';
 
 const countdown = ref(3);
 const showCountdown = ref(true);
+const bgColor = ref('');
+const currentRound = ref(1);
+const totalRounds = ref(5);
+
+const kleuren = {
+  blauw: '#2979ff', // blauw
+  rood: '#f91818', // rood
+  geel: '#ffc400', // geel
+  groen: '#00b709', // groen
+};
+
+let _socket = null;
+// read chosen colors from last saved payload (from AppDetail)
+let chosenColors = [];
+try {
+  const raw = localStorage.getItem('lastGamePayload');
+  if (raw) {
+    const parsed = JSON.parse(raw || '{}');
+    if (Array.isArray(parsed.kleuren)) {
+      chosenColors = parsed.kleuren.map((c) => String(c).toLowerCase());
+    }
+  }
+} catch (e) {
+  chosenColors = [];
+}
 
 onMounted(async () => {
+  // connect socket and listen for color events
+  try {
+    _socket = connectSocket();
+    _socket.on('connect', () => {
+      console.log('[socket] connected', _socket && _socket.id);
+    });
+
+    // listen ONLY for the 'gekozen_kleur' event and log payload
+    _socket.on('gekozen_kleur', (payload) => {
+      console.log('[socket] gekozen_kleur received:', payload);
+      let color = null;
+      let round = null;
+      let total = null;
+      if (typeof payload === 'string') color = payload;
+      else if (payload && typeof payload === 'object') {
+        color = payload.gekozen_kleur || payload.kleur || payload.color || null;
+        round = payload.rondenummer || payload.ronde || payload.round || null;
+        total = payload.maxronden || payload.totaal || payload.total || null;
+      }
+      if (!color || typeof color !== 'string') return;
+      const norm = color.toLowerCase();
+      if (chosenColors.length === 0 || chosenColors.includes(norm)) {
+        bgColor.value = kleuren[norm] || color;
+      }
+      if (round !== null && typeof round === 'number') currentRound.value = round;
+      if (total !== null && typeof total === 'number') totalRounds.value = total;
+    });
+
+    // listen for game end event
+    _socket.on('game_einde', () => {
+      console.log('[socket] game_einde received');
+      router.push('/resultaten/proficiat');
+    });
+  } catch (e) {
+    // socket connect may fail (CORS, network) — ignore here
+  }
+
   for (let i = 3; i >= 1; i--) {
     countdown.value = i;
+    if (i === 1) {
+      try {
+        await fetch('http://10.42.0.1:8000/games/1/play', { method: 'GET' });
+      } catch (e) {
+        // ignore network/CORS errors for this signal
+      }
+    }
     await new Promise((r) => setTimeout(r, 700));
   }
   showCountdown.value = false;
+});
+
+onUnmounted(() => {
+  try {
+    if (_socket) {
+      _socket.off('gekozen_kleur');
+      _socket.off('game_einde');
+    }
+  } finally {
+    disconnectSocket();
+  }
 });
 
 const router = useRouter();
@@ -40,12 +121,12 @@ function goBack() {
     </div>
 
     <div class="c-game__bot">
-      <div class="c-game__color" style="background-color: red"></div>
+      <div class="c-game__color" :style="{ backgroundColor: bgColor }"></div>
 
       <div class="c-game__round">
-        <h3>Ronde 1 / 5</h3>
+        <h3>Ronde {{ currentRound }} / {{ totalRounds }}</h3>
         <div class="c-game__progressbar">
-          <div class="c-game__progressbar-fill" style="width: 20%"></div>
+          <div class="c-game__progressbar-fill" :style="{ width: (currentRound / totalRounds) * 100 + '%' }"></div>
         </div>
       </div>
     </div>

@@ -23,12 +23,12 @@ watch(username, (v) => {
 });
 
 const difficulties = ref([
-  { id: 1, snelheid: 1 },
-  { id: 2, snelheid: 2 },
-  { id: 3, snelheid: 3 },
+  { id: 1, snelheid: 5 },
+  { id: 2, snelheid: 10 },
+  { id: 3, snelheid: 15 },
 ]);
 
-const selectedDifficulty = ref(2);
+const selectedDifficulty = ref('2');
 
 const roundsOptions = ref([
   { id: 1, rondes: 3 },
@@ -42,7 +42,7 @@ const smallLeaderboardData = ref([
   { name: 'Sophie', time: 60 },
 ]);
 
-const selectedRounds = ref(1);
+const selectedRounds = ref('1');
 const selectedColor = ref([]);
 const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
 const excludedColor = ref('geel');
@@ -54,8 +54,8 @@ onMounted(async () => {
 });
 
 function buildPayload() {
-  const diff = difficulties.value.find((d) => d.id === selectedDifficulty.value) || { id: selectedDifficulty.value };
-  const rnd = roundsOptions.value.find((r) => r.id === selectedRounds.value) || { id: selectedRounds.value };
+  const diff = difficulties.value.find((d) => String(d.id) === String(selectedDifficulty.value)) || { id: selectedDifficulty.value };
+  const rnd = roundsOptions.value.find((r) => String(r.id) === String(selectedRounds.value)) || { id: selectedRounds.value };
 
   return {
     game_id: 1,
@@ -89,7 +89,7 @@ async function startGame() {
   }
 
   try {
-    const res = await fetch('/api/games/options', {
+    const res = await fetch('http://10.42.0.1:8000/games/1/instellingen', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -125,13 +125,13 @@ async function startGame() {
       <div class="c-game-detail__dif">
         <p>Moeilijkheidsgraad</p>
         <div class="c-game-detail__row">
-          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="opt.id" :snelheid="opt.snelheid" v-model="selectedDifficulty" name="difficulty" />
+          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :snelheid="opt.snelheid" v-model="selectedDifficulty" name="difficulty" />
         </div>
       </div>
 
       <div class="c-game-detail__rounds">
         <p>Aantal rondes</p>
-        <div class="c-game-detail__row"><FiltersRounds v-for="r in roundsOptions" :key="r.id" :id="r.id" :rondes="r.rondes" v-model="selectedRounds" name="rounds" /></div>
+        <div class="c-game-detail__row"><FiltersRounds v-for="r in roundsOptions" :key="r.id" :id="String(r.id)" :rondes="r.rondes" v-model="selectedRounds" name="rounds" /></div>
       </div>
 
       <div class="c-game-detail__colors">
