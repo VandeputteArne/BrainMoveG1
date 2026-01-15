@@ -1,15 +1,25 @@
-# Byte-compiled / optimized / DLL files
+downloads/
+env.bak/
+rpi5-setup-local.md
+
+# =============================
+# Python Bytecode & Caches
+# =============================
 __pycache__/
 *.py[cod]
 *$py.class
+.ipynb_checkpoints
+.mypy_cache/
+.pytest_cache/
+.nox/
+.tox/
+.hypothesis/
+.cache
 
-# C extensions
-*.so
-
-# Distribution / packaging
-.Python
+# =============================
+# Build Artifacts & Packaging
+# =============================
 build/
-develop-eggs/
 dist/
 downloads/
 eggs/
@@ -22,80 +32,18 @@ var/
 wheels/
 pip-wheel-metadata/
 share/python-wheels/
+target/
 *.egg-info/
-.installed.cfg
 *.egg
-PIPFILE.lock
-
-# PyInstaller
+.installed.cfg
 *.manifest
 *.spec
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Django stuff:
-*.log
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-
-# Flask stuff:
-instance/
-.webassets-cache
-
-# Scrapy stuff:
-.scrapy
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-target/
-
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# IPython
-profile_default/
-ipython_config.py
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# PEP 582
-__pypackages__/
-
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
-# SageMath parsed files
 *.sage.py
+.Python
 
-# Environments
+# =============================
+# Environment & Dependency Files
+# =============================
 .env
 .venv
 env/
@@ -103,38 +51,73 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.python-version
+Pipfile.lock
+PIPFILE.lock
+__pypackages__/
 
-# Spyder project settings
-.spyderproject
-.spyproject
+# =============================
+# Logs, Reports & Coverage
+# =============================
+*.log
+pip-log.txt
+pip-delete-this-directory.txt
+celerybeat-schedule
+celerybeat.pid
+nosetests.xml
+coverage.xml
+htmlcov/
+.coverage
+.coverage.*
+*.cover
+*.py,cover
+dmypy.json
+.dmypy.json
 
-# Rope project settings
-.ropeproject
+# =============================
+# Database & Local Data
+# =============================
+db.sqlite3
+db.sqlite3-journal
+local_settings.py
+instance/
+.webassets-cache
+.scrapy
 
-# mkdocs documentation
+# =============================
+# Documentation
+# =============================
+docs/_build/
 /site
 
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# =============================
+# Translations
+# =============================
+*.mo
+*.pot
 
-# Pyre type checker
-.pyre/
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# IDE - VSCode
+# =============================
+# IDE & Editor Settings
+# =============================
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
-
 *.code-workspace
+.spyderproject
+.spyproject
+.ropeproject
+
+# =============================
+# OS & Miscellaneous
+# =============================
+.DS_Store
+.AppleDouble
+.LSOverride
 node_modules/
 
-config.py
+# =============================
+# Project-specific
+# =============================
+rpi5-setup-local.md
