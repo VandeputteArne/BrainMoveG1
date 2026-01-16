@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from config import DATABASE_PATH  # pip install mysql-connector-python niet meer nodig
+from backend.config import DATABASE_PATH  # pip install mysql-connector-python niet meer nodig
 
 class Database:
 

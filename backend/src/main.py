@@ -6,8 +6,15 @@ import socketio
 import uvicorn
 import random
 import time
+import sys
+import os
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
+
+# Add project root to path for direct script execution
+if __name__ == "__main__":
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(0, project_root)
 
 from backend.src.services.device_manager import DeviceManager
 from backend.src.repositories.data_repository import DataRepository
@@ -262,4 +269,4 @@ async def read_root():
     return {"Hello": "World"}
 
 if __name__ == "__main__":
-    uvicorn.run("main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])
+    uvicorn.run("backend.src.main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])
