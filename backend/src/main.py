@@ -1,3 +1,4 @@
+import logging
 import asyncio
 import datetime
 import threading
@@ -11,10 +12,10 @@ import os
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
-# Project toevoegen aan sys.path
 if __name__ == "__main__":
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     sys.path.insert(0, project_root)
+
 
 from backend.src.services.device_manager import DeviceManager
 from backend.src.repositories.data_repository import DataRepository
@@ -26,6 +27,9 @@ from backend.src.models.models import (
     CorrecteRondeWaarde
 )
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -35,11 +39,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
+
+
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 sio_app = socketio.ASGIApp(sio, app)
 device_manager = DeviceManager(sio=sio)
-
-HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
 
 global game_id
 global gebruikersnaam
