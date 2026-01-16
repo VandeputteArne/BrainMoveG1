@@ -20,10 +20,13 @@ from backend.src.services.device_manager import DeviceManager
 from backend.src.repositories.data_repository import DataRepository
 from backend.src.models.models import (
     Instellingen,
+    LeaderboardItem,
     RondeWaarde,
     Resultaat,
     Training,
-    CorrecteRondeWaarde
+    CorrecteRondeWaarde,
+    GameVoorOverzicht,
+    DetailGame
 )
 
 app = FastAPI()
@@ -79,7 +82,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
     aantal_telaat = 0
     rondetijden = {}
 
-    max_tijd = float(snelheid)
+    max_tijd = float( snelheid)
 
     for ronde_idx in range(aantal_rondes):
         # Clear previous detections
@@ -188,6 +191,8 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 async def get_game_instellingen (json: Instellingen):
     #alles vanuit de json globaal zetten zodat ik die in de andere functie kan gebruiken
     global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren, starttijd
+    
+    print(f"Ontvangen instellingen: {json}")
 
     game_id = json.game_id 
     gebruikersnaam = json.gebruikersnaam
@@ -203,8 +208,11 @@ async def get_game_instellingen (json: Instellingen):
     await device_manager.verbind_alle()
     return json
 
+
 async def run_colorgame_background():
     """Draait het colorgame in de achtergrond en stuurt resultaten via Socket.IO"""
+    global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren, starttijd
+    
     try:
         colorgame_rondes = await colorgame(rondes, kleuren, snelheid)
         
@@ -240,7 +248,8 @@ async def run_colorgame_background():
         print(f"Fout in colorgame: {e}")
         await sio.emit('game_error', {"error": str(e)})
 
-    
+
+#play game endpoint 
 @app.get("/games/{game_id}/play")
 async def play_game(background_tasks: BackgroundTasks):
     # Start het spel in de achtergrond
@@ -252,6 +261,7 @@ async def play_game(background_tasks: BackgroundTasks):
         "message": "Game is gestart, luister naar 'gekozen_kleur' en 'game_finished' events via Socket.IO"
     }
 
+#resulaten endpoint
 @app.get("/laatste_rondewaarden",)
 async def get_laatste_rondewaarden():
     list_rondewaarden = DataRepository.get_last_rondewaarden_from_last_training()
@@ -280,12 +290,49 @@ async def get_laatste_rondewaarden():
         ranking=ranking or 0,
         gemiddelde_waarde=round(gemiddelde_tijd, 2),
         beste_waarde=round(beste_tijd, 2),
-        exactheid=exactheid,
+        exactheid=round(exactheid, 0),
         aantal_correct=aantal_correct,
         aantal_fout=aantal_fout,
         aantal_telaat=aantal_telaat,
         correcte_rondewaarden=correcte_rondewaarden_data
     )
+
+#games overview endpoint
+@app.get("/games/overview", response_model=list[GameVoorOverzicht], summary="Haal een overzicht op van alle spellen met hun highscores", tags=["Spelletjes"])
+async def get_games_overview():
+    games = DataRepository.get_all_games()
+    
+    result = []
+    for game in games:
+        game_id = game['GameId']
+        
+        # GameId 1 = Color Sprint: laagste gemiddelde tijd van rondewaarden
+        # GameId 2+ = Memory etc: hoogste aantal kleuren gebruikt
+        if game_id == 1:
+            highscore = DataRepository.get_best_avg_for_game(game_id, use_min=True)
+        else:
+            highscore = DataRepository.get_max_kleuren_for_game(game_id)
+        
+        result.append(GameVoorOverzicht(
+            game_naam=game['GameNaam'],
+            tag=game['Tag'],
+            highscore=round(highscore, 2),
+            eenheid=game['Eenheid']
+        ))
+    
+    return result
+
+@app.get("/games/{game_id}/details", response_model=DetailGame, summary="Haal de details op voor een specifiek spel", tags=["Spelletjes"])
+async def get_game_details(game_id: int):
+    details = DataRepository.get_game_details(game_id)
+    return details
+
+
+#leaderboard endpoint
+@app.get("/games/{game_id}/leaderboard/{max}", response_model=list[LeaderboardItem], summary="Haal de leaderboard op voor een specifiek spel", tags=["Spelletjes"])
+async def get_leaderboard(game_id: int, max: int):
+    leaderboard = DataRepository.get_leaderboard_for_game(game_id, max)
+    return leaderboard
 
 @app.get("/")
 async def read_root():

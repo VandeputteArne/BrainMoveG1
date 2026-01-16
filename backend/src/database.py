@@ -27,8 +27,6 @@ class Database:
             result = [dict(row) for row in rows]  # Naar echte dicts
             cursor.close()
             db.close()
-            if not result:
-                print("Geen resultaten gevonden.[DB Warning]")
             return result
         except Exception as error:
             print(f"Query fout: {error}")
