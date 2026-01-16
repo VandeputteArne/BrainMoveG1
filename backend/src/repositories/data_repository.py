@@ -2,8 +2,8 @@ from typing import List, Optional, Any
 from backend.src.database import Database
 from backend.src.models.models import (
     RondeWaarde,
-    Instellingen,
-    Resultaat
+    Resultaat,
+    Training
 )
 
 class DataRepository:
@@ -15,23 +15,22 @@ class DataRepository:
         return Database.execute_sql(sql_query, params)
 
     @staticmethod
-    def add_training(start_tijd: str, aantal_kleuren: int, gebruikers_id: int, 
-                     ronde_id: int, moeilijkheids_id: int, game_id: int) -> Any:
+    def add_training(training: Training) -> Any:
         sql_query = """
             INSERT INTO Trainingen 
             (Start, AantalKleuren, GebruikersId, RondeId, MoeilijkheidsId, GameId) 
             VALUES (?, ?, ?, ?, ?, ?)
         """
-        params = (start_tijd, aantal_kleuren, gebruikers_id, ronde_id, moeilijkheids_id, game_id)
+        params = (training.start_tijd, training.aantal_kleuren, training.gebruikers_id, training.ronde_id, training.moeilijkheids_id, training.game_id)
         return Database.execute_sql(sql_query, params)
 
     @staticmethod
-    def add_ronde_waarde(trainings_id: int, ronde_nummer: int, waarde: int, uitkomst: str) -> Any:
+    def add_ronde_waarde(ronde_waarde: RondeWaarde) -> Any:
         sql_query = """
             INSERT INTO RondeWaarden (TrainingsId, RondeNummer, Waarde, Uitkomst) 
             VALUES (?, ?, ?, ?)
         """
-        params = (trainings_id, ronde_nummer, waarde, uitkomst)
+        params = (ronde_waarde.trainings_id, ronde_waarde.ronde_nummer, ronde_waarde.waarde, ronde_waarde.uitkomst)
         return Database.execute_sql(sql_query, params)
 
     @staticmethod

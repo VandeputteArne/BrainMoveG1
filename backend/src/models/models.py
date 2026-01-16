@@ -9,11 +9,23 @@ class Instellingen(BaseModel):
     rondes: int
     kleuren: list[str]
 
+class Training(BaseModel):
+    start_tijd: str
+    aantal_kleuren: int
+    gebruikers_id: int
+    ronde_id: int
+    moeilijkheids_id: int
+    game_id: int
+
 class RondeWaarde(BaseModel):
     trainings_id: int
     ronde_nummer: int
     waarde: float
     uitkomst: str
+
+class CorrecteRondeWaarde(BaseModel):
+    ronde_nummer: int
+    waarde: float
 
 class Resultaat(BaseModel):
     ranking: int
@@ -23,3 +35,4 @@ class Resultaat(BaseModel):
     aantal_correct: int
     aantal_fout: int
     aantal_telaat: int
+    correcte_rondewaarden: list[CorrecteRondeWaarde]

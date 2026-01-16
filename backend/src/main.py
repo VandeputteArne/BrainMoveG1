@@ -22,6 +22,8 @@ from backend.src.models.models import (
     Instellingen,
     RondeWaarde,
     Resultaat,
+    Training,
+    CorrecteRondeWaarde
 )
 
 app = FastAPI()
@@ -83,13 +85,6 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         # Clear previous detections
         device_manager.verwijder_alle_laatste_detecties()
         ronde = ronde_idx + 1
-        
-        # Stop all devices and wait for state to clear
-        #await device_manager.stop_alle()
-        #await asyncio.sleep(0.1)
-        
-        # Clear again to remove any lingering detections from the stop command
-        #device_manager.verwijder_alle_laatste_detecties()
 
         gekozen_kleur = random.choice(kleuren).upper()
         await sio.emit('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
@@ -98,7 +93,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         # Start polling and immediately capture baseline (pre-existing detections)
         starttijd = time.time()
         await device_manager.start_alle(gekozen_kleur)
-        await asyncio.sleep(0.2)  # Brief delay to let initial state settle
+        await asyncio.sleep(0.05)  # Brief delay to let initial state settle
         
         # Capture and filter out any pre-existing detections (stuck sensors)
         baseline_detecties = device_manager.verkrijg_alle_laatste_detecties()
@@ -110,7 +105,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         # Now wait for a NEW detection (not in baseline)
         esp_dict = {}
         while not esp_dict:
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.05)
             alle_detecties = device_manager.verkrijg_alle_laatste_detecties()
             # Only accept detections from devices that weren't already detecting
             esp_dict = {}
@@ -218,21 +213,25 @@ async def run_colorgame_background():
 
         # Voeg training toe
         training_id = DataRepository.add_training(
-            start_tijd=starttijd,
+            Training(
+            start_tijd=starttijd.isoformat(),
             aantal_kleuren=len(kleuren),
             gebruikers_id=newuserid,
             ronde_id=ronde_id,
             moeilijkheids_id=moeilijkheids_id,
             game_id=game_id
+            )
         )
         print(f"Nieuwe training toegevoegd met ID: {training_id}")
         # Database opslag
         for ronde in colorgame_rondes:
             DataRepository.add_ronde_waarde(
+                RondeWaarde(
                 trainings_id=training_id,
                 ronde_nummer=ronde["rondenummer"],
                 waarde=ronde["waarde"],
                 uitkomst=ronde["uitkomst"]
+                )
             )
             
         
@@ -245,7 +244,6 @@ async def run_colorgame_background():
 @app.get("/games/{game_id}/play")
 async def play_game(background_tasks: BackgroundTasks):
     # Start het spel in de achtergrond
-    await asyncio.sleep(0.5)  # Kleine vertraging om ervoor te zorgen dat de response wordt teruggestuurd voordat de taak begint
     background_tasks.add_task(run_colorgame_background)
     
     # Geef direct een response terug
@@ -273,6 +271,11 @@ async def get_laatste_rondewaarden():
     aantal_fout = len([item for item in list_rondewaarden if item.uitkomst == 'fout'])
     aantal_telaat = len([item for item in list_rondewaarden if item.uitkomst == 'te laat'])
 
+    #ophalen welke rondes met hun rondenummers en waardes waar correct voor de grafiek
+    correcte_rondewaarden = [item for item in list_rondewaarden if item.uitkomst == 'correct']
+    # Hier kun je verdere verwerking van correcte_rondewaarden toevoegen, bijvoorbeeld voor een grafiek
+    correcte_rondewaarden_data = [CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=item.waarde) for item in correcte_rondewaarden]
+
     return Resultaat(
         ranking=ranking or 0,
         gemiddelde_waarde=round(gemiddelde_tijd, 2),
@@ -280,7 +283,8 @@ async def get_laatste_rondewaarden():
         exactheid=exactheid,
         aantal_correct=aantal_correct,
         aantal_fout=aantal_fout,
-        aantal_telaat=aantal_telaat
+        aantal_telaat=aantal_telaat,
+        correcte_rondewaarden=correcte_rondewaarden_data
     )
 
 @app.get("/")
