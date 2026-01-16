@@ -186,7 +186,7 @@ class DeviceManager:
         logger.info(f"Socket emit: {event_naam} - {apparaat.naam}")
 
 
-    def _setup_batterij_callback_voor_apparaat(self, apparaat: Cone)`` -> None:
+    def _setup_batterij_callback_voor_apparaat(self, apparaat: Cone) -> None:
         def _batterij_handler(gebeurtenis: dict):
             percentage = gebeurtenis.get("percentage", 0)
             self._apparaat_batterijen[apparaat.naam] = percentage
