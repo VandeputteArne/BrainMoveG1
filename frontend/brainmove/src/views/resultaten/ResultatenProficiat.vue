@@ -27,7 +27,7 @@ onMounted(async () => {
 
     <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" />
 
-    <ButtonsPrimary to="/resultaten/overzicht" title="Bekijk je resultaten"></ButtonsPrimary>
+    <ButtonsPrimary url="/resultaten/overzicht" title="Bekijk je resultaten"></ButtonsPrimary>
   </div>
 </template>
 
