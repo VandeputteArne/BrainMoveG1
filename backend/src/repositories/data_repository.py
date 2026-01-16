@@ -45,6 +45,9 @@ class DataRepository:
         rows = Database.get_rows(sql_query)
         
         result_list = []
+        if rows is None:
+            return result_list
+        
         for row in rows:
             item = RondeWaarde(
                 trainings_id=row['TrainingsId'],

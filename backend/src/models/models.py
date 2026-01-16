@@ -12,7 +12,7 @@ class Instellingen(BaseModel):
 class RondeWaarde(BaseModel):
     trainings_id: int
     ronde_nummer: int
-    waarde: int
+    waarde: float
     uitkomst: str
 
 class Resultaat(BaseModel):

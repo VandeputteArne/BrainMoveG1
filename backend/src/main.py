@@ -50,9 +50,25 @@ global starttijd
 
 
 async def colorgame(aantal_rondes, kleuren, snelheid):
-    # maak mapping esp-id -> kleur
-    global vorige_kleur
-    apparaten = {i: kleuren[i] for i in range(len(kleuren))}
+    # Maak mapping ESP-ID -> kleur gebaseerd op de volgorde van verbonden apparaten
+    # Haal de verbonden apparaten op en sorteer ze op naam voor consistentie
+    verbonden_apparaten = sorted(device_manager.apparaten.keys())
+    
+    # Maak mapping: apparaat_id -> kleur
+    # Belangrijk: Dit gaat ervan uit dat je evenveel kleuren hebt als verbonden apparaten
+    apparaat_id_mapping = {}
+    for idx, apparaat_naam in enumerate(verbonden_apparaten):
+        if idx < len(kleuren):
+            # Probeer apparaat_id te krijgen - gebruik idx als fallback
+            apparaat_id_mapping[idx] = kleuren[idx]
+    
+    # Fallback: ook mapping maken op basis van ESP naam indien die kleur bevat
+    kleur_mapping = {}
+    for apparaat_naam in verbonden_apparaten:
+        for kleur in kleuren:
+            if kleur.lower() in apparaat_naam.lower():
+                kleur_mapping[apparaat_naam] = kleur
+                break
     
     colorgame_rondes = []
 
@@ -63,10 +79,10 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 
     max_tijd = float(snelheid)
 
-    for ronde in range(aantal_rondes):
+    for ronde_idx in range(aantal_rondes):
         # Clear previous detections
         device_manager.verwijder_alle_laatste_detecties()
-        ronde = ronde+1
+        ronde = ronde_idx + 1
         
         # Stop all devices and wait for state to clear
         #await device_manager.stop_alle()
@@ -105,23 +121,11 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         await device_manager.stop_alle()
         print(esp_dict)
 
-        gedetecteerde_esp_id = None
-
-        for esp_name, detection in esp_dict.items():
-            device_id = detection.get("apparaat_id", None)
-            if isinstance(device_id, int):
-                gedetecteerde_esp_id = device_id
-                break
-
-            if isinstance(device_id, str) and device_id.isdigit():
-                gedetecteerde_esp_id = int(device_id)
-                break
-
-            suffix = esp_name.split('-')[-1]
-            if suffix.isdigit():
-                gedetecteerde_esp_id = int(suffix)
-                break
-
+        # Bepaal welke kleur gedetecteerd is
+        gedetecteerde_esp_naam = list(esp_dict.keys())[0]  # Eerste (en enige) detectie
+        detection = esp_dict[gedetecteerde_esp_naam]
+        device_id = detection.get("apparaat_id", None)
+        
         eindtijd = time.time()
         reactietijd = round(eindtijd - starttijd, 2)
         rondetijden[ronde] = reactietijd
@@ -136,13 +140,28 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             })
             continue
 
-        esp_lookup_id = gedetecteerde_esp_id
-        apparaatkleur = apparaten.get(esp_lookup_id)
+        # Probeer kleur te bepalen:
+        # 1. Eerst via ESP naam (als die de kleur bevat)
+        # 2. Anders via apparaat_id mapping
+        apparaatkleur = None
+        
+        # Methode 1: Kleur uit ESP naam
+        if gedetecteerde_esp_naam in kleur_mapping:
+            apparaatkleur = kleur_mapping[gedetecteerde_esp_naam]
+            print(f"Kleur bepaald via naam: {gedetecteerde_esp_naam} -> {apparaatkleur}")
+        
+        # Methode 2: Kleur via apparaat_id
+        elif device_id is not None:
+            if isinstance(device_id, str) and device_id.isdigit():
+                device_id = int(device_id)
+            if isinstance(device_id, int) and device_id in apparaat_id_mapping:
+                apparaatkleur = apparaat_id_mapping[device_id]
+                print(f"Kleur bepaald via ID: apparaat_id {device_id} -> {apparaatkleur}")
 
-        print(f"Gedetecteerde kleur is: {apparaatkleur} (device_id {gedetecteerde_esp_id} -> key {esp_lookup_id})")
+        print(f"Gedetecteerd: ESP={gedetecteerde_esp_naam}, ID={device_id}, Kleur={apparaatkleur}")
 
         if apparaatkleur is None:
-            print(f"Fout: Geen kleur gevonden voor device_id {gedetecteerde_esp_id}")
+            print(f"⚠️  Fout: Geen kleur gevonden voor {gedetecteerde_esp_naam} (device_id {device_id})")
             aantal_fout += 1
             colorgame_rondes.append({
                 "rondenummer": ronde,
@@ -199,12 +218,12 @@ async def run_colorgame_background():
 
         # Voeg training toe
         training_id = DataRepository.add_training(
-            starttijd=starttijd,
-            aantalKleuren=len(kleuren),
-            gebruikersId=newuserid,
-            rondeId=ronde_id,
-            moeilijkheidsId=moeilijkheids_id,
-            gameId=game_id
+            start_tijd=starttijd,
+            aantal_kleuren=len(kleuren),
+            gebruikers_id=newuserid,
+            ronde_id=ronde_id,
+            moeilijkheids_id=moeilijkheids_id,
+            game_id=game_id
         )
         print(f"Nieuwe training toegevoegd met ID: {training_id}")
         # Database opslag
