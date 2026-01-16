@@ -49,6 +49,9 @@
   --radius-40: 2.5rem;
   --radius-20: 1.25rem;
   --radius-15: 0.625rem;
+
+  /* Shadows */
+  --shadow: 0 -1px 8px 0 rgba(0, 0, 0, 0.1);
 }
 
 * {
