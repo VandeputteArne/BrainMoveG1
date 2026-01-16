@@ -2,9 +2,7 @@ downloads/
 env.bak/
 rpi5-setup-local.md
 
-# =============================
 # Additional Logs
-# =============================
 logs
 *.log
 npm-debug.log*
@@ -13,17 +11,13 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# =============================
 # Additional Node & Build
-# =============================
 node_modules
 dist
 dist-ssr
 *.local
 
-# =============================
 # Additional Editor & OS Files
-# =============================
 .idea
 *.suo
 *.ntvs*
@@ -31,9 +25,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# =============================
 # Python Bytecode & Caches
-# =============================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -45,9 +37,7 @@ __pycache__/
 .hypothesis/
 .cache
 
-# =============================
 # Build Artifacts & Packaging
-# =============================
 build/
 dist/
 downloads/
@@ -70,9 +60,7 @@ target/
 *.sage.py
 .Python
 
-# =============================
 # Environment & Dependency Files
-# =============================
 .env
 .venv
 env/
@@ -85,9 +73,7 @@ Pipfile.lock
 PIPFILE.lock
 __pypackages__/
 
-# =============================
 # Logs, Reports & Coverage
-# =============================
 *.log
 pip-log.txt
 pip-delete-this-directory.txt
@@ -103,9 +89,7 @@ htmlcov/
 dmypy.json
 .dmypy.json
 
-# =============================
 # Database & Local Data
-# =============================
 db.sqlite3
 db.sqlite3-journal
 local_settings.py
@@ -113,21 +97,14 @@ instance/
 .webassets-cache
 .scrapy
 
-# =============================
 # Documentation
-# =============================
 docs/_build/
 /site
 
-# =============================
 # Translations
-# =============================
-*.mo
 *.pot
 
-# =============================
 # IDE & Editor Settings
-# =============================
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -138,14 +115,10 @@ docs/_build/
 .spyproject
 .ropeproject
 
-# =============================
 # OS & Miscellaneous
-# =============================
 .DS_Store
 .AppleDouble
 .LSOverride
 
-# =============================
 # Project-specific
-# =============================
 rpi5-setup-local.md
