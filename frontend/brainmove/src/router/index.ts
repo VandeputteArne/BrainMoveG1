@@ -7,6 +7,7 @@ import AppDetail from '../views/games/AppDetail.vue';
 import AppGame from '../views/games/AppGame.vue';
 import ResultatenProficiat from '../views/resultaten/ResultatenProficiat.vue';
 import ResultatenOverzicht from '../views/resultaten/ResultatenOverzicht.vue';
+import ApparatenView from '../views/apparaten/ApparatenView.vue';
 
 const routes = [
   {
@@ -56,6 +57,12 @@ const routes = [
     name: 'resultaten-overzicht',
     component: ResultatenOverzicht,
     meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false },
+  },
+  {
+    path: '/apparaten',
+    name: 'apparaten',
+    component: ApparatenView,
+    meta: { showTopbar: true, showNav: true, showBack: false, fullScreen: false, paddingbottom: true, paddingtop: true },
   },
 ];
 
