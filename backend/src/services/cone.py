@@ -3,7 +3,6 @@ import os
 import struct
 import logging
 from datetime import datetime
-from typing import Callable, Dict, Optional
 from enum import IntEnum
 from bleak import BleakClient
 from bleak.exc import BleakError
@@ -28,27 +27,18 @@ class MessageType(IntEnum):
     STATUS = 0x01
     DETECTIE = 0x02
     BATTERIJ = 0x03
-    HOUD_WAKKER = 0x04
 
 class Command(IntEnum):
     START = 0x01
     STOP = 0x02
-    SLAAP = 0x03
-    KEEPALIVE = 0x05
     GELUID_CORRECT = 0x10
     GELUID_INCORRECT = 0x11
 
-class StatusEvent(IntEnum):
-    VERBONDEN = 0x01
-    HERVERBIND = 0x02
-    SLAAPT = 0x03
-
 
 # Type aliassen voor callbacks------------------------------------------------------------------
-DetectieCallback = Callable[[dict], None]
-BatterijCallback = Callable[[dict], None]
-StatusCallback = Callable[[dict], None]
-VerbreekCallback = Callable[[], None]
+DetectieCallback = None
+BatterijCallback = None
+VerbreekCallback = None
 
 
 # ESP32 Apparaat Class-----------------------------------------------------------------------
@@ -72,12 +62,11 @@ class Cone:
         # Callbacks inkomende data
         self.bij_detectie = None
         self.bij_batterij = None
-        self.bij_status = None
         self.bij_verbreek = None
+        self.bij_herverbind = None
         
         # Interne status
         self._herverbind_taak = None
-        self._laatste_keepalive = None
         self.laatste_detectie = None
     
 
@@ -86,17 +75,14 @@ class Cone:
     def verbonden(self) -> bool:
         return self._verbonden
     
-
     @property
     def geauthenticeerd(self) -> bool:
         return self._geauthenticeerd
     
-
     @property
     def is_aan_het_pollen(self) -> bool:
         return self._aan_het_pollen
     
-
     # Verbindings Methoden------------------------------------------------------------------    
     async def verbind(self, timeout: float = 30.0) -> bool:
         try:
@@ -121,7 +107,6 @@ class Cone:
             logger.error(f"Verbinden mislukt {self.naam}: {e}")
             self._verbonden = False
             return False
-    
 
     async def verbreek(self) -> None:
         self.auto_herverbinden = False
@@ -137,7 +122,6 @@ class Cone:
             self._geauthenticeerd = False
             self._aan_het_pollen = False
             logger.info(f"Verbroken van {self.naam}")
-    
 
     def _verwerk_verbreek(self, _client: BleakClient) -> None:
         self._verbonden = False
@@ -150,17 +134,20 @@ class Cone:
         
         if self.auto_herverbinden and self._herverbind_pogingen < self._max_herverbind_pogingen:
             self._herverbind_taak = asyncio.create_task(self._herverbind())
-    
 
     async def _herverbind(self) -> None:
         self._herverbind_pogingen += 1
+        logger.info(f"{self.naam} herverbinding poging {self._herverbind_pogingen}/{self._max_herverbind_pogingen}")
         await asyncio.sleep(self._herverbind_vertraging)
         
         if await self.verbind():
             logger.info(f"Herverbonden met {self.naam}")
+            if self.bij_herverbind:
+                self.bij_herverbind()
         elif self._herverbind_pogingen < self._max_herverbind_pogingen:
             self._herverbind_taak = asyncio.create_task(self._herverbind())
-
+        else:
+            logger.error(f"{self.naam} herverbinding mislukt na {self._max_herverbind_pogingen} pogingen")
 
     # Commando Methoden ---------------------------------------------------------------------    
     async def _stuur_commando(self, commando: Command, data: bytes = b'') -> bool:
@@ -174,45 +161,36 @@ class Cone:
         except Exception as e:
             logger.error(f"Commando mislukt {self.naam}: {e}")
             return False
-    
 
     async def start_pollen(self, correcte_kegel: int = 0) -> None:
         kegel_byte = bytes([int(correcte_kegel)])
         if await self._stuur_commando(Command.START, kegel_byte):
             self._aan_het_pollen = True
-    
+            logger.info(f"{self.naam} pollen gestart (correcte_kegel={bool(correcte_kegel)})")
+        else:
+            logger.warning(f"{self.naam} start pollen commando mislukt")
 
     async def stop_pollen(self) -> None:
         if await self._stuur_commando(Command.STOP):
             self._aan_het_pollen = False
             self.laatste_detectie = None
-    
-
-    async def slaap(self) -> None:
-        if await self._stuur_commando(Command.SLAAP):
-            self._aan_het_pollen = False
-
-
-    async def stuur_keepalive(self) -> bool:
-        return await self._stuur_commando(Command.KEEPALIVE)
-
 
     async def speel_correct_geluid(self) -> None:
         await self._stuur_commando(Command.GELUID_CORRECT)
-    
 
     async def speel_incorrect_geluid(self) -> None:
         await self._stuur_commando(Command.GELUID_INCORRECT)
     
-
     # Notificatie Verwerking------------------------------------------------------
     def _notificatie_handler(self, sender, data: bytearray) -> None:
         if len(data) < 8:
+            logger.debug(f"{self.naam} ontvangen te kort bericht ({len(data)} bytes)")
             return
         
         bericht_type, apparaat_id, veiligheid_byte, gereserveerd, timestamp = struct.unpack('<BBBBI', data[:8])
         
         if veiligheid_byte != VEILIGHEIDS_BYTE:
+            logger.warning(f"{self.naam} ongeldig veiligheids_byte: 0x{veiligheid_byte:02X}")
             return
         
         if not self._geauthenticeerd:
@@ -220,39 +198,11 @@ class Cone:
         
         nu = datetime.now()
         
-        if bericht_type == MessageType.STATUS:
-            self._verwerk_status_bericht(data, apparaat_id, timestamp, nu)
-        elif bericht_type == MessageType.DETECTIE:
+        if bericht_type == MessageType.DETECTIE:
             self._verwerk_detectie_bericht(data, apparaat_id, timestamp, nu)
         elif bericht_type == MessageType.BATTERIJ:
             self._verwerk_batterij_bericht(data, apparaat_id, timestamp, nu)
-        elif bericht_type == MessageType.HOUD_WAKKER:
-            self._laatste_keepalive = nu
     
-
-    def _verwerk_status_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
-        if len(data) < 9:
-            return
-        
-        status_code = data[8]
-        status_namen = {
-            StatusEvent.VERBONDEN: "VERBONDEN",
-            StatusEvent.HERVERBIND: "HERVERBONDEN",
-            StatusEvent.SLAAPT: "SLAAPT",
-        }
-        status_naam = status_namen.get(status_code, f"ONBEKEND({status_code})")
-        
-        if self.bij_status:
-            gebeurtenis = {
-                "apparaat_naam": self.naam,
-                "apparaat_id": apparaat_id,
-                "gebeurtenis": status_naam,
-                "timestamp_ms": timestamp,
-                "ontvangen_op": nu
-            }
-            self.bij_status(gebeurtenis)
-    
-
     def _verwerk_detectie_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
         if len(data) < 10:
             return
@@ -270,7 +220,6 @@ class Cone:
         
         if self.bij_detectie:
             self.bij_detectie(gebeurtenis)
-    
 
     def _verwerk_batterij_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
         if len(data) < 9:
@@ -287,23 +236,6 @@ class Cone:
                 "ontvangen_op": nu
             }
             self.bij_batterij(gebeurtenis)
-    
-    
-    # Gezondheids Monitoring----------------------------------------------------------------
-    def is_actief(self, timeout_seconden: float = 60.0) -> bool:
-        if not self._verbonden:
-            return False
-        if self._laatste_keepalive is None:
-            return True
-        tijd_sinds = (datetime.now() - self._laatste_keepalive).total_seconds()
-        return tijd_sinds < timeout_seconden
-    
-
-    def tijd_sinds_keepalive(self) -> Optional[float]:
-        if self._laatste_keepalive is None:
-            return None
-        return (datetime.now() - self._laatste_keepalive).total_seconds()
-
 
     # Representatie-------------------------------------------------------------------
     def __str__(self) -> str:
@@ -313,4 +245,4 @@ class Cone:
 
     def __repr__(self) -> str:
         status = "verbonden" if self._verbonden else "verbroken"
-        return f"ESP32Device({self.naam!r}, {self.mac_adres!r}, {status})"
+        return f"Cone({self.naam!r}, {self.mac_adres!r}, {status})"

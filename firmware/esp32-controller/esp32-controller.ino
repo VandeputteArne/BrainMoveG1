@@ -10,7 +10,6 @@ const uint8_t APPARAAT_ID = 1;
 const char* APPARAAT_NAMEN[] = {"BM-Blauw", "BM-Rood", "BM-Geel", "BM-Groen"};
 const char* APPARAAT_NAAM = APPARAAT_NAMEN[APPARAAT_ID];
 
-// GPIO Pinnen
 const uint8_t PIN_KNOP = GPIO_NUM_3;  // RTC geschikt
 const uint8_t PIN_BATTERIJ_ADC_1 = GPIO_NUM_2;
 const uint8_t PIN_BATTERIJ_ADC_2 = GPIO_NUM_4;
@@ -18,91 +17,61 @@ const uint8_t PIN_ZOEMER = GPIO_NUM_5;
 const uint8_t PIN_I2C_SDA = GPIO_NUM_6;
 const uint8_t PIN_I2C_SCL = GPIO_NUM_7;
 
-
-// USB Meting
 const uint8_t PIN_USB_VBUS = GPIO_NUM_21;
 const uint16_t USB_VBUS_DREMPEL = 2000;    // Spanningsdeler 10k/10k nodig
 
-
-// LED
 const uint8_t PIN_LED_ROOD = GPIO_NUM_8;
 const uint8_t PIN_LED_GROEN = GPIO_NUM_9;
 const uint8_t PIN_LED_BLAUW = GPIO_NUM_10;
 const bool RGB_LED_GEMEENSCHAPPELIJKE_ANODE = false;
 
-
-// PWM
 const uint8_t ZOEMER_KANAAL = 0;
 const uint8_t ZOEMER_RESOLUTIE = 8;
 const uint16_t ZOEMER_FREQ_STANDAARD = 2000;
 const uint16_t LED_PWM_FREQ = 5000;
 const uint8_t LED_PWM_RESOLUTIE = 8;
 
-
-// Batterijniveaus
 const uint8_t BATTERIJ_NIVEAU_LAAG = 20;
 const uint8_t BATTERIJ_NIVEAU_MIDDEL = 50;
 const uint16_t LED_UPDATE_INTERVAL = 5000;
 const uint16_t LED_OPLADEN_KNIPPEREN_MS = 500;
 
-
-// Debug Configuratie
-const bool DEBUG_UITGEBREID = false;
-const bool DEBUG_SERIEEL = true;
-
-
-// Timing
 const unsigned long KNOP_DEBOUNCE_MS = 150;
 const unsigned long ADVERTEREN_TIMEOUT_MS = (5UL * 60UL * 1000UL);
-const unsigned long BATTERIJ_RAPPORT_INTERVAL = (5UL * 60UL * 1000UL);
-const unsigned long KEEPALIVE_INTERVAL = (30UL * 1000UL);
-const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (10UL * 60UL * 1000UL);
+const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (30UL * 60UL * 1000UL);  // 30 min
 
-
-// TOF Configuratie
 const uint16_t TOF_POLL_INTERVAL_MS = 33;
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
 const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
 
-
-// Batterij Configuratie
 const uint8_t BATTERIJ_ADC_RESOLUTIE = 12;
 const float BATTERIJ_SPANNINGSDELER = 2.0f;
 const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
 const bool BATTERIJ_GEBRUIK_GEMIDDELDE = true;
 
-
 const char SERVICE_UUID[] = "beb5483e-36e1-4688-b7f5-ea07361b26a7";
 const char CHAR_DATA_UUID[] = "beb5483e-36e1-4688-b7f5-ea07361b26a8";
 const char CHAR_COMMAND_UUID[] = "beb5483e-36e1-4688-b7f5-ea07361b26a9";
 
-
 const uint8_t VEILIGHEIDS_BYTE = 0x42;
 
-
-// Bericht Type Hex
 const uint8_t BERICHT_STATUS = 0x01;
 const uint8_t BERICHT_DETECTIE = 0x02;
 const uint8_t BERICHT_BATTERIJ = 0x03;
-const uint8_t BERICHT_KEEPALIVE = 0x04;
 
-
-// Commando Type Hex
 const uint8_t CMD_START = 0x01;
 const uint8_t CMD_STOP = 0x02;
 const uint8_t CMD_SLAAP = 0x03;
+const uint8_t CMD_KEEPALIVE = 0x05;
 const uint8_t CMD_GELUID_CORRECT = 0x10;
 const uint8_t CMD_GELUID_INCORRECT = 0x11;
-
 
 // Status Types Hex
 const uint8_t STATUS_VERBONDEN = 0x01;
 const uint8_t STATUS_HERVERBONDEN = 0x02;
 const uint8_t STATUS_SLAAPT = 0x03;
-const uint8_t STATUS_PONG = 0x04;
-
 
 enum class SystemState : uint8_t {
     INIT,
@@ -112,55 +81,40 @@ enum class SystemState : uint8_t {
     ENTERING_SLEEP
 };
 
-
 enum class RpiCommand : uint8_t {
     GEEN = 0,
     START = CMD_START,
     STOP = CMD_STOP,
     SLAAP = CMD_SLAAP,
+    KEEPALIVE = CMD_KEEPALIVE,
     GELUID_CORRECT = CMD_GELUID_CORRECT,
     GELUID_INCORRECT = CMD_GELUID_INCORRECT
 };
 
-
 volatile SystemState huidigeStatus = SystemState::INIT;
 volatile SystemState vorigeStatus = SystemState::INIT;
 
-
-// Timing Variabelen in Milliseconden
 unsigned long statusStartTijd = 0;
-unsigned long laatsteBatterijRapportTijd = 0;
-unsigned long laatsteKeepaliveTijd = 0;
 unsigned long laatsteTofPollTijd = 0;
 unsigned long laatsteActiviteitTijd = 0;
 
-
-// BLE Objecten (pointers vereist door BLE bibliotheek)
 BLEServer* bleServer;
 BLECharacteristic* charData;
 BLECharacteristic* charCommando;
 BLEAdvertising* bleAdverteren;
 
-
-// Verbindingsstatus, RPI verandert dit
 volatile bool bleVerbonden = false;
 volatile bool nieuwCommandoOntvangen = false;
 
-
-// Commando Status
 RpiCommand wachtendCommando = RpiCommand::GEEN;
 uint8_t ontvangencorrecteKegel = 0xFF; // 0xFF = geen waarde
 
-
-// Hardware
 VL53L0X tofSensor;
 bool tofGeinitialiseerd = false;
 uint16_t laatsteDetectieAfstand = 0;
 unsigned long laatsteDetectieTijd = 0;
 bool objectInVeld = false;
 
-
-// USB & Opladen 
 bool rgbGemeenschappelijkeAnode = false;
 volatile bool usbVerbonden = false;
 unsigned long laatsteLedUpdateTijd = 0;
@@ -168,13 +122,9 @@ unsigned long laatsteOplaadKnipperTijd = 0;
 bool oplaadLedStatus = false;
 uint8_t laatsteBatterijPercentage = 0;
 
-
-// Ontwaken-Knop 
 volatile bool knopIngedrukt = false;
 unsigned long laatsteKnopDrukTijd = 0;
 
-
-// Status Functies
 void veranderNaarStatus(SystemState nieuweStatus);
 void verwerkStatusInit();
 void verwerkStatusAdverteren();
@@ -182,43 +132,31 @@ void verwerkStatusVerbonden();
 void verwerkStatusPollen();
 void verwerkStatusNaarSlaap();
 
-
-// BLE Functies
 void initBLE();
 void startAdverteren();
 void stopAdverteren();
 void stuurStatusBericht(uint8_t statusGebeurtenis);
 void stuurDetectieBericht(uint16_t afstand);
 void stuurBatterijBericht(uint8_t batterijPercentage);
-void stuurKeepaliveBericht();
 
-
-// Hardware Functies
 void initHardware();
 void initTofSensor();
 void initZoemer();
 void initRgbLed();
 void initKnop();
 uint16_t leesTofAfstand();
-bool isObjectGedetecteerd();
 uint8_t leesBatterijPercentage();
 float leesBatterijSpanning(bool gebruikGemiddelde = BATTERIJ_GEBRUIK_GEMIDDELDE);
 void verwerkKnopDruk();
 
-
-// USB & Opladen Functies
 bool isUsbVerbonden();
 void updateOplaadStatus();
 
-
-// RGB LED Functies
 void zetRgbKleur(uint8_t rood, uint8_t groen, uint8_t blauw);
 void updateBatterijLed();
 void toonBatterijNiveau(uint8_t percentage, bool aanHetOpladen);
 void rgbLedUit();
 
-
-// Geluid Functies
 void speelCorrectGeluid();
 void speelIncorrectGeluid();
 void speelVerbindingGeluid();
@@ -227,12 +165,7 @@ void speelOntwaakGeluid();
 void zoemerToon(uint32_t frequentie, uint32_t duur);
 void zoemerUit();
 
-
 void gaaDiepeSlaap();
-
-
-void logStatus(const char* bericht);
-
 
 class ServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer* server) override {
@@ -250,7 +183,6 @@ class ServerCallbacks : public BLEServerCallbacks {
         }
     }
 };
-
 
 // BLE Inkomende Commando's
 class CommandCallbacks : public BLECharacteristicCallbacks {
@@ -273,7 +205,6 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
     }
 };
 
-
 void setup() {
     Serial.begin(115200);
     delay(100);
@@ -292,7 +223,6 @@ void setup() {
     
     veranderNaarStatus(SystemState::ADVERTISING);
 }
-
 
 void loop() {
     if (millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
@@ -335,7 +265,6 @@ void loop() {
     yield();
 }
 
-
 // Transitie en timing
 void veranderNaarStatus(SystemState nieuweStatus) {
     if (huidigeStatus == nieuweStatus) return;
@@ -345,11 +274,9 @@ void veranderNaarStatus(SystemState nieuweStatus) {
     statusStartTijd = millis();
 }
 
-
 void verwerkStatusInit() {
     veranderNaarStatus(SystemState::ADVERTISING);
 }
-
 
 void verwerkStatusAdverteren() {
     if (millis() - statusStartTijd > ADVERTEREN_TIMEOUT_MS) {
@@ -366,27 +293,10 @@ void verwerkStatusAdverteren() {
     }
 }
 
-
 void verwerkStatusVerbonden() {
     if (!bleVerbonden) {
         veranderNaarStatus(SystemState::ADVERTISING);
         return;
-    }
-    
-    // Stuur batterij % bij verbinding & elke xm
-    if (millis() - statusStartTijd >= 600) {
-        if (laatsteBatterijRapportTijd == 0 || 
-            (millis() - laatsteBatterijRapportTijd >= BATTERIJ_RAPPORT_INTERVAL)) {
-            uint8_t batterijPercentage = leesBatterijPercentage();
-            stuurBatterijBericht(batterijPercentage);
-            laatsteBatterijRapportTijd = millis();
-        }
-    }
-    
-    // Keep-alive
-    if (millis() - laatsteKeepaliveTijd >= KEEPALIVE_INTERVAL) {
-        stuurKeepaliveBericht();
-        laatsteKeepaliveTijd = millis();
     }
     
     if (nieuwCommandoOntvangen) {
@@ -403,6 +313,10 @@ void verwerkStatusVerbonden() {
                 
             case RpiCommand::SLAAP:
                 veranderNaarStatus(SystemState::ENTERING_SLEEP);
+                break;
+            
+            case RpiCommand::KEEPALIVE:
+                stuurBatterijBericht(leesBatterijPercentage());
                 break;
                                 
             case RpiCommand::GELUID_CORRECT:
@@ -440,6 +354,9 @@ void verwerkStatusPollen() {
                 veranderNaarStatus(SystemState::ENTERING_SLEEP);
                 wachtendCommando = RpiCommand::GEEN;
                 return;
+            case RpiCommand::KEEPALIVE:
+                stuurBatterijBericht(leesBatterijPercentage());
+                break;
             case RpiCommand::GELUID_CORRECT: speelCorrectGeluid(); break;
             case RpiCommand::GELUID_INCORRECT: speelIncorrectGeluid(); break;
             default: break;
@@ -481,17 +398,6 @@ void verwerkStatusPollen() {
                 objectInVeld = false;
             }
         }
-    }
-
-    if (millis() - laatsteBatterijRapportTijd >= BATTERIJ_RAPPORT_INTERVAL) {
-        uint8_t batterijPercentage = leesBatterijPercentage();
-        stuurBatterijBericht(batterijPercentage);
-        laatsteBatterijRapportTijd = millis();
-    }
-    
-    if (millis() - laatsteKeepaliveTijd >= KEEPALIVE_INTERVAL) {
-        stuurKeepaliveBericht();
-        laatsteKeepaliveTijd = millis();
     }
 }
 
@@ -632,26 +538,6 @@ void stuurBatterijBericht(uint8_t batterijPercentage) {
     charData->notify();
 }
 
-void stuurKeepaliveBericht() {
-    if (!bleVerbonden) return;
-    
-    uint8_t bericht[8] = {0};
-    uint32_t timestamp = millis();
-    
-    bericht[0] = BERICHT_KEEPALIVE;
-    bericht[1] = APPARAAT_ID;
-    bericht[2] = VEILIGHEIDS_BYTE;
-    bericht[3] = 0;
-    // Kopieer timestamp bytes handmatig (bytes 4-7)
-    bericht[4] = timestamp & 0xFF;
-    bericht[5] = (timestamp >> 8) & 0xFF;
-    bericht[6] = (timestamp >> 16) & 0xFF;
-    bericht[7] = (timestamp >> 24) & 0xFF;
-    
-    charData->setValue(bericht, 8);
-    charData->notify();
-}
-
 void initHardware() {
     analogReadResolution(BATTERIJ_ADC_RESOLUTIE);
     analogSetAttenuation(ADC_11db);
@@ -727,12 +613,6 @@ uint16_t leesTofAfstand() {
     }
     
     return afstand;
-}
-
-bool isObjectGedetecteerd() {
-    uint16_t afstand = leesTofAfstand();
-    
-    return (afstand < TOF_DETECTIE_MAX_MM && afstand > TOF_DETECTIE_MIN_MM);
 }
 
 float leesBatterijSpanningVanPin(int pin) {
@@ -894,11 +774,4 @@ void gaaDiepeSlaap() {
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
     BLEDevice::deinit(false);
     esp_deep_sleep_start();
-}
-
-void logStatus(const char* bericht) {
-    Serial.printf("[DEBUG] %s (Status: %d, Verbonden: %d)\n", 
-                  bericht, 
-                  static_cast<uint8_t>(huidigeStatus), 
-                  bleVerbonden);
 }
