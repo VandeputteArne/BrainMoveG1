@@ -5,6 +5,12 @@ import GameCard from '../../components/cards/CardsGame.vue';
 const games = ref([]);
 
 onMounted(async () => {
+  const cachedGames = sessionStorage.getItem('gamesData');
+  if (cachedGames) {
+    games.value = JSON.parse(cachedGames);
+    return;
+  }
+
   try {
     const res = await fetch('http://10.42.0.1:8000/games/overview');
     const data = await res.json();
@@ -15,8 +21,10 @@ onMounted(async () => {
       tag: game.tag,
       bestTime: game.highscore,
       unit: game.eenheid,
-      image: `images/cards/${game.game_naam.toLowerCase().replace(/\s+/g, '-')}.png`,
+      image: `images/cards/${game.game_naam.toLowerCase().replace(/\s+/g, '')}.png`,
     }));
+
+    sessionStorage.setItem('gamesData', JSON.stringify(games.value));
   } catch (error) {
     console.error('Failed to fetch games:', error);
   }
