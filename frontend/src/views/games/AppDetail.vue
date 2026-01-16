@@ -128,7 +128,7 @@ async function startGame() {
 <template>
   <div class="c-game-detail">
     <div>
-      <InputGebruikersnaam ref="usernameInput" v-model="username" />
+      <InputGebruikersnaam ref="usernameInput" v-model="username" bold />
       <p v-if="usernameError" class="error">Gebruikersnaam is verplicht</p>
     </div>
 
