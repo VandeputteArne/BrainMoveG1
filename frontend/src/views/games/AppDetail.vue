@@ -44,26 +44,39 @@ const gameDescription = ref('');
 const gameImage = ref('');
 
 onMounted(async () => {
-  // Check sessionStorage first
+  // Check sessionStorage first for game settings
   const cachedDetails = sessionStorage.getItem(`gameDetails_${gameId.value}`);
 
   if (cachedDetails) {
     const data = JSON.parse(cachedDetails);
     loadGameData(data);
-    return;
+  } else {
+    // Fetch game details from API if not cached
+    try {
+      const res = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/details`);
+      const data = await res.json();
+
+      // Store in sessionStorage (without leaderboard)
+      const { leaderboard, ...gameSettings } = data;
+      sessionStorage.setItem(`gameDetails_${gameId.value}`, JSON.stringify(gameSettings));
+
+      loadGameData(data);
+    } catch (error) {
+      console.error('Failed to fetch game details:', error);
+    }
   }
 
-  // Fetch from API if not cached
+  // Always fetch fresh leaderboard
   try {
-    const res = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/details`);
-    const data = await res.json();
+    const leaderboardRes = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/leaderboard/3`);
+    const leaderboardData = await leaderboardRes.json();
 
-    // Store in sessionStorage
-    sessionStorage.setItem(`gameDetails_${gameId.value}`, JSON.stringify(data));
-
-    loadGameData(data);
+    smallLeaderboardData.value = leaderboardData.map((entry) => ({
+      name: entry.gebruikersnaam,
+      time: entry.waarde,
+    }));
   } catch (error) {
-    console.error('Failed to fetch game details:', error);
+    console.error('Failed to fetch leaderboard:', error);
   }
 });
 
@@ -88,12 +101,6 @@ function loadGameData(data) {
     rondes: item.nummer,
   }));
   selectedRounds.value = roundsOptions.value.length > 0 ? roundsOptions.value[0].id : '';
-
-  // Set leaderboard
-  smallLeaderboardData.value = data.leaderboard.map((entry) => ({
-    name: entry.gebruikersnaam,
-    time: entry.waarde,
-  }));
 
   // Set default selected colors
   if (Array.isArray(backendColors.value) && backendColors.value.length && selectedColor.value.length === 0) {
