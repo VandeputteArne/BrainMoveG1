@@ -16,14 +16,7 @@ const stats = ref([
   { waarde: 0, label: 'Exactheid' },
 ]);
 
-// Hardcoded per-round reactietijden (komt later van backend)
-const rounds = ref([
-  { round: 1, time: 0.24 },
-  { round: 2, time: 0.3 },
-  { round: 3, time: 0.18 },
-  { round: 4, time: 0.13 },
-  { round: 5, time: 0.28 },
-]);
+const rounds = ref([]);
 
 const counts = ref([
   { type: 'correct', value: 0 },
@@ -50,7 +43,13 @@ onMounted(() => {
       { type: 'fout', label: 'Fout', value: data.aantal_fout || 0 },
     ];
 
-    // Rounds blijven hardcoded tot backend deze levert
+    // Update rounds from API
+    if (data.correcte_rondewaarden && Array.isArray(data.correcte_rondewaarden)) {
+      rounds.value = data.correcte_rondewaarden.map((r) => ({
+        round: r.ronde_nummer,
+        time: r.waarde,
+      }));
+    }
   } catch (error) {
     console.error('Error loading results from localStorage:', error);
   }
