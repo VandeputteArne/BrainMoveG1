@@ -256,7 +256,6 @@ class ServerCallbacks : public BLEServerCallbacks {
 class CommandCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* characteristic) override {
         String waarde = characteristic->getValue();
-        Serial.printf("[BLE] Ontvangen Commando: %s\n", waarde.c_str());
         
         if (waarde.length() > 0) {
             uint8_t cmd = (uint8_t)waarde[0];
@@ -265,7 +264,6 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
                 ontvangencorrecteKegel = (uint8_t)waarde[1];
             } else {
                 ontvangencorrecteKegel = 0xFF;
-                Serial.println();
             }
             
             wachtendCommando = static_cast<RpiCommand>(cmd);
@@ -527,18 +525,16 @@ void verwerkStatusNaarSlaap() {
 void initBLE() {    
     BLEDevice::init(APPARAAT_NAAM);
 
-//  Setup BLE beveiliging (vereist door bibliotheek om pointers te gebruiken)
     BLESecurity* beveiliging = new BLESecurity();
-    beveiliging->setAuthenticationMode(ESP_LE_AUTH_BOND);  // Change: Remove _REQ_SC
+    beveiliging->setAuthenticationMode(ESP_LE_AUTH_BOND);
     beveiliging->setCapability(ESP_IO_CAP_NONE);
     beveiliging->setKeySize(16);
-    // Maak BLE server en service aan (bibliotheek geeft pointers terug)
+    
     bleServer = BLEDevice::createServer();
     bleServer->setCallbacks(new ServerCallbacks());
     
     BLEService* dienst = bleServer->createService(SERVICE_UUID);
     
-    // Maak data characteristic aan voor verzenden sensordata
     charData = dienst->createCharacteristic(
         CHAR_DATA_UUID,
         BLECharacteristic::PROPERTY_READ | 
@@ -546,7 +542,6 @@ void initBLE() {
     );
     charData->addDescriptor(new BLE2902());
 
-    // Maak commando characteristic aan voor ontvangen commando's
     charCommando = dienst->createCharacteristic(
         CHAR_COMMAND_UUID,
         BLECharacteristic::PROPERTY_WRITE
@@ -555,25 +550,21 @@ void initBLE() {
     
     dienst->start();
     
-    // Setup advertising
     bleAdverteren = BLEDevice::getAdvertising();
     bleAdverteren->addServiceUUID(SERVICE_UUID);
     bleAdverteren->setScanResponse(true);
     bleAdverteren->setMinPreferred(0x06);
     bleAdverteren->setMinPreferred(0x12);
-    
 }
 
 void startAdverteren() {
     BLEDevice::startAdvertising();
-    Serial.printf("[BLE] Start adverteren %s\n", APPARAAT_NAAM);
 }
 
 void stopAdverteren() {
     bleAdverteren->stop();
 }
 
-// Formaat: [type(1)][apparaat_id(1)][magic(1)][gereserveerd(1)][timestamp(4)][status_gebeurtenis(1)][opvulling(3)]
 void stuurStatusBericht(uint8_t statusGebeurtenis) {
     if (!bleVerbonden) return;
     
@@ -639,11 +630,8 @@ void stuurBatterijBericht(uint8_t batterijPercentage) {
     
     charData->setValue(bericht, 12);
     charData->notify();
-    
-    Serial.printf("[BLE] Verzonden BATTERIJ: %d%%\n", batterijPercentage);
 }
 
-// Formaat: [type(1)][apparaat_id(1)][magic(1)][gereserveerd(1)][timestamp(4)]
 void stuurKeepaliveBericht() {
     if (!bleVerbonden) return;
     
@@ -665,8 +653,6 @@ void stuurKeepaliveBericht() {
 }
 
 void initHardware() {
-    Serial.println("[HW] Initialiseren hardware");
-    
     analogReadResolution(BATTERIJ_ADC_RESOLUTIE);
     analogSetAttenuation(ADC_11db);
     
@@ -681,52 +667,32 @@ void initHardware() {
     
     laatsteBatterijPercentage = leesBatterijPercentage();
     updateBatterijLed();
-    
-    Serial.println("[HW] Initialisatie voltooid");
 }
 
-// [HERSTELD VOOR VL53L0X MAAR SNELLER]
 void initTofSensor() {
-    Serial.println("[TOF] Initialiseren VL53L0X (Hoge Snelheid)");
-    
-    Wire.setClock(400000); // 400kHz I2C
-    
+    Wire.setClock(400000);
     tofSensor.setTimeout(500);
     
     if (!tofSensor.init()) {
-        Serial.println("[TOF] VL53L0X init mislukt");
         tofGeinitialiseerd = false;
         return;
     }
 
-    // Polling snelheid    
     tofSensor.setMeasurementTimingBudget(33000);
-
     tofSensor.startContinuous();
-
     tofGeinitialiseerd = true;
-    Serial.println("[TOF] VL53L0X geinitialiseerd (Budget: 33ms)");
 }
 
 void initZoemer() {
-    Serial.println("[ZOEMER] Initialiseren PWM");
-    
     ledcAttach(PIN_ZOEMER, ZOEMER_FREQ_STANDAARD, ZOEMER_RESOLUTIE);
     ledcWrite(PIN_ZOEMER, 0);
-    
-    Serial.println("[ZOEMER] PWM geinitialiseerd");
 }
 
 void initRgbLed() {
-    Serial.println("[RGB] Initialiseren RGB LED");
-    
     ledcAttach(PIN_LED_ROOD, LED_PWM_FREQ, LED_PWM_RESOLUTIE);
     ledcAttach(PIN_LED_GROEN, LED_PWM_FREQ, LED_PWM_RESOLUTIE);
     ledcAttach(PIN_LED_BLAUW, LED_PWM_FREQ, LED_PWM_RESOLUTIE);
-    
     rgbLedUit();
-    
-    Serial.println("[RGB] RGB LED geinitialiseerd");
 }
 
 void IRAM_ATTR knopISR() {
@@ -734,12 +700,8 @@ void IRAM_ATTR knopISR() {
 }
 
 void initKnop() {
-    Serial.println("[KNOP] Initialiseren knop");
-    
     pinMode(PIN_KNOP, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(PIN_KNOP), knopISR, FALLING);
-    
-    Serial.println("[KNOP] Knop geinitialiseerd");
 }
 
 void verwerkKnopDruk() {
@@ -753,19 +715,14 @@ void verwerkKnopDruk() {
     knopIngedrukt = false;
     laatsteKnopDrukTijd = millis();
     laatsteActiviteitTijd = millis();
-    
-    Serial.println("[KNOP] Knop ingedrukt");
 }
 
-// [HERSTELD] Simpele uitlezing voor L0X zonder buffer
 uint16_t leesTofAfstand() {
     if (!tofGeinitialiseerd) return 9999;
     
-    // Lees continue data
     uint16_t afstand = tofSensor.readRangeContinuousMillimeters();
     
     if (tofSensor.timeoutOccurred()) {
-        // Serial.println("[TOF] Timeout");
         return 9999;
     }
     
@@ -808,12 +765,9 @@ uint8_t leesBatterijPercentage() {
     if (percentage > 100.0f) percentage = 100.0f;
     if (percentage < 0.0f) percentage = 0.0f;
     
-    Serial.printf("[BATTERIJ] Spanning: %.2fV, Percentage: %.0f%%\n", spanning, percentage);
-    
     return (uint8_t)percentage;
 }
 
-// Hardware: 5V VBUS -> spanningsdeler: 10k/10k -> GPIO2
 bool isUsbVerbonden() {
     int adcWaarde = analogRead(PIN_USB_VBUS);
     
@@ -823,14 +777,6 @@ bool isUsbVerbonden() {
 void updateOplaadStatus() {
     bool wasVerbonden = usbVerbonden;
     usbVerbonden = isUsbVerbonden();
-    
-    if (usbVerbonden != wasVerbonden) {
-        if (usbVerbonden) {
-            Serial.println("[USB] USB verbonden, aan het opladen");
-        } else {
-            Serial.println("[USB] USB verbroken, op batterij");
-        }
-    }
 }
 
 void zetRgbKleur(uint8_t r, uint8_t g, uint8_t b) {
@@ -891,8 +837,6 @@ void updateBatterijLed() {
 }
 
 void speelCorrectGeluid() {
-    Serial.println("[ZOEMER] Spelen CORRECT geluid");
-    
     zoemerToon(1000, 100);
     delay(50);
     zoemerToon(1500, 100);
@@ -902,8 +846,6 @@ void speelCorrectGeluid() {
 }
 
 void speelIncorrectGeluid() {
-    Serial.println("[ZOEMER] Spelen INCORRECT geluid");
-    
     zoemerToon(400, 150);
     delay(50);
     zoemerToon(300, 150);
@@ -913,8 +855,6 @@ void speelIncorrectGeluid() {
 }
 
 void speelVerbindingGeluid() {
-    Serial.println("[ZOEMER] Spelen verbinding geluid");
-    
     zoemerToon(800, 100);
     delay(50);
     zoemerToon(1200, 150);
@@ -922,8 +862,6 @@ void speelVerbindingGeluid() {
 }
 
 void speelVerbreekGeluid() {
-    Serial.println("[ZOEMER] Spelen verbreek geluid");
-    
     zoemerToon(600, 150);
     delay(50);
     zoemerToon(400, 200);
@@ -931,8 +869,6 @@ void speelVerbreekGeluid() {
 }
 
 void speelOntwaakGeluid() {
-    Serial.println("[ZOEMER] Spelen ontwaak geluid");
-    
     zoemerToon(500, 100);
     delay(30);
     zoemerToon(800, 100);
@@ -953,13 +889,10 @@ void zoemerUit() {
 }
 
 void gaaDiepeSlaap() {
-    Serial.println("\n[SLAAP] Starten diepe slaap setup");
-    Serial.flush(); // Zorg dat data verzonden is
+    Serial.flush();
     
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
-    
     BLEDevice::deinit(false);
-    
     esp_deep_sleep_start();
 }
 

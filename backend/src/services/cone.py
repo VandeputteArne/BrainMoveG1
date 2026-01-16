@@ -34,6 +34,7 @@ class Command(IntEnum):
     START = 0x01
     STOP = 0x02
     SLAAP = 0x03
+    KEEPALIVE = 0x05
     GELUID_CORRECT = 0x10
     GELUID_INCORRECT = 0x11
 
@@ -69,15 +70,15 @@ class Cone:
         self._herverbind_vertraging = 60.0
         
         # Callbacks inkomende data
-        self.bij_detectie: Optional[DetectieCallback] = None
-        self.bij_batterij: Optional[BatterijCallback] = None
-        self.bij_status: Optional[StatusCallback] = None
-        self.bij_verbreek: Optional[VerbreekCallback] = None
+        self.bij_detectie = None
+        self.bij_batterij = None
+        self.bij_status = None
+        self.bij_verbreek = None
         
         # Interne status
-        self._herverbind_taak: Optional[asyncio.Task] = None
-        self._laatste_keepalive: Optional[datetime] = None
-        self.laatste_detectie: Optional[dict] = None
+        self._herverbind_taak = None
+        self._laatste_keepalive = None
+        self.laatste_detectie = None
     
 
     # Eigenschappen----------------------------------------------------------------------
@@ -105,32 +106,19 @@ class Cone:
                 disconnected_callback=self._verwerk_verbreek
             )
             
-            logger.info(f"Verbinden met {self.naam} ({self.mac_adres})")
             await self._client.connect()
             
             if self._client.is_connected:
                 self._verbonden = True
-                logger.info(f"Verbonden met {self.naam}")
-                
                 await self._client.start_notify(CHAR_DATA_UUID, self._notificatie_handler)
-                logger.debug(f"Berichten worden ontvangen van {self.naam}")
-                
                 self._herverbind_pogingen = 0
+                logger.info(f"Verbonden met {self.naam}")
                 return True
             
             return False
             
-        except BleakError as e:
-            foutmelding = str(e).lower()
-            if any(x in foutmelding for x in ["not paired", "authentication", "encrypt"]):
-                logger.error(f"Apparaat nog niet gepaired {self.naam}.")
-            else:
-                logger.error(f"Fout bij verbinden met {self.naam}: {e}")
-            self._verbonden = False
-            return False
-            
         except Exception as e:
-            logger.error(f"Mislukt om te verbinden met {self.naam}: {e}")
+            logger.error(f"Verbinden mislukt {self.naam}: {e}")
             self._verbonden = False
             return False
     
@@ -143,12 +131,8 @@ class Cone:
             self._herverbind_taak = None
         
         if self._client and self._verbonden:
-            try:
-                await self._client.stop_notify(CHAR_DATA_UUID)
-                await self._client.disconnect()
-            except Exception as e:
-                logger.debug(f"Fout tijdens verbreken: {e}")
-            
+            await self._client.stop_notify(CHAR_DATA_UUID)
+            await self._client.disconnect()
             self._verbonden = False
             self._geauthenticeerd = False
             self._aan_het_pollen = False
@@ -170,60 +154,47 @@ class Cone:
 
     async def _herverbind(self) -> None:
         self._herverbind_pogingen += 1
-        logger.info(f"Poging herverbinden {self.naam} ({self._herverbind_pogingen}/{self._max_herverbind_pogingen})")
-        
         await asyncio.sleep(self._herverbind_vertraging)
         
         if await self.verbind():
             logger.info(f"Herverbonden met {self.naam}")
         elif self._herverbind_pogingen < self._max_herverbind_pogingen:
             self._herverbind_taak = asyncio.create_task(self._herverbind())
-        else:
-            logger.error(f"Herverbinden mislukt met {self.naam}")
 
 
     # Commando Methoden ---------------------------------------------------------------------    
     async def _stuur_commando(self, commando: Command, data: bytes = b'') -> bool:
         if not self._verbonden:
-            logger.error(f"Commando niet mogelijk, niet verbonden met {self.naam}")
             return False
-        
-        if not self._geauthenticeerd:
-            logger.warning(f"Apparaat {self.naam} niet geauthenticeerd")
         
         try:
             volledig_commando = bytes([commando]) + data
             await self._client.write_gatt_char(CHAR_COMMAND_UUID, volledig_commando)
-
-            logger.debug(f"Verzonden {commando.name} naar {self.naam}")
             return True
         except Exception as e:
-            logger.error(f"Commando mislukt naar {self.naam}: {e}")
+            logger.error(f"Commando mislukt {self.naam}: {e}")
             return False
     
 
     async def start_pollen(self, correcte_kegel: int = 0) -> None:
-        correcte_kegel = int(correcte_kegel)
-        if not 0 <= correcte_kegel <= 255:
-            raise ValueError("correcte_kegel moet 0..255 zijn")
-        kegel_byte = bytes([correcte_kegel])
-
+        kegel_byte = bytes([int(correcte_kegel)])
         if await self._stuur_commando(Command.START, kegel_byte):
             self._aan_het_pollen = True
-            logger.info(f"{self.naam}: Pollen gestart")
     
 
     async def stop_pollen(self) -> None:
         if await self._stuur_commando(Command.STOP):
             self._aan_het_pollen = False
-            self.laatste_detectie = None  # Clear last detection
-            logger.info(f"{self.naam}: Pollen gestopt")
+            self.laatste_detectie = None
     
 
     async def slaap(self) -> None:
         if await self._stuur_commando(Command.SLAAP):
             self._aan_het_pollen = False
-            logger.info(f"{self.naam}: Slaapstand ingaan")
+
+
+    async def stuur_keepalive(self) -> bool:
+        return await self._stuur_commando(Command.KEEPALIVE)
 
 
     async def speel_correct_geluid(self) -> None:
@@ -237,21 +208,15 @@ class Cone:
     # Notificatie Verwerking------------------------------------------------------
     def _notificatie_handler(self, sender, data: bytearray) -> None:
         if len(data) < 8:
-            logger.warning(f"Bericht te kort van {self.naam}: {len(data)} bytes")
             return
         
-        # Parse inkomende data header
         bericht_type, apparaat_id, veiligheid_byte, gereserveerd, timestamp = struct.unpack('<BBBBI', data[:8])
         
-        # Verifieer magic byte
-        if veiligheid_byte == VEILIGHEIDS_BYTE:
-            if not self._geauthenticeerd:
-                self._geauthenticeerd = True
-                logger.info(f"{self.naam} succesvol geauthenticeerd")
-        else:
-            logger.warning(f"Ongeldige veiligheid byte van {self.naam}: 0x{veiligheid_byte:02X}")
-            self._geauthenticeerd = False
+        if veiligheid_byte != VEILIGHEIDS_BYTE:
             return
+        
+        if not self._geauthenticeerd:
+            self._geauthenticeerd = True
         
         nu = datetime.now()
         
@@ -263,9 +228,6 @@ class Cone:
             self._verwerk_batterij_bericht(data, apparaat_id, timestamp, nu)
         elif bericht_type == MessageType.HOUD_WAKKER:
             self._laatste_keepalive = nu
-            logger.debug(f"{self.naam} keepalive")
-        else:
-            logger.warning(f"Onbekend bericht type 0x{bericht_type:02X} van {self.naam}")
     
 
     def _verwerk_status_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
@@ -296,7 +258,6 @@ class Cone:
             return
         
         detectie_waar = struct.unpack('<H', data[8:10])[0]
-        logger.debug(f"{self.naam} DETECTIE: {detectie_waar}")
         
         gebeurtenis = {
             "apparaat_naam": self.naam,
@@ -306,11 +267,9 @@ class Cone:
             "ontvangen_op": nu
         }
         self.laatste_detectie = gebeurtenis
+        
         if self.bij_detectie:
-            try:
-                self.bij_detectie(gebeurtenis)
-            except Exception as e:
-                logger.exception(f"Fout in detectie callback voor {self.naam}: {e}")
+            self.bij_detectie(gebeurtenis)
     
 
     def _verwerk_batterij_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:

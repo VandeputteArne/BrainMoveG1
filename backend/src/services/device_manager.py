@@ -1,6 +1,7 @@
+import asyncio
 import logging
 import os
-from typing import Optional, Dict, List
+from typing import Dict, List
 from bleak import BleakScanner
 from dotenv import load_dotenv
 from backend.src.services.cone import (
@@ -18,9 +19,10 @@ logger.setLevel(logging.DEBUG)
 
 # DeviceManager class------------------------------------------------
 class DeviceManager:
-    def __init__(self) -> None:
+    def __init__(self, sio=None) -> None:
         
         self._apparaten: Dict[str, Cone] = {}
+        self._sio = sio  # Socket.IO reference for emitting events
         
         load_dotenv()
         self.veiligheids_byte = int(os.getenv("VEILIGHEIDS_BYTE", "0x42"), 0)
@@ -33,11 +35,17 @@ class DeviceManager:
             if mac:
                 self._vertrouwde_macs[mac] = f"BM-{kleur.capitalize()}"
         
-        self._detectie_callback: Optional[DetectieCallback] = None
-        self._batterij_callback: Optional[BatterijCallback] = None
-        self._status_callback: Optional[StatusCallback] = None
+        self._detectie_callback = None
+        self._batterij_callback = None
+        self._status_callback = None
 
         self._laatste_detecties: Dict[str, dict] = {}
+        self._keepalive_taak = None
+        
+        # Scanning state
+        self._scan_actief = False
+        self._scan_taak = None
+        self._apparaat_batterijen: Dict[str, int] = {}  # Track battery percentages
     
 
     # Eigenschappen----------------------------------------------------------------------
@@ -59,16 +67,9 @@ class DeviceManager:
     # Methoden--------------------------------------------------------------------------    
     def _bind_detectie_aan_apparaat(self, apparaat: Cone) -> None:
         def _wrapper(gebeurtenis: dict):
-            try:
-                self._laatste_detecties[apparaat.naam] = gebeurtenis
-            except Exception:
-                logger.exception(f"Mislukt detectie opslaan voor {apparaat.naam}")
-            
+            self._laatste_detecties[apparaat.naam] = gebeurtenis
             if self._detectie_callback:
-                try:
-                    self._detectie_callback(gebeurtenis)
-                except Exception:
-                    logger.exception(f"Detectie callback wierp fout voor {apparaat.naam}")
+                self._detectie_callback(gebeurtenis)
         
         apparaat.bij_detectie = _wrapper
 
@@ -87,66 +88,32 @@ class DeviceManager:
 
 
     async def scannen(self, max_pogingen: int = 10) -> List[Cone]:
-        scan_timeout = self.scan_timeout
-        logger.info(f"Scannen BM apparaten")
-        
-        if self._strikte_whitelist:
-            logger.info("MAC whitelist INGESCHAKELD")
-        
-        totaal_apparaten_nodig = len(self._vertrouwde_macs)
         nieuwe_apparaten = []
-        pogingen = 0
+        vertrouwde_macs_upper = {m.upper() for m in self._vertrouwde_macs.keys()}
         
-        while pogingen < max_pogingen:
-            pogingen += 1
-            
-            vertrouwd = {m.upper() for m in self._vertrouwde_macs.keys()}
-            vertrouwde_gevonden = 0
-            for apparaat in self._apparaten.values():
-                if apparaat.mac_adres.upper() in vertrouwd:
-                    vertrouwde_gevonden += 1
-
-            if vertrouwde_gevonden >= totaal_apparaten_nodig and totaal_apparaten_nodig > 0:
-                logger.info(f"Alle {totaal_apparaten_nodig} vertrouwde apparaten gevonden!")
+        for poging in range(max_pogingen):
+            # Check if we already have all devices
+            vertrouwde_gevonden = sum(1 for a in self._apparaten.values() if a.mac_adres.upper() in vertrouwde_macs_upper)
+            if vertrouwde_gevonden >= len(self._vertrouwde_macs):
                 break
             
-            logger.info(f"Scan poging {pogingen}/{max_pogingen} - Gevonden {vertrouwde_gevonden}/{totaal_apparaten_nodig} vertrouwde apparaten")
-            
-            ontdekt = await BleakScanner.discover(timeout=scan_timeout)
+            ontdekt = await BleakScanner.discover(timeout=self.scan_timeout)
             
             for ble_apparaat in ontdekt:
                 if not ble_apparaat.name or not ble_apparaat.name.startswith(APPARAAT_PREFIX):
                     continue
                 
-                mac = ble_apparaat.address
-                naam = ble_apparaat.name
-                
-                if self._strikte_whitelist:
-                    if mac.upper() not in [m.upper() for m in self._vertrouwde_macs.keys()]:
-                        logger.warning(f"AFGEWEZEN: {naam} ({mac}) - niet in whitelist")
-                        continue
-                    
-                    verwachte_naam = self._vertrouwde_macs.get(mac.upper())
-                    if verwachte_naam and verwachte_naam != naam:
-                        logger.warning(f"BEVEILIGING: {mac} adverteert als '{naam}' maar verwachtte '{verwachte_naam}'")
-                        continue
-                
-                if naam in self._apparaten:
-                    logger.debug(f"Reeds beheerd: {naam}")
+                if ble_apparaat.name in self._apparaten:
                     continue
                 
-                apparaat = Cone(mac, naam)
+                # Whitelist check
+                if self._strikte_whitelist and ble_apparaat.address.upper() not in vertrouwde_macs_upper:
+                    continue
+                
+                apparaat = Cone(ble_apparaat.address, ble_apparaat.name)
                 self._voeg_apparaat_toe(apparaat)
                 nieuwe_apparaten.append(apparaat)
-                logger.info(f"Ontdekt: {naam} ({mac})")
-        
-        vertrouwde_gevonden = sum(1 for apparaat in self._apparaten.values() 
-                          if apparaat.mac_adres.upper() in [m.upper() for m in self._vertrouwde_macs.keys()])
-        
-        if self._strikte_whitelist and vertrouwde_gevonden < totaal_apparaten_nodig:
-            logger.warning(f"Scan gestopt, {vertrouwde_gevonden}/{totaal_apparaten_nodig} apparaten gevonden")
-        else:
-            logger.info(f"Scan voltooid, {len(nieuwe_apparaten)} nieuwe apparaat/apparaten gevonden")
+                logger.info(f"Ontdekt: {ble_apparaat.name} ({ble_apparaat.address})")
         
         return nieuwe_apparaten
 
@@ -154,22 +121,29 @@ class DeviceManager:
     async def verbind_alle(self) -> Dict[str, bool]:
         for naam, apparaat in self._apparaten.items():
             await apparaat.verbind()
+        
+        # Start keep-alive lus na verbinding
+        await self.start_keepalive_lus()
+        
+        return {naam: apparaat.verbonden for naam, apparaat in self._apparaten.items()}
 
 
     async def verbreek_alle(self) -> None:
+        await self.stop_keepalive_lus()
+        
         for apparaat in self._apparaten.values():
             await apparaat.verbreek()
 
 
-    async def start_alle(self, correcte_kegel: str) -> Dict[str, bool]:
-        for naam, apparaat in self._apparaten.items():
+    async def start_alle(self, correcte_kegel: str) -> None:
+        for apparaat in self._apparaten.values():
             if apparaat.verbonden:
-                is_correcte = str(correcte_kegel).lower() in naam.lower()
+                is_correcte = str(correcte_kegel).lower() in apparaat.naam.lower()
                 await apparaat.start_pollen(is_correcte)
 
 
-    async def stop_alle(self) -> Dict[str, bool]:
-        for naam, apparaat in self._apparaten.items():
+    async def stop_alle(self) -> None:
+        for apparaat in self._apparaten.values():
             if apparaat.verbonden:
                 await apparaat.stop_pollen()
 
@@ -200,6 +174,40 @@ class DeviceManager:
 
         for apparaat in self._apparaten.values():
             apparaat.bij_status = callback
+
+
+    async def start_keepalive_lus(self) -> None:
+        """Start de achtergrond keep-alive lus die elke 5 minuten alle verbonden apparaten polt."""
+        if self._keepalive_taak is not None:
+            logger.warning("Keep-alive lus is al actief")
+            return
+        
+        self._keepalive_taak = asyncio.create_task(self._keepalive_lus())
+        logger.info("Keep-alive lus gestart")
+
+
+    async def stop_keepalive_lus(self) -> None:
+        """Stop de achtergrond keep-alive lus."""
+        if self._keepalive_taak is not None:
+            self._keepalive_taak.cancel()
+            try:
+                await self._keepalive_taak
+            except asyncio.CancelledError:
+                pass
+            self._keepalive_taak = None
+            logger.info("Keep-alive lus gestopt")
+
+
+    async def _keepalive_lus(self) -> None:
+        """Achtergrond taak die elke 5 minuten keep-alive stuurt naar alle verbonden apparaten."""
+        try:
+            while True:
+                await asyncio.sleep(5 * 60)
+                for apparaat in self._apparaten.values():
+                    if apparaat.verbonden:
+                        await apparaat.stuur_keepalive()
+        except asyncio.CancelledError:
+            raise
 
 
     def verkrijg_apparaat_gezondheid(self, timeout_seconden: float = 60.0) -> Dict[str, bool]:
@@ -239,3 +247,139 @@ class DeviceManager:
 
         if dood:
             logger.warning(f"  Dood/Niet-responsief: {', '.join(dood)}")
+
+
+    # Device Scanning & Socket Integration-------------------------------------------
+    def _extract_kleur_from_naam(self, naam: str) -> str:
+        naam_lower = naam.lower()
+        for kleur in ["blauw", "rood", "geel", "groen"]:
+            if kleur in naam_lower:
+                return kleur
+        return "unknown"
+
+
+    async def _emit_apparaat_status(self, apparaat: Cone, status: str, batterij: int = None) -> None:
+        if not self._sio:
+            return
+        
+        kleur = self._extract_kleur_from_naam(apparaat.naam)
+        data = {
+            "naam": apparaat.naam,
+            "kleur": kleur,
+            "mac": apparaat.mac_adres,
+            "status": status
+        }
+        
+        if batterij is not None:
+            data["batterij"] = batterij
+        
+        event_naam = "device_connected" if status == "online" else "device_disconnected"
+        await self._sio.emit(event_naam, data)
+        logger.info(f"Socket emit: {event_naam} - {apparaat.naam}")
+
+
+    def _setup_batterij_callback_voor_apparaat(self, apparaat: Cone) -> None:
+        def _batterij_handler(gebeurtenis: dict):
+            percentage = gebeurtenis.get("percentage", 0)
+            self._apparaat_batterijen[apparaat.naam] = percentage
+            asyncio.create_task(self._emit_apparaat_status(apparaat, "online", percentage))
+            
+            if self._batterij_callback:
+                self._batterij_callback(gebeurtenis)
+        
+        apparaat.bij_batterij = _batterij_handler
+
+
+    def _setup_verbreek_callback_voor_apparaat(self, apparaat: Cone) -> None:
+        def _verbreek_handler():
+            asyncio.create_task(self._emit_apparaat_status(apparaat, "offline"))
+        
+        apparaat.bij_verbreek = _verbreek_handler
+
+
+    async def start_apparaat_scan(self) -> None:
+        if self._scan_actief:
+            return
+        
+        self._scan_actief = True
+        totaal_verwacht = len(self._vertrouwde_macs)
+        vertrouwde_macs_upper = {m.upper() for m in self._vertrouwde_macs.keys()}
+        
+        try:
+            while self._scan_actief:
+                # Count connected whitelisted devices
+                vertrouwde_verbonden = sum(
+                    1 for a in self._apparaten.values() 
+                    if a.verbonden and a.mac_adres.upper() in vertrouwde_macs_upper
+                )
+                
+                # All devices connected?
+                if vertrouwde_verbonden >= totaal_verwacht:
+                    if self._sio:
+                        await self._sio.emit('all_devices_connected', {
+                            "count": totaal_verwacht,
+                            "apparaten": [
+                                {
+                                    "naam": a.naam,
+                                    "kleur": self._extract_kleur_from_naam(a.naam),
+                                    "batterij": self._apparaat_batterijen.get(a.naam, 0)
+                                }
+                                for a in self._apparaten.values() if a.verbonden
+                            ]
+                        })
+                    self._scan_actief = False
+                    break
+                
+                # Emit progress
+                if self._sio:
+                    await self._sio.emit('scan_status', {
+                        "gevonden": vertrouwde_verbonden,
+                        "totaal": totaal_verwacht
+                    })
+                
+                # Scan and connect new devices
+                nieuwe_apparaten = await self.scannen(max_pogingen=1)
+                
+                for apparaat in nieuwe_apparaten:
+                    if apparaat.mac_adres.upper() in vertrouwde_macs_upper:
+                        self._setup_batterij_callback_voor_apparaat(apparaat)
+                        self._setup_verbreek_callback_voor_apparaat(apparaat)
+                        await apparaat.verbind()
+                
+                await asyncio.sleep(2.0)
+                
+        except asyncio.CancelledError:
+            self._scan_actief = False
+            raise
+
+
+    async def stop_apparaat_scan(self) -> None:
+        if self._scan_actief:
+            logger.info("Stoppen apparaat scan")
+            self._scan_actief = False
+            
+            if self._scan_taak:
+                self._scan_taak.cancel()
+                try:
+                    await self._scan_taak
+                except asyncio.CancelledError:
+                    pass
+                self._scan_taak = None
+
+
+    def verkrijg_apparaten_status(self) -> List[dict]:
+        status_lijst = []
+        
+        for mac, naam in self._vertrouwde_macs.items():
+            apparaat = self._apparaten.get(naam)
+            is_online = apparaat and apparaat.verbonden
+            
+            status_lijst.append({
+                "naam": naam,
+                "kleur": self._extract_kleur_from_naam(naam),
+                "mac": mac,
+                "status": "online" if is_online else "offline",
+                "batterij": self._apparaat_batterijen.get(naam) if is_online else None
+            })
+        
+        return status_lijst

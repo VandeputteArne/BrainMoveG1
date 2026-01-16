@@ -34,11 +34,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-device_manager = DeviceManager()
 
 # Maak een Socket.IO server
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 sio_app = socketio.ASGIApp(sio, app)
+
+# Initialize DeviceManager with socket.io reference
+device_manager = DeviceManager(sio=sio)
 
 global game_id
 global gebruikersnaam
@@ -290,6 +292,30 @@ async def get_laatste_rondewaarden():
 @app.get("/")
 async def read_root():
     return {"Hello": "World"}
+
+
+# Apparaat Endpoints -----------------------------------------------------------
+@app.post("/api/devices/start-scan", summary="Gestart met scannen", tags=["Apparaten"])
+async def start_device_scan(background_tasks: BackgroundTasks):
+    background_tasks.add_task(device_manager.start_apparaat_scan)
+    return {
+        "status": "scanning",
+    }
+
+
+@app.post("/api/devices/stop-scan", summary="Stop scanning for devices", tags=["Apparaten"])
+async def stop_device_scan():
+    await device_manager.stop_apparaat_scan()
+    return {"status": "stopped"}
+
+
+@app.get("/api/devices/status", summary="Get current device status", tags=["Apparaten"])
+async def get_device_status():
+    return {
+        "apparaten": device_manager.verkrijg_apparaten_status(),
+        "scan_actief": device_manager._scan_actief,
+        "totaal_verwacht": len(device_manager.vertrouwde_macs)
+    }
 
 if __name__ == "__main__":
     uvicorn.run("backend.src.main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])
