@@ -7,7 +7,7 @@ import AppDetail from '../views/games/AppDetail.vue';
 import AppGame from '../views/games/AppGame.vue';
 import ResultatenProficiat from '../views/resultaten/ResultatenProficiat.vue';
 import ResultatenOverzicht from '../views/resultaten/ResultatenOverzicht.vue';
-import ApparatenView from '../views/apparaten/ApparatenView.vue';
+import ApparatenView from '../views/apparaten/AppApparaten.vue';
 
 const routes = [
   {
