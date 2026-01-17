@@ -1,3 +1,4 @@
+import logging
 import asyncio
 import datetime
 import threading
@@ -8,13 +9,15 @@ import random
 import time
 import sys
 import os
+from contextlib import asynccontextmanager # <--- 1. Toegevoegd
+
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
-# Add project root to path for direct script execution
 if __name__ == "__main__":
     project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     sys.path.insert(0, project_root)
+
 
 from backend.src.services.device_manager import DeviceManager
 from backend.src.repositories.data_repository import DataRepository
@@ -26,7 +29,20 @@ from backend.src.models.models import (
     CorrecteRondeWaarde
 )
 
-app = FastAPI()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scan_task = asyncio.create_task(device_manager.start_apparaat_scan())
+    device_manager._scan_taak = scan_task
+    
+    yield # App draait hier
+    
+    await device_manager.stop_apparaat_scan()
+
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -34,11 +50,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-device_manager = DeviceManager()
 
-# Maak een Socket.IO server
+HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
+
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 sio_app = socketio.ASGIApp(sio, app)
+device_manager = DeviceManager(sio=sio)
 
 global game_id
 global gebruikersnaam
@@ -47,24 +64,18 @@ global snelheid
 global ronde_id
 global rondes
 global kleuren
-
 global starttijd
-
 
 async def colorgame(aantal_rondes, kleuren, snelheid):
     # Maak mapping ESP-ID -> kleur gebaseerd op de volgorde van verbonden apparaten
-    # Haal de verbonden apparaten op en sorteer ze op naam voor consistentie
     verbonden_apparaten = sorted(device_manager.apparaten.keys())
     
-    # Maak mapping: apparaat_id -> kleur
-    # Belangrijk: Dit gaat ervan uit dat je evenveel kleuren hebt als verbonden apparaten
     apparaat_id_mapping = {}
     for idx, apparaat_naam in enumerate(verbonden_apparaten):
         if idx < len(kleuren):
-            # Probeer apparaat_id te krijgen - gebruik idx als fallback
             apparaat_id_mapping[idx] = kleuren[idx]
     
-    # Fallback: ook mapping maken op basis van ESP naam indien die kleur bevat
+    # Mapping op basis van ESP naam (indien kleur in naam zit)
     kleur_mapping = {}
     for apparaat_naam in verbonden_apparaten:
         for kleur in kleuren:
@@ -73,16 +84,25 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
                 break
     
     colorgame_rondes = []
-
     aantal_correct = 0
     aantal_fout = 0
     aantal_telaat = 0
-    rondetijden = {}
-
     max_tijd = float(snelheid)
+    
+    # Callback ipv laatste detectie dict
+    detectie_event = asyncio.Event()
+    detected_device = {}
+    baseline_apparaten = set()
+
+    def on_detectie(gebeurtenis):
+        if gebeurtenis["apparaat_naam"] not in baseline_apparaten:
+            detected_device.clear()
+            detected_device.update(gebeurtenis)
+            detectie_event.set()
+
+    device_manager.zet_detectie_callback(on_detectie)
 
     for ronde_idx in range(aantal_rondes):
-        # Clear previous detections
         device_manager.verwijder_alle_laatste_detecties()
         ronde = ronde_idx + 1
 
@@ -90,73 +110,46 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         await sio.emit('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
         print("Frontend socketio:", gekozen_kleur.upper())
 
-        # Start polling and immediately capture baseline (pre-existing detections)
         starttijd = time.time()
         await device_manager.start_alle(gekozen_kleur)
-        await asyncio.sleep(0.05)  # Brief delay to let initial state settle
+        await asyncio.sleep(0.05)
         
-        # Capture and filter out any pre-existing detections (stuck sensors)
+        # Capture baseline (stuck sensors)
         baseline_detecties = device_manager.verkrijg_alle_laatste_detecties()
         baseline_apparaten = set(baseline_detecties.keys())
         if baseline_apparaten:
-            print(f"⚠️  Pre-existing detections ignored: {', '.join(baseline_apparaten)}")
+            print(f"Voorgaande detecties genegeerd: {', '.join(baseline_apparaten)}")
+        
+        # Clear event and detection
+        detectie_event.clear()
+        detected_device.clear()
         device_manager.verwijder_alle_laatste_detecties()
         
-        # Now wait for a NEW detection (not in baseline)
-        esp_dict = {}
-        while not esp_dict:
-            await asyncio.sleep(0.05)
-            alle_detecties = device_manager.verkrijg_alle_laatste_detecties()
-            # Only accept detections from devices that weren't already detecting
-            esp_dict = {}
-            for k, v in alle_detecties.items():
-                if k not in baseline_apparaten:
-                    esp_dict[k] = v
+        # Wacht voor detectie (ORIGINELE LOGICA HERSTELD)
+        await detectie_event.wait()
+        eindtijd = time.time()
+        reactietijd = round(eindtijd - starttijd, 2) - HARDWARE_DELAY
                 
         await device_manager.stop_alle()
-        print(esp_dict)
+        print(detected_device)
 
         # Bepaal welke kleur gedetecteerd is
-        gedetecteerde_esp_naam = list(esp_dict.keys())[0]  # Eerste (en enige) detectie
-        detection = esp_dict[gedetecteerde_esp_naam]
-        device_id = detection.get("apparaat_id", None)
+        gedetecteerde_esp_naam = detected_device["apparaat_naam"]
+        device_id = detected_device.get("apparaat_id", None)
         
-        eindtijd = time.time()
-        reactietijd = round(eindtijd - starttijd, 2)
-        rondetijden[ronde] = reactietijd
-
-        if reactietijd > max_tijd:
-            print(f"Te laat! Reactietijd: {reactietijd:.2f} seconden")
-            aantal_telaat += 1
-            colorgame_rondes.append({
-                "rondenummer": ronde,
-                "waarde": max_tijd,
-                "uitkomst": "te laat",
-            })
-            continue
-
-        # Probeer kleur te bepalen:
-        # 1. Eerst via ESP naam (als die de kleur bevat)
-        # 2. Anders via apparaat_id mapping
+        # Probeer kleur te bepalen
         apparaatkleur = None
         
-        # Methode 1: Kleur uit ESP naam
         if gedetecteerde_esp_naam in kleur_mapping:
             apparaatkleur = kleur_mapping[gedetecteerde_esp_naam]
-            print(f"Kleur bepaald via naam: {gedetecteerde_esp_naam} -> {apparaatkleur}")
-        
-        # Methode 2: Kleur via apparaat_id
         elif device_id is not None:
             if isinstance(device_id, str) and device_id.isdigit():
                 device_id = int(device_id)
             if isinstance(device_id, int) and device_id in apparaat_id_mapping:
                 apparaatkleur = apparaat_id_mapping[device_id]
-                print(f"Kleur bepaald via ID: apparaat_id {device_id} -> {apparaatkleur}")
-
-        print(f"Gedetecteerd: ESP={gedetecteerde_esp_naam}, ID={device_id}, Kleur={apparaatkleur}")
 
         if apparaatkleur is None:
-            print(f"⚠️  Fout: Geen kleur gevonden voor {gedetecteerde_esp_naam} (device_id {device_id})")
+            print(f"Fout: Geen kleur gevonden voor {gedetecteerde_esp_naam} (device_id {device_id})")
             aantal_fout += 1
             colorgame_rondes.append({
                 "rondenummer": ronde,
@@ -165,7 +158,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             })
             continue
 
-        # Vergelijk genormaliseerde strings
+        # Vergelijk kleuren
         if apparaatkleur.strip().lower() == gekozen_kleur.strip().lower():
             print("Correcte kleur gedetecteerd!")
             status = "correct"
@@ -180,9 +173,11 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             "waarde": reactietijd,
             "uitkomst": status,
         })
+    
+    # Clear callback after game
+    device_manager.zet_detectie_callback(None)
     await sio.emit('game_einde', {"status":"game gedaan"})
     return colorgame_rondes
-
 
 @app.post("/games/{game_id}/instellingen",response_model=Instellingen, summary="Haal de instellingen op voor een specifiek spel",tags=["Spelletjes"])
 async def get_game_instellingen (json: Instellingen):
@@ -198,9 +193,6 @@ async def get_game_instellingen (json: Instellingen):
     kleuren = json.kleuren
 
     starttijd = datetime.datetime.now()
-
-    await device_manager.scannen(1)
-    await device_manager.verbind_alle()
     return json
 
 async def run_colorgame_background():
@@ -233,13 +225,10 @@ async def run_colorgame_background():
                 uitkomst=ronde["uitkomst"]
                 )
             )
-            
-        
         
     except Exception as e:
         print(f"Fout in colorgame: {e}")
         await sio.emit('game_error', {"error": str(e)})
-
     
 @app.get("/games/{game_id}/play")
 async def play_game(background_tasks: BackgroundTasks):
@@ -286,6 +275,20 @@ async def get_laatste_rondewaarden():
         aantal_telaat=aantal_telaat,
         correcte_rondewaarden=correcte_rondewaarden_data
     )
+
+# Apparaat Endpoints -----------------------------------------------------------
+@app.post("/devices/stop-scan", summary="Stop scanning for devices", tags=["Apparaten"])
+async def stop_device_scan():
+    await device_manager.stop_apparaat_scan()
+    return {"status": "stopped"}
+
+@app.get("/devices/status", summary="Get current device status", tags=["Apparaten"])
+async def get_device_status():
+    return {
+        "apparaten": device_manager.verkrijg_apparaten_status(),
+        "scan_actief": device_manager._scan_actief,
+        "totaal_verwacht": len(device_manager.vertrouwde_macs)
+    }
 
 @app.get("/")
 async def read_root():
