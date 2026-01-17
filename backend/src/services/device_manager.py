@@ -19,9 +19,8 @@ class DeviceManager:
     def __init__(self, sio=None) -> None:
         
         self._apparaten = {}
-        self._sio = sio  # Socket.IO reference for emitting events
+        self._sio = sio
         
-        # AANGEPAST: Het centrale slot voor verbindingen
         self.connect_lock = asyncio.Lock()
         
         load_dotenv()
@@ -40,10 +39,9 @@ class DeviceManager:
 
         self._laatste_detecties = {}
         
-        # Scanning state
         self._scan_actief = False
         self._scan_taak = None
-        self._apparaat_batterijen = {}  # Track battery percentages
+        self._apparaat_batterijen = {}
     
     # Eigenschappen----------------------------------------------------------------------
     @property
@@ -82,7 +80,6 @@ class DeviceManager:
         vertrouwde_macs_upper = {m.upper() for m in self._vertrouwde_macs.keys()}
         
         for poging in range(max_pogingen):
-            # Check if we already have all devices
             vertrouwde_gevonden = sum(1 for a in self._apparaten.values() if a.mac_adres.upper() in vertrouwde_macs_upper)
             if vertrouwde_gevonden >= len(self._vertrouwde_macs):
                 break
@@ -96,11 +93,9 @@ class DeviceManager:
                 if ble_apparaat.name in self._apparaten:
                     continue
                 
-                # Whitelist check
                 if self._strikte_whitelist and ble_apparaat.address.upper() not in vertrouwde_macs_upper:
                     continue
                 
-                # AANGEPAST: Geef het lock mee aan de Cone
                 apparaat = Cone(ble_apparaat.address, ble_apparaat.name, lock=self.connect_lock)
                 
                 self._voeg_apparaat_toe(apparaat)
@@ -115,11 +110,10 @@ class DeviceManager:
         for naam, apparaat in self._apparaten.items():
             if not apparaat.verbonden:
                 logger.info(f"Verbinden met {naam}...")
-                # Omdat we nu een Lock in de Cone hebben, zal hij hier automatisch wachten
                 # als er een andere Cone bezig is met verbinden.
                 await apparaat.verbind()
                 
-                # Een korte pauze blijft goed voor stabiliteit, maar de lock doet het zware werk
+                # Kleine pauze tussen verbindingen
                 await asyncio.sleep(2.0)
         
         return {naam: apparaat.verbonden for naam, apparaat in self._apparaten.items()}
@@ -240,14 +234,12 @@ class DeviceManager:
                     self._scan_actief = False
                     break
                 
-                # Emit progress
                 if self._sio:
                     await self._sio.emit('scan_status', {
                         "gevonden": vertrouwde_verbonden,
                         "totaal": totaal_verwacht
                     })
                 
-                # Scan and connect new devices
                 nieuwe_apparaten = await self.scannen(max_pogingen=1)
                 
                 for apparaat in nieuwe_apparaten:
@@ -257,7 +249,6 @@ class DeviceManager:
                         self._setup_herverbind_callback_voor_apparaat(apparaat)
                         success = await apparaat.verbind()
                         if success:
-                            # Emit direct na verbinding, batterij update volgt via callback
                             await self._emit_apparaat_status(apparaat, "online")
                         else:
                             logger.warning(f"Verbinding mislukt voor {apparaat.naam}, opnieuw proberen")

@@ -34,13 +34,11 @@ logger.setLevel(logging.DEBUG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("--- SERVER START: Starten van apparaat scan ---")
     scan_task = asyncio.create_task(device_manager.start_apparaat_scan())
     device_manager._scan_taak = scan_task
     
-    yield # App draait
+    yield # App draait hier
     
-    print("--- SERVER STOP: Stoppen van apparaat scan ---")
     await device_manager.stop_apparaat_scan()
 
 app = FastAPI(lifespan=lifespan)
