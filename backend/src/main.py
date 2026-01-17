@@ -9,6 +9,8 @@ import random
 import time
 import sys
 import os
+from contextlib import asynccontextmanager # <--- 1. Toegevoegd
+
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -30,7 +32,19 @@ from backend.src.models.models import (
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("--- SERVER START: Starten van apparaat scan ---")
+    scan_task = asyncio.create_task(device_manager.start_apparaat_scan())
+    device_manager._scan_taak = scan_task
+    
+    yield # App draait
+    
+    print("--- SERVER STOP: Stoppen van apparaat scan ---")
+    await device_manager.stop_apparaat_scan()
+
+app = FastAPI(lifespan=lifespan)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -40,7 +54,6 @@ app.add_middleware(
 )
 
 HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
-
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 sio_app = socketio.ASGIApp(sio, app)
@@ -114,7 +127,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         detected_device.clear()
         device_manager.verwijder_alle_laatste_detecties()
         
-        # Wacht voor detectie
+        # Wacht voor detectie (ORIGINELE LOGICA HERSTELD)
         await detectie_event.wait()
         eindtijd = time.time()
         reactietijd = round(eindtijd - starttijd, 2) - HARDWARE_DELAY
@@ -265,18 +278,7 @@ async def get_laatste_rondewaarden():
         correcte_rondewaarden=correcte_rondewaarden_data
     )
 
-@app.get("/")
-async def read_root():
-    return {"Hello": "World"}
-
 # Apparaat Endpoints -----------------------------------------------------------
-@app.post("/devices/start-scan", summary="Gestart met scannen", tags=["Apparaten"])
-async def start_device_scan(background_tasks: BackgroundTasks):
-    background_tasks.add_task(device_manager.start_apparaat_scan)
-    return {
-        "status": "scanning",
-    }
-
 @app.post("/devices/stop-scan", summary="Stop scanning for devices", tags=["Apparaten"])
 async def stop_device_scan():
     await device_manager.stop_apparaat_scan()
@@ -289,6 +291,10 @@ async def get_device_status():
         "scan_actief": device_manager._scan_actief,
         "totaal_verwacht": len(device_manager.vertrouwde_macs)
     }
+
+@app.get("/")
+async def read_root():
+    return {"Hello": "World"}
 
 if __name__ == "__main__":
     uvicorn.run("backend.src.main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])

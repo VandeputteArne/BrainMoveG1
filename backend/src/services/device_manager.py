@@ -120,7 +120,7 @@ class DeviceManager:
                 await apparaat.verbind()
                 
                 # Een korte pauze blijft goed voor stabiliteit, maar de lock doet het zware werk
-                await asyncio.sleep(1.0)
+                await asyncio.sleep(2.0)
         
         return {naam: apparaat.verbonden for naam, apparaat in self._apparaten.items()}
 
