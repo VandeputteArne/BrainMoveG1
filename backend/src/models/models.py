@@ -78,6 +78,22 @@ class TrainingVoorHistorie(BaseModel):
     gebruikersnaam: str
     start_tijd: str
     waarde: float
+    eenheid:str
+
+class RondeWaardenVoorDetails(BaseModel):
+    gemmidelde_waarde: float
+    beste_waarde: float
+    ranking: int
+    exactheid: float
+    lijst_voor_grafiek: list[CorrecteRondeWaarde]
+    aantal_correct: int
+    aantal_fout: int
+    aantal_telaat: int
+
+class MoeilijkheidVoorLeaderboard(BaseModel):
+    moeilijkheid_id: int
+    moeilijkheid: str
+
 
 
 
