@@ -72,7 +72,6 @@ const items = [
   text-decoration: none;
   font-size: 0.875rem;
   position: relative;
-  padding: 0.25rem 0.5rem;
 }
 
 .c-navbar__icon {
