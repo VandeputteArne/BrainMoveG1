@@ -7,7 +7,9 @@ from backend.src.models.models import (
     DetailGame,
     Moeilijkheid,
     Ronde,
-    LeaderboardItem
+    LeaderboardItem,
+    GameVoorFilter,
+    TrainingVoorHistorie
 )
 
 class DataRepository:
@@ -202,3 +204,103 @@ class DataRepository:
                 leaderboard.append(item)
         
         return leaderboard
+    
+    #historie functies
+    @staticmethod
+    def get_games_for_filter() -> List[GameVoorFilter]:
+        """Haal alle games op voor filter doeleinden"""
+        sql_query = "SELECT GameId, GameNaam FROM Games"
+        rows = Database.get_rows(sql_query)
+        
+        games = []
+        if rows:
+            for row in rows:
+                game = GameVoorFilter(
+                    game_id=row['GameId'],
+                    game_naam=row['GameNaam']
+                )
+                games.append(game)
+        
+        return games
+    
+    @staticmethod
+    def get_trainingen_with_filters(game_id: int, datum: Optional[str], gebruikersnaam: Optional[str]) -> List['TrainingVoorHistorie']:
+        """Haal trainingen op met optionele filters voor datum en gebruikersnaam"""
+        
+        # Voor Memory (game_id = 2): gebruik AantalKleuren
+        # Voor andere games: gebruik gemiddelde van Waarde
+        if game_id == 2:
+            sql_query = """
+            SELECT 
+                t.TrainingsId, 
+                t.Start, 
+                g.Gebruikersnaam,
+                t.AantalKleuren as waarde
+            FROM Trainingen t
+            JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
+            WHERE t.GameId = ?
+            """
+        else:
+            sql_query = """
+            SELECT 
+                t.TrainingsId, 
+                t.Start, 
+                g.Gebruikersnaam,
+                ROUND(AVG(rv.Waarde), 2) as waarde
+            FROM Trainingen t
+            JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
+            JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+            WHERE t.GameId = ?
+            """
+        
+        params = [game_id]
+        
+        if datum:
+            # Converteer dd-mm-yyyy of dd-mm-yy naar yyyy-mm-dd voor SQLite
+            from datetime import datetime
+            try:
+                # Probeer eerst dd-mm-yyyy formaat (4-cijferig jaar)
+                datum_obj = datetime.strptime(datum, "%d-%m-%Y")
+                datum_iso = datum_obj.strftime("%Y-%m-%d")
+            except ValueError:
+                try:
+                    # Probeer dd-mm-yy formaat (2-cijferig jaar)
+                    datum_obj = datetime.strptime(datum, "%d-%m-%y")
+                    datum_iso = datum_obj.strftime("%Y-%m-%d")
+                except ValueError:
+                    try:
+                        # Probeer yyyy-mm-dd formaat (ISO/Postman)
+                        datum_obj = datetime.strptime(datum, "%Y-%m-%d")
+                        datum_iso = datum
+                    except ValueError:
+                        # Als alles faalt, gebruik originele waarde
+                        datum_iso = datum
+            
+            sql_query += " AND DATE(t.Start) = DATE(?)"
+            params.append(datum_iso)
+        
+        if gebruikersnaam:
+            sql_query += " AND LOWER(g.Gebruikersnaam) LIKE LOWER(?)"
+            params.append(f"%{gebruikersnaam}%")
+        
+        # Voor Memory: geen GROUP BY nodig, voor andere games wel
+        if game_id == 2:
+            sql_query += " ORDER BY t.Start DESC"
+        else:
+            sql_query += " GROUP BY t.TrainingsId, t.Start, g.Gebruikersnaam ORDER BY t.Start DESC"
+        
+        rows = Database.get_rows(sql_query, tuple(params))
+        
+        trainingen = []
+        if rows:
+            from backend.src.models.models import TrainingVoorHistorie
+            for row in rows:
+                training = TrainingVoorHistorie(
+                    training_id=row['TrainingsId'],
+                    start_tijd=row['Start'],
+                    gebruikersnaam=row['Gebruikersnaam'],
+                    waarde=float(row['waarde'])
+                )
+                trainingen.append(training)
+        
+        return trainingen
