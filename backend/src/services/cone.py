@@ -1,6 +1,3 @@
-    async def send_keepalive(self) -> bool:
-        """Send a keepalive command to the device."""
-        return await self._stuur_commando(Command.KEEPALIVE)
 import asyncio
 import os
 import struct
@@ -28,6 +25,7 @@ class MessageType(IntEnum):
 class Command(IntEnum):
     START = 0x01
     STOP = 0x02
+    KEEPALIVE = 0x05
     GELUID_CORRECT = 0x10
     GELUID_INCORRECT = 0x11
 
@@ -39,7 +37,7 @@ class Cone:
     def __init__(self, mac_adres: str, naam: str, lock: asyncio.Lock = None, auto_herverbinden: bool = True):
         self.mac_adres = mac_adres
         self.naam = naam
-        self._lock = lock # Lock voor bluetooth operaties
+        self._lock = lock
         self.auto_herverbinden = auto_herverbinden
         
         self._client: BleakClient
@@ -153,6 +151,9 @@ class Cone:
         else:
             logger.error(f"{self.naam} herverbinding mislukt na {self._max_herverbind_pogingen} pogingen")
 
+    async def send_keepalive(self) -> bool:
+        return await self._stuur_commando(Command.KEEPALIVE)
+
     async def _stuur_commando(self, commando: Command, data: bytes = b'') -> bool:
         if not self._verbonden:
             return False
@@ -185,11 +186,11 @@ class Cone:
         await self._stuur_commando(Command.GELUID_INCORRECT)
     
     def _notificatie_handler(self, sender, data: bytearray) -> None:
-        if len(data) < 8:
+        if len(data) < 4:
             logger.debug(f"{self.naam} ontvangen te kort bericht ({len(data)} bytes)")
             return
         
-        bericht_type, apparaat_id, veiligheid_byte, gereserveerd, timestamp = struct.unpack('<BBBBI', data[:8])
+        bericht_type, apparaat_id, veiligheid_byte, gereserveerd = struct.unpack('<BBBB', data[:4])
         
         if veiligheid_byte != VEILIGHEIDS_BYTE:
             logger.warning(f"{self.naam} ongeldig veiligheids_byte: 0x{veiligheid_byte:02X}")
@@ -198,45 +199,40 @@ class Cone:
         if not self._geauthenticeerd:
             self._geauthenticeerd = True
         
-        nu = datetime.now()
-        
         if bericht_type == MessageType.DETECTIE:
-            self._verwerk_detectie_bericht(data, apparaat_id, timestamp, nu)
+            self._verwerk_detectie_bericht(data, apparaat_id)
         elif bericht_type == MessageType.BATTERIJ:
-            self._verwerk_batterij_bericht(data, apparaat_id, timestamp, nu)
+            self._verwerk_batterij_bericht(data, apparaat_id)
     
-    def _verwerk_detectie_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
-        if len(data) < 10:
+    def _verwerk_detectie_bericht(self, data: bytes, apparaat_id: int) -> None:
+        if len(data) < 6:
             return
         
-        detectie_waar = struct.unpack('<H', data[8:10])[0]
+        detectie_waar = struct.unpack('<H', data[4:6])[0]
         
         gebeurtenis = {
             "apparaat_naam": self.naam,
             "apparaat_id": apparaat_id,
-            "detectie_bool": detectie_waar,
-            "timestamp_ms": timestamp,
-            "ontvangen_op": nu
+            "detectie_bool": detectie_waar
         }
         self.laatste_detectie = gebeurtenis
         
         if self.bij_detectie:
             self.bij_detectie(gebeurtenis)
 
-    def _verwerk_batterij_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
-        if len(data) < 9:
+    def _verwerk_batterij_bericht(self, data: bytes, apparaat_id: int) -> None:
+        if len(data) < 5:
             return
         
-        percentage = data[8]
+        percentage = data[4]
         
+        gebeurtenis = {
+            "apparaat_naam": self.naam,
+            "apparaat_id": apparaat_id,
+            "percentage": percentage
+        }
+                
         if self.bij_batterij:
-            gebeurtenis = {
-                "apparaat_naam": self.naam,
-                "apparaat_id": apparaat_id,
-                "percentage": percentage,
-                "timestamp_ms": timestamp,
-                "ontvangen_op": nu
-            }
             self.bij_batterij(gebeurtenis)
 
     def __str__(self) -> str:

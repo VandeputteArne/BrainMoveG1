@@ -10,47 +10,11 @@ from backend.src.services.cone import (
     APPARAAT_PREFIX
 )
 
-# Logging------------------------------------------------------------------------------
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# DeviceManager class------------------------------------------------
 class DeviceManager:
-        async def keepalive_loop(self, interval: float = 600.0, battery_timeout: float = 5.0):
-            """
-            Periodically send keepalive to each connected device (not polling), one by one, waiting for battery response.
-            interval: seconds between keepalive rounds (default 10 minutes)
-            battery_timeout: seconds to wait for battery response per device
-            """
-            while True:
-                for apparaat in self._apparaten.values():
-                    if not apparaat.verbonden or apparaat.is_aan_het_pollen:
-                        continue
-
-                    # Clear previous battery event if needed
-                    batterij_event = asyncio.Event()
-                    batterij_response = {}
-
-                    def _batterij_callback(gebeurtenis):
-                        batterij_response.update(gebeurtenis)
-                        batterij_event.set()
-
-                    # Temporarily set callback
-                    orig_callback = apparaat.bij_batterij
-                    apparaat.bij_batterij = _batterij_callback
-
-                    await apparaat.send_keepalive()
-
-                    try:
-                        await asyncio.wait_for(batterij_event.wait(), timeout=battery_timeout)
-                    except asyncio.TimeoutError:
-                        logger.warning(f"Geen batterij response van {apparaat.naam} na keepalive")
-                    finally:
-                        apparaat.bij_batterij = orig_callback
-
-                await asyncio.sleep(interval)
     def __init__(self, sio=None) -> None:
-        
         self._apparaten = {}
         self._sio = sio
         
@@ -61,6 +25,7 @@ class DeviceManager:
         self.scan_timeout = float(os.getenv("SCAN_TIMEOUT", "5.0"))
         self.verbindings_timeout = float(os.getenv("VERBINDING_TIMEOUT", "10.0"))
         self._strikte_whitelist = os.getenv("STRIKTE_WHITELIST", "").lower() == "true"
+        
         self._vertrouwde_macs = {}
         for kleur in ("BLAUW", "ROOD", "GEEL", "GROEN"):
             mac = os.getenv(f"APPARAAT_BM_{kleur}")
@@ -69,14 +34,14 @@ class DeviceManager:
         
         self._detectie_callback = None
         self._batterij_callback = None
-
         self._laatste_detecties = {}
-        
-        self._scan_actief = False
-        self._scan_taak = None
         self._apparaat_batterijen = {}
 
-    # Eigenschappen----------------------------------------------------------------------
+        self._scan_actief = False
+        self._scan_taak = None
+        self._keepalive_taak = None
+
+    # Eigenschappen
     @property
     def apparaten(self):
         return self._apparaten.copy()
@@ -89,7 +54,50 @@ class DeviceManager:
     def strikte_whitelist(self) -> bool:
         return self._strikte_whitelist
 
-    # Methoden--------------------------------------------------------------------------    
+    async def keepalive_loop(self, interval: float = 600.0, battery_timeout: float = 5.0):
+        logger.info(f"Keepalive loop gestart (interval: {interval}s)")
+        try:
+            while True:
+                for apparaat in list(self._apparaten.values()):
+                    if not apparaat.verbonden or apparaat.is_aan_het_pollen:
+                        continue
+
+                    batterij_event = asyncio.Event()
+                    
+                    orig_callback = apparaat.bij_batterij
+
+                    def _tijdelijke_batterij_wrapper(gebeurtenis):
+                        batterij_event.set()
+                        
+                        percentage = gebeurtenis.get("percentage", 0)
+                        self._apparaat_batterijen[apparaat.naam] = percentage
+                        
+                        if orig_callback:
+                            orig_callback(gebeurtenis)
+
+                    apparaat.bij_batterij = _tijdelijke_batterij_wrapper
+
+                    try:
+                        logger.debug(f"Verstuur keepalive naar {apparaat.naam}")
+                        if await apparaat.send_keepalive():
+                            try:
+                                await asyncio.wait_for(batterij_event.wait(), timeout=battery_timeout)
+                                logger.debug(f"Keepalive bevestigd voor {apparaat.naam}")
+                            except asyncio.TimeoutError:
+                                logger.warning(f"Geen batterij response van {apparaat.naam} na keepalive (timeout)")
+                        else:
+                            logger.warning(f"Kon keepalive commando niet versturen naar {apparaat.naam}")
+                            
+                    except Exception as e:
+                        logger.error(f"Fout tijdens keepalive voor {apparaat.naam}: {e}")
+                    finally:
+                        apparaat.bij_batterij = orig_callback
+
+                await asyncio.sleep(interval)
+        except asyncio.CancelledError:
+            logger.info("Keepalive loop gestopt")
+
+    # Methoden
     def _bind_detectie_aan_apparaat(self, apparaat: Cone) -> None:
         def _wrapper(gebeurtenis: dict):
             self._laatste_detecties[apparaat.naam] = gebeurtenis
@@ -106,7 +114,6 @@ class DeviceManager:
         
         self._apparaten[apparaat.naam] = apparaat
         logger.info(f"Apparaat toegevoegd: {apparaat.naam}")
-
 
     async def scannen(self, max_pogingen: int = 10) -> list:
         nieuwe_apparaten = []
@@ -143,15 +150,14 @@ class DeviceManager:
         for naam, apparaat in self._apparaten.items():
             if not apparaat.verbonden:
                 logger.info(f"Verbinden met {naam}...")
-                # als er een andere Cone bezig is met verbinden.
                 await apparaat.verbind()
-                
-                # Kleine pauze tussen verbindingen
                 await asyncio.sleep(2.0)
         
         return {naam: apparaat.verbonden for naam, apparaat in self._apparaten.items()}
 
     async def verbreek_alle(self) -> None:
+        await self.stop_apparaat_scan()
+        
         for apparaat in self._apparaten.values():
             await apparaat.verbreek()
 
@@ -177,13 +183,6 @@ class DeviceManager:
     def verwijder_alle_laatste_detecties(self) -> None:
         self._laatste_detecties.clear()
 
-    def zet_batterij_callback(self, callback: BatterijCallback) -> None:
-        self._batterij_callback = callback
-
-        for apparaat in self._apparaten.values():
-            apparaat.bij_batterij = callback
-
-    # Device Scanning & Socket Integration-------------------------------------------
     def _neem_kleur_van_naam(self, naam: str) -> str:
         naam_lower = naam.lower()
         for kleur in ["blauw", "rood", "geel", "groen"]:
@@ -210,8 +209,11 @@ class DeviceManager:
         def _batterij_handler(gebeurtenis: dict):
             percentage = gebeurtenis.get("percentage", 0)
             self._apparaat_batterijen[apparaat.naam] = percentage
+            
+            # Emit status naar frontend
             asyncio.create_task(self._emit_apparaat_status(apparaat, "online", percentage))
             
+            # Roep externe callback aan indien ingesteld
             if self._batterij_callback:
                 self._batterij_callback(gebeurtenis)
         
@@ -234,21 +236,24 @@ class DeviceManager:
             return
         
         self._scan_actief = True
+        
+        # Start de keepalive taak als die nog niet draait
+        if self._keepalive_taak is None or self._keepalive_taak.done():
+            self._keepalive_taak = asyncio.create_task(self.keepalive_loop())
+
         totaal_verwacht = len(self._vertrouwde_macs)
         vertrouwde_macs_upper = {m.upper() for m in self._vertrouwde_macs.keys()}
         
         try:
             while self._scan_actief:
-                # Tel white listed aantal
                 vertrouwde_verbonden = sum(
                     1 for a in self._apparaten.values() 
                     if a.verbonden and a.mac_adres.upper() in vertrouwde_macs_upper
                 )
                 
-                # Verbonden of nie
                 if vertrouwde_verbonden >= totaal_verwacht:
                     logger.info(f"Alle {totaal_verwacht} apparaten verbonden")
-                    self._scan_actief = False
+                    self._scan_actief = False 
                     break
                 
                 nieuwe_apparaten = await self.scannen(max_pogingen=1)
@@ -258,6 +263,7 @@ class DeviceManager:
                         self._setup_batterij_callback_voor_apparaat(apparaat)
                         self._setup_verbreek_callback_voor_apparaat(apparaat)
                         self._setup_herverbind_callback_voor_apparaat(apparaat)
+                        
                         success = await apparaat.verbind()
                         if success:
                             await self._emit_apparaat_status(apparaat, "online")
@@ -285,6 +291,15 @@ class DeviceManager:
                 except asyncio.CancelledError:
                     pass
                 self._scan_taak = None
+        
+        if self._keepalive_taak:
+            logger.info("Stoppen keepalive taak")
+            self._keepalive_taak.cancel()
+            try:
+                await self._keepalive_taak
+            except asyncio.CancelledError:
+                pass
+            self._keepalive_taak = None
 
     def verkrijg_apparaten_status(self) -> list:
         status_lijst = []
