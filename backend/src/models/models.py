@@ -36,3 +36,34 @@ class Resultaat(BaseModel):
     aantal_fout: int
     aantal_telaat: int
     correcte_rondewaarden: list[CorrecteRondeWaarde]
+
+class GameVoorOverzicht(BaseModel):
+    game_naam: str
+    tag: str
+    highscore: float
+    eenheid: str
+
+class Moeilijkheid(BaseModel):
+    moeilijkheid_id: int
+    moeilijkheid: str
+    snelheid: int   
+
+class Ronde(BaseModel):
+    ronde_id: int
+    nummer: int
+
+class LeaderboardItem(BaseModel):
+    plaats: int
+    gebruikersnaam: str
+    waarde: float
+
+class DetailGame(BaseModel):
+    list_moeilijkheden: list[Moeilijkheid]
+    aantal_rondes: list[Ronde]
+    game_naam: str
+    game_beschrijving: str
+    leaderboard: list[LeaderboardItem]
+
+
+    
+
