@@ -10,7 +10,7 @@ const uint8_t APPARAAT_ID = 1;
 const char* APPARAAT_NAMEN[] = {"BM-Blauw", "BM-Rood", "BM-Geel", "BM-Groen"};
 const char* APPARAAT_NAAM = APPARAAT_NAMEN[APPARAAT_ID];
 
-const uint8_t PIN_KNOP = GPIO_NUM_3;  // RTC geschikt
+const uint8_t PIN_KNOP = GPIO_NUM_3;
 const uint8_t PIN_BATTERIJ_ADC_1 = GPIO_NUM_2;
 const uint8_t PIN_BATTERIJ_ADC_2 = GPIO_NUM_4;
 const uint8_t PIN_ZOEMER = GPIO_NUM_5;
@@ -18,7 +18,7 @@ const uint8_t PIN_I2C_SDA = GPIO_NUM_6;
 const uint8_t PIN_I2C_SCL = GPIO_NUM_7;
 
 const uint8_t PIN_USB_VBUS = GPIO_NUM_21;
-const uint16_t USB_VBUS_DREMPEL = 2000;    // Spanningsdeler 10k/10k nodig
+const uint16_t USB_VBUS_DREMPEL = 2000;
 
 const uint8_t PIN_LED_ROOD = GPIO_NUM_8;
 const uint8_t PIN_LED_GROEN = GPIO_NUM_9;
@@ -38,7 +38,7 @@ const uint16_t LED_OPLADEN_KNIPPEREN_MS = 500;
 
 const unsigned long KNOP_DEBOUNCE_MS = 150;
 const unsigned long ADVERTEREN_TIMEOUT_MS = (5UL * 60UL * 1000UL);
-const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (30UL * 60UL * 1000UL);  // 30 min
+const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (30UL * 60UL * 1000UL);
 
 const uint16_t TOF_POLL_INTERVAL_MS = 33;
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
@@ -68,7 +68,6 @@ const uint8_t CMD_KEEPALIVE = 0x05;
 const uint8_t CMD_GELUID_CORRECT = 0x10;
 const uint8_t CMD_GELUID_INCORRECT = 0x11;
 
-// Status Types Hex
 const uint8_t STATUS_VERBONDEN = 0x01;
 const uint8_t STATUS_HERVERBONDEN = 0x02;
 const uint8_t STATUS_SLAAPT = 0x03;
@@ -107,7 +106,7 @@ volatile bool bleVerbonden = false;
 volatile bool nieuwCommandoOntvangen = false;
 
 RpiCommand wachtendCommando = RpiCommand::GEEN;
-uint8_t ontvangencorrecteKegel = 0xFF; // 0xFF = geen waarde
+uint8_t ontvangencorrecteKegel = 0xFF;
 
 VL53L0X tofSensor;
 bool tofGeinitialiseerd = false;
@@ -184,7 +183,6 @@ class ServerCallbacks : public BLEServerCallbacks {
     }
 };
 
-// BLE Inkomende Commando's
 class CommandCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* characteristic) override {
         String waarde = characteristic->getValue();
@@ -251,21 +249,17 @@ void loop() {
             break;
     }
     
-    // Update batterij LED
     if (millis() - laatsteLedUpdateTijd >= LED_UPDATE_INTERVAL) {
         laatsteLedUpdateTijd = millis();
         laatsteBatterijPercentage = leesBatterijPercentage();
     }
 
-    // Update LED altijd voor opladen en knipper
     updateBatterijLed();
     verwerkKnopDruk();
     
-    // CPU tijd geven, anders miserie met BLE
     yield();
 }
 
-// Transitie en timing
 void veranderNaarStatus(SystemState nieuweStatus) {
     if (huidigeStatus == nieuweStatus) return;
     
@@ -374,9 +368,6 @@ void verwerkStatusPollen() {
         if (geldgeMeting && afstand > TOF_DETECTIE_MIN_MM && afstand < TOF_DETECTIE_MAX_MM) {
             
             if (!objectInVeld && (millis() - laatsteDetectieTijd >= TOF_DETECTIE_AFKOELING_MS)) {
-                                
-                // Speel geluid op basis of dit de correcte kegel is
-                // ontvangencorrecteKegel is 1 als dit apparaat correct is, 0 als fout
                 if (ontvangencorrecteKegel == 1) {
                     speelCorrectGeluid();
                 } else {
@@ -389,7 +380,6 @@ void verwerkStatusPollen() {
                 laatsteDetectieTijd = millis();
                 objectInVeld = true;
                 
-                // Stop automatisch met pollen na detectie (one-shot)
                 veranderNaarStatus(SystemState::CONNECTED);
                 return;
             }
@@ -405,12 +395,11 @@ void verwerkStatusNaarSlaap() {
     
     if (bleVerbonden) {
         stuurStatusBericht(STATUS_SLAAPT);
-        delay(100); // Vertraging voor bericht
+        delay(100);
     }
     
     stopAdverteren();
     if (bleVerbonden) {
-        // Verbreek verbinding met BLE client voor slapen
         bleServer->disconnect(bleServer->getConnId());
     }
     
@@ -422,7 +411,6 @@ void verwerkStatusNaarSlaap() {
         tofSensor.stopContinuous();
     }
     
-    // Opruim vertraging
     delay(100);
     
     gaaDiepeSlaap();
@@ -474,19 +462,14 @@ void stopAdverteren() {
 void stuurStatusBericht(uint8_t statusGebeurtenis) {
     if (!bleVerbonden) return;
     
-    // We hebben nu minder bytes nodig (4 header + 1 data = 5 minimum, we maken buffer 8 voor veiligheid)
     uint8_t bericht[8] = {0}; 
     
     bericht[0] = BERICHT_STATUS;
     bericht[1] = APPARAAT_ID;
     bericht[2] = VEILIGHEIDS_BYTE;
-    bericht[3] = 0; // Gereserveerd
-
-    // Timestamp (bytes 4-7) is weggehaald.
-    // De status komt nu direct na de header op plek 4.
+    bericht[3] = 0;
     bericht[4] = statusGebeurtenis;
     
-    // We sturen nu slechts 5 bytes (of rond af naar 8 als je vaste lengte wilt houden, hier 8 voor veiligheid)
     charData->setValue(bericht, 8);
     charData->notify();
 }
@@ -662,23 +645,19 @@ void toonBatterijNiveau(uint8_t percentage, bool aanHetOpladen) {
     uint8_t rood = 0, groen = 0, blauw = 0;
     
     if (percentage < BATTERIJ_NIVEAU_LAAG) {
-        // LAAG: Rood
         rood = 255;
         groen = 0;
         blauw = 0;
     } else if (percentage < BATTERIJ_NIVEAU_MIDDEL) {
-        // MIDDEL: Geel/Oranje, als niet duidelijk verander naar blauw
         rood = 255;
         groen = 128;
         blauw = 0;
     } else {
-        // HOOG: Groen
         rood = 0;
         groen = 255;
         blauw = 0;
     }
     
-    // Als aan het opladen, knipperen
     if (aanHetOpladen) {
         if (millis() - laatsteOplaadKnipperTijd >= LED_OPLADEN_KNIPPEREN_MS) {
             laatsteOplaadKnipperTijd = millis();
@@ -691,7 +670,6 @@ void toonBatterijNiveau(uint8_t percentage, bool aanHetOpladen) {
             rgbLedUit();
         }
     } else {
-        // Niet aan het opladen: vast
         zetRgbKleur(rood, groen, blauw);
     }
 }
