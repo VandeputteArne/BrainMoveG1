@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgressBlock.vue';
 import ButtonsNext from '../../components/buttons/ButtonsNext.vue';
+import { TriangleAlert } from 'lucide-vue-next';
 
 import { useDeviceStatus } from '../../composables/useDeviceStatus.js';
 
@@ -36,7 +37,7 @@ onMounted(() => {
       <CardPotjes kleur="geel" :status="isDeviceConnected('geel')" />
     </div>
 
-    <p v-if="!allPotsConnected" class="c-setup__warning">Zet alle potjes aan om verder te gaan</p>
+    <p v-if="!allPotsConnected" class="c-setup__warning"><TriangleAlert /> Niet alle potjes zijn verbonden</p>
 
     <div class="c-setup__progress">
       <div class="c-setup__progess-blocks">
