@@ -101,6 +101,7 @@ const leaderboardData = ref([
     left: 0;
     right: 0;
     bottom: 0;
+    z-index: 1;
   }
 
   .c-leaderboard__player--first {
@@ -129,6 +130,19 @@ const leaderboardData = ref([
 
     @media (width < 576px) {
       right: 14%;
+    }
+  }
+
+  .c-leaderboard__body {
+    position: relative;
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: -2.5rem;
+    z-index: 2;
+
+    @media (width < 576px) {
+      max-width: 100%;
     }
   }
 }
