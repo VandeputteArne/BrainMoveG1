@@ -2,6 +2,10 @@
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgressBlock.vue';
 import ButtonsNext from '../../components/buttons/ButtonsNext.vue';
+
+import { useDeviceStatus } from '../../composables/useDeviceStatus.js';
+
+const { allDevicesConnected, connectedDevices, disconnectedDevices } = useDeviceStatus();
 </script>
 
 <template>
