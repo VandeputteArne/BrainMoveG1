@@ -121,7 +121,7 @@ function exportCsv() {
 
     <div class="c-overzicht__buttons">
       <ButtonsPrimary url="/games" title="Speel opnieuw"></ButtonsPrimary>
-      <router-link to="/games" class="c-overzicht__back">Terug naar home</router-link>
+      <router-link to="/games" class="c-overzicht__back">Terug naar games</router-link>
     </div>
   </div>
 </template>

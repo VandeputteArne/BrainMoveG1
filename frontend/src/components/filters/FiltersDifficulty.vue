@@ -5,6 +5,7 @@ import { computed } from 'vue';
 const props = defineProps({
   id: { type: String, required: true },
   snelheid: { type: Number, required: false },
+  stars: { type: Number, default: 1 },
   modelValue: { type: String, default: null },
   name: { type: String, default: 'difficulty' },
 });
@@ -18,8 +19,7 @@ function select() {
 }
 
 const starCount = computed(() => {
-  const idNum = parseInt(props.id, 10);
-  return Number.isFinite(idNum) && idNum > 0 ? idNum : 1;
+  return props.stars > 0 ? props.stars : 1;
 });
 </script>
 

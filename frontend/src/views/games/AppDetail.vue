@@ -8,9 +8,12 @@ import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue'
 import { Play } from 'lucide-vue-next';
 
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 
 const router = useRouter();
+const route = useRoute();
+
+const gameId = computed(() => route.params.id);
 
 const username = ref('');
 const usernameError = ref(false);
@@ -24,36 +27,86 @@ watch(username, (v) => {
   if ((v || '').toString().trim().length > 0) usernameError.value = false;
 });
 
-const difficulties = ref([
-  { id: 1, snelheid: 5 },
-  { id: 2, snelheid: 10 },
-  { id: 3, snelheid: 15 },
-]);
+const difficulties = ref([]);
+const selectedDifficulty = ref('Gemiddeld');
 
-const selectedDifficulty = ref('2');
+const roundsOptions = ref([]);
+const selectedRounds = ref('');
 
-const roundsOptions = ref([
-  { id: 1, rondes: 3 },
-  { id: 2, rondes: 5 },
-  { id: 3, rondes: 10 },
-]);
+const smallLeaderboardData = ref([]);
 
-const smallLeaderboardData = ref([
-  { name: 'Jonathan', time: 45 },
-  { name: 'Anna', time: 50 },
-  { name: 'Sophie', time: 60 },
-]);
-
-const selectedRounds = ref('1');
 const selectedColor = ref([]);
 const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
 const excludedColor = ref('');
 
+const gameName = ref('');
+const gameDescription = ref('');
+const gameImage = ref('');
+
 onMounted(async () => {
+  // Check sessionStorage first for game settings
+  const cachedDetails = sessionStorage.getItem(`gameDetails_${gameId.value}`);
+
+  if (cachedDetails) {
+    const data = JSON.parse(cachedDetails);
+    loadGameData(data);
+  } else {
+    // Fetch game details from API if not cached
+    try {
+      const res = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/details`);
+      const data = await res.json();
+
+      // Store in sessionStorage (without leaderboard)
+      const { leaderboard, ...gameSettings } = data;
+      sessionStorage.setItem(`gameDetails_${gameId.value}`, JSON.stringify(gameSettings));
+
+      loadGameData(data);
+    } catch (error) {
+      console.error('Failed to fetch game details:', error);
+    }
+  }
+
+  // Always fetch fresh leaderboard
+  try {
+    const leaderboardRes = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/leaderboard/3`);
+    const leaderboardData = await leaderboardRes.json();
+
+    smallLeaderboardData.value = leaderboardData.map((entry) => ({
+      name: entry.gebruikersnaam,
+      time: entry.waarde,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch leaderboard:', error);
+  }
+});
+
+function loadGameData(data) {
+  // Set game info
+  gameName.value = data.game_naam || '';
+  gameDescription.value = data.game_beschrijving || '';
+  gameImage.value = `/images/cards/${data.game_naam?.toLowerCase().replace(/\s+/g, '')}.png` || '';
+
+  // Set difficulties
+  difficulties.value = data.list_moeilijkheden.map((item, index) => ({
+    id: String(item.moeilijkheid_id),
+    moeilijkheid: item.moeilijkheid,
+    snelheid: item.snelheid,
+    stars: index + 1,
+  }));
+  selectedDifficulty.value = difficulties.value.length >= 2 ? difficulties.value[1].id : difficulties.value.length > 0 ? difficulties.value[0].id : '';
+
+  // Set rounds
+  roundsOptions.value = data.aantal_rondes.map((item) => ({
+    id: String(item.ronde_id),
+    rondes: item.nummer,
+  }));
+  selectedRounds.value = roundsOptions.value.length > 0 ? roundsOptions.value[0].id : '';
+
+  // Set default selected colors
   if (Array.isArray(backendColors.value) && backendColors.value.length && selectedColor.value.length === 0) {
     selectedColor.value = backendColors.value.filter((id) => id !== excludedColor.value);
   }
-});
+}
 
 // clear kleuren error when user selects enough colors
 watch(selectedColor, (v) => {
@@ -61,16 +114,23 @@ watch(selectedColor, (v) => {
 });
 
 function buildPayload() {
-  const diff = difficulties.value.find((d) => String(d.id) === String(selectedDifficulty.value)) || { id: selectedDifficulty.value };
-  const rnd = roundsOptions.value.find((r) => String(r.id) === String(selectedRounds.value)) || { id: selectedRounds.value };
+  const diff = difficulties.value.find((d) => String(d.id) === String(selectedDifficulty.value));
+  const rnd = roundsOptions.value.find((r) => String(r.id) === String(selectedRounds.value));
+
+  const diffId = diff?.id ? parseInt(diff.id) : null;
+  const rndId = rnd?.id ? parseInt(rnd.id) : null;
+
+  if (!diffId || !rndId) {
+    console.error('Missing difficulty or round selection', { diffId, rndId, selectedDifficulty: selectedDifficulty.value, selectedRounds: selectedRounds.value });
+  }
 
   return {
-    game_id: 1,
+    game_id: parseInt(gameId.value),
     gebruikersnaam: username.value || null,
-    moeilijkheids_id: diff.id,
-    snelheid: diff.snelheid ?? null,
-    ronde_id: rnd.id,
-    rondes: rnd.rondes ?? null,
+    moeilijkheids_id: diffId,
+    snelheid: diff?.snelheid ?? null,
+    ronde_id: rndId,
+    rondes: rnd?.rondes ?? null,
     kleuren: selectedColor.value.map(String),
   };
 }
@@ -101,34 +161,28 @@ async function startGame() {
   }
 
   try {
-    const res = await fetch('http://10.42.0.1:8000/games/1/instellingen', {
+    const res = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/instellingen`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
     if (res.ok) {
-      const data = await res.json();
-      const gameId = data?.id || data?.gameId;
-      if (gameId) {
-        router.push(`/game/${gameId}`);
-        return;
-      }
-      router.push(`/games/${gameId}/play`);
+      router.push(`/games/${gameId.value}/play`);
       return;
     }
   } catch (e) {
     // netwerk/backend niet beschikbaar -> fallback
   }
 
-  router.push('/games/1/play');
+  router.push(`/games/${gameId.value}/play`);
 }
 </script>
 
 <template>
   <div class="c-game-detail">
     <div>
-      <InputGebruikersnaam ref="usernameInput" v-model="username" />
+      <InputGebruikersnaam ref="usernameInput" v-model="username" bold />
       <p v-if="usernameError" class="error">Gebruikersnaam is verplicht</p>
     </div>
 
@@ -137,7 +191,7 @@ async function startGame() {
       <div class="c-game-detail__dif">
         <p>Moeilijkheidsgraad</p>
         <div class="c-game-detail__row">
-          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :snelheid="opt.snelheid" v-model="selectedDifficulty" name="difficulty" />
+          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :snelheid="opt.snelheid" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
         </div>
       </div>
 
@@ -162,15 +216,15 @@ async function startGame() {
       <h3>Start het spel</h3>
     </button>
 
-    <img class="c-game-detail__img" src="/images/cards/color-sprint.png" alt="Game illustration" />
+    <img class="c-game-detail__img" :src="gameImage" :alt="`${gameName} illustration`" />
     <div class="c-game-detail__info">
-      <h1>Color Sprint</h1>
-      <p>Blijf scherp! Zodra een kleur op het scherm verschijnt, moet je onmiddellijk in actie komen en naar de bijpassende kleur bewegen. Elke seconde telt. Verbeter je reactietijd, versla je eigen records en word steeds sneller.</p>
+      <h1>{{ gameName }}</h1>
+      <p>{{ gameDescription }}</p>
     </div>
 
     <div class="c-game-detail__leader">
       <h2>Leaderboard</h2>
-      <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" />
+      <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" />
     </div>
   </div>
 </template>

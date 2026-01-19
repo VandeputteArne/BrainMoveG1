@@ -2,11 +2,32 @@
 import { ref, onMounted } from 'vue';
 import GameCard from '../../components/cards/CardsGame.vue';
 
-const games = ref([{ id: '1', title: 'Color Sprint', tag: 'Reactiesnelheid', bestTime: 0.5, unit: 's', image: 'images/cards/color-sprint.png' }]);
+const games = ref([]);
 
 onMounted(async () => {
-  // als je data vanaf een API wilt laden, doe dat hier en zet games.value = fetchedData
-  // const res = await fetch('/api/games'); games.value = await res.json();
+  const cachedGames = sessionStorage.getItem('gamesData');
+  if (cachedGames) {
+    games.value = JSON.parse(cachedGames);
+    return;
+  }
+
+  try {
+    const res = await fetch('http://10.42.0.1:8000/games/overview');
+    const data = await res.json();
+
+    games.value = data.map((game, index) => ({
+      id: String(index + 1),
+      title: game.game_naam,
+      tag: game.tag,
+      bestTime: game.highscore,
+      unit: game.eenheid,
+      image: `images/cards/${game.game_naam.toLowerCase().replace(/\s+/g, '')}.png`,
+    }));
+
+    sessionStorage.setItem('gamesData', JSON.stringify(games.value));
+  } catch (error) {
+    console.error('Failed to fetch games:', error);
+  }
 });
 </script>
 
