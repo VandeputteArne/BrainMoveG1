@@ -22,6 +22,8 @@ if __name__ == "__main__":
 from backend.src.services.device_manager import DeviceManager
 from backend.src.repositories.data_repository import DataRepository
 from backend.src.models.models import (
+    FiltersVoorHistorie,
+    GameVoorFilter,
     Instellingen,
     LeaderboardItem,
     RondeWaarde,
@@ -29,7 +31,8 @@ from backend.src.models.models import (
     Training,
     CorrecteRondeWaarde,
     GameVoorOverzicht,
-    DetailGame
+    DetailGame,
+    TrainingVoorHistorie
 )
 
 logger = logging.getLogger(__name__)
@@ -164,12 +167,18 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             continue
 
         # Vergelijk kleuren
-        if apparaatkleur.strip().lower() == gekozen_kleur.strip().lower():
+        if(reactietijd > max_tijd):
+            print("Te laat gereageerd!")
+            reactietijd = max_tijd
+            status = "te laat"
+            aantal_telaat += 1
+        elif apparaatkleur.strip().lower() == gekozen_kleur.strip().lower():
             print("Correcte kleur gedetecteerd!")
             status = "correct"
             aantal_correct += 1
         else:
             print("Foute kleur gedetecteerd!")
+            reactietijd = reactietijd + max_tijd  # Straf voor fout
             status = "fout"
             aantal_fout += 1
 
@@ -319,7 +328,27 @@ async def get_game_details(game_id: int):
     return details
 
 
-#leaderboard endpoint
+#historie endpoint ----------------------------------------------
+@app.get("/games/filters", response_model=list[GameVoorFilter], summary="Haal de lijst van spellen op voor filterdoeleinden", tags=["Spelletjes"])
+async def get_games_for_filter():
+    games = DataRepository.get_games_for_filter()
+    return games
+
+@app.get("/trainingen/historie/{game_id}", response_model=list[TrainingVoorHistorie], summary="Haal de trainingshistorie op voor een gebruiker", tags=["Spelletjes"])
+async def get_training_history(game_id: int, gebruikersnaam: str | None = None, datum: str | None = None):
+    # Converteer datum van dd-mm-yyyy naar yyyy-mm-dd
+    if datum:
+        try:
+            datum_parts = datum.split('-')
+            if len(datum_parts) == 3:
+                datum = f"{datum_parts[2]}-{datum_parts[1]}-{datum_parts[0]}"
+        except Exception:
+            pass  # Gebruik originele datum als conversie mislukt
+    
+    trainingen = DataRepository.get_trainingen_with_filters(game_id, datum, gebruikersnaam)
+    return trainingen
+
+#leaderboard endpoint --------------------------------
 @app.get("/games/{game_id}/leaderboard/{max}", response_model=list[LeaderboardItem], summary="Haal de leaderboard op voor een specifiek spel", tags=["Spelletjes"])
 async def get_leaderboard(game_id: int, max: int):
     leaderboard = DataRepository.get_leaderboard_for_game(game_id, max)

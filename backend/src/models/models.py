@@ -64,6 +64,22 @@ class DetailGame(BaseModel):
     game_beschrijving: str
     leaderboard: list[LeaderboardItem]
 
+class GameVoorFilter(BaseModel):
+    game_id: int
+    game_naam: str
+
+class FiltersVoorHistorie(BaseModel):
+    game_id: int
+    datum: str | None = None
+    gebruikersnaam: str | None = None
+
+class TrainingVoorHistorie(BaseModel):
+    training_id: int
+    gebruikersnaam: str
+    start_tijd: str
+    waarde: float
+
+
 
     
 
