@@ -42,7 +42,7 @@ class DeviceManager:
         self._scan_actief = False
         self._scan_taak = None
         self._apparaat_batterijen = {}
-    
+
     # Eigenschappen----------------------------------------------------------------------
     @property
     def apparaten(self):
@@ -164,15 +164,11 @@ class DeviceManager:
         
         kleur = self._neem_kleur_van_naam(apparaat.naam)
         data = {
-            "naam": apparaat.naam,
             "kleur": kleur,
-            "mac": apparaat.mac_adres,
-            "status": status
+            "status": status,
+            "batterij": batterij
         }
-        
-        if batterij is not None:
-            data["batterij"] = batterij
-        
+
         event_naam = "device_connected" if status == "online" else "device_disconnected"
         await self._sio.emit(event_naam, data)
         logger.info(f"Socket emit: {event_naam} - {apparaat.naam}")
@@ -219,26 +215,8 @@ class DeviceManager:
                 # Verbonden of nie
                 if vertrouwde_verbonden >= totaal_verwacht:
                     logger.info(f"Alle {totaal_verwacht} apparaten verbonden")
-                    if self._sio:
-                        await self._sio.emit('all_devices_connected', {
-                            "aantal": totaal_verwacht,
-                            "apparaten": [
-                                {
-                                    "naam": a.naam,
-                                    "kleur": self._neem_kleur_van_naam(a.naam),
-                                    "batterij": self._apparaat_batterijen.get(a.naam, 0)
-                                }
-                                for a in self._apparaten.values() if a.verbonden
-                            ]
-                        })
                     self._scan_actief = False
                     break
-                
-                if self._sio:
-                    await self._sio.emit('scan_status', {
-                        "gevonden": vertrouwde_verbonden,
-                        "totaal": totaal_verwacht
-                    })
                 
                 nieuwe_apparaten = await self.scannen(max_pogingen=1)
                 
@@ -283,9 +261,7 @@ class DeviceManager:
             is_online = apparaat and apparaat.verbonden
             
             status_lijst.append({
-                "naam": naam,
                 "kleur": self._neem_kleur_van_naam(naam),
-                "mac": mac,
                 "status": "online" if is_online else "offline",
                 "batterij": self._apparaat_batterijen.get(naam) if is_online else None
             })
