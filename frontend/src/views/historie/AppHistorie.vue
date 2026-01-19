@@ -1,109 +1,150 @@
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted, watch } from 'vue';
 import FilterGame from '../../components/filters/FilterGame.vue';
 import InputGebruikersnaam from '../../components/inputs/InputGebruikersnaam.vue';
 import FilterDatum from '../../components/filters/FilterDatum.vue';
 import CardHistorie from '../../components/cards/CardHistorie.vue';
+import { SlidersHorizontal, X } from 'lucide-vue-next';
 
-const scrollContainer = ref(null);
-const scrollThumb = ref(null);
-const scrollTrack = ref(null);
+const selectedGame = ref(null);
+const gebruikersnaam = ref('');
+const selectedDatum = ref('');
+const historieData = ref([]);
+const gameName = ref('');
+const filtersRef = ref(null);
+const showPopup = ref(false);
+const isFiltersVisible = ref(true);
 
-const isDragging = ref(false);
-const startY = ref(0);
-const startScrollTop = ref(0);
+async function fetchHistorie() {
+  if (!selectedGame.value) {
+    historieData.value = [];
+    return;
+  }
 
-function updateScrollbar() {
-  if (!scrollContainer.value || !scrollThumb.value || !scrollTrack.value) return;
+  const gameId = selectedGame.value;
 
-  const { scrollTop, scrollHeight, clientHeight } = scrollContainer.value;
-  const trackHeight = scrollTrack.value.clientHeight;
+  const params = new URLSearchParams();
 
-  const thumbHeight = Math.max((clientHeight / scrollHeight) * trackHeight, 30);
-  const thumbTop = (scrollTop / scrollHeight) * trackHeight;
+  if (gebruikersnaam.value) {
+    params.append('gebruikersnaam', gebruikersnaam.value);
+  }
 
-  scrollThumb.value.style.height = `${thumbHeight}px`;
-  scrollThumb.value.style.top = `${thumbTop}px`;
+  if (selectedDatum.value) {
+    const dateObj = new Date(selectedDatum.value);
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    params.append('datum', `${day}-${month}-${year}`);
+  }
+
+  const queryString = params.toString();
+  const url = `http://10.42.0.1:8000/trainingen/historie/${gameId}${queryString ? '?' + queryString : ''}`;
+
+  console.log('Fetching historie from:', url);
+
+  try {
+    const res = await fetch(url);
+
+    console.log('Response status:', res.status);
+
+    if (res.ok) {
+      const data = await res.json();
+      console.log('Data received:', data);
+      historieData.value = data.map((item) => ({
+        id: item.training_id,
+        gebruiker: item.gebruikersnaam,
+        datumtijd: formatDateTime(item.start_tijd),
+        score: item.waarde,
+        eenheid: item.eenheid,
+        url: `/resultaten/overzicht/${item.training_id}`,
+      }));
+    }
+  } catch (error) {
+    console.error('Failed to fetch historie:', error);
+  }
 }
 
-function onThumbMouseDown(e) {
-  isDragging.value = true;
-  startY.value = e.clientY;
-  startScrollTop.value = scrollContainer.value.scrollTop;
-  e.preventDefault();
+function formatDateTime(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}-${month}-${year}`;
 }
 
-function onMouseMove(e) {
-  if (!isDragging.value || !scrollContainer.value || !scrollTrack.value) return;
+// Watch for filter changes
+watch([selectedGame, gebruikersnaam, selectedDatum], () => {
+  fetchHistorie();
+});
 
-  const deltaY = e.clientY - startY.value;
-  const trackHeight = scrollTrack.value.clientHeight;
-  const scrollHeight = scrollContainer.value.scrollHeight;
-  const clientHeight = scrollContainer.value.clientHeight;
+function handleScroll() {
+  if (!filtersRef.value) return;
 
-  const scrollRatio = scrollHeight / trackHeight;
-  scrollContainer.value.scrollTop = startScrollTop.value + deltaY * scrollRatio;
+  const rect = filtersRef.value.getBoundingClientRect();
+  isFiltersVisible.value = rect.bottom > 0;
 }
 
-function onMouseUp() {
-  isDragging.value = false;
+function togglePopup() {
+  showPopup.value = !showPopup.value;
 }
 
-function onTrackClick(e) {
-  if (!scrollContainer.value || !scrollTrack.value || !scrollThumb.value) return;
-  if (e.target === scrollThumb.value) return;
-
-  const trackRect = scrollTrack.value.getBoundingClientRect();
-  const clickY = e.clientY - trackRect.top;
-  const trackHeight = scrollTrack.value.clientHeight;
-  const scrollHeight = scrollContainer.value.scrollHeight;
-
-  scrollContainer.value.scrollTop = (clickY / trackHeight) * scrollHeight;
+function closePopup() {
+  showPopup.value = false;
 }
 
 onMounted(() => {
-  if (scrollContainer.value) {
-    scrollContainer.value.addEventListener('scroll', updateScrollbar);
-    updateScrollbar();
-  }
-  document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('mouseup', onMouseUp);
+  // Initial fetch when page loads
+  fetchHistorie();
+
+  window.addEventListener('scroll', handleScroll);
+  handleScroll();
 });
 
 onUnmounted(() => {
-  if (scrollContainer.value) {
-    scrollContainer.value.removeEventListener('scroll', updateScrollbar);
-  }
-  document.removeEventListener('mousemove', onMouseMove);
-  document.removeEventListener('mouseup', onMouseUp);
+  window.removeEventListener('scroll', handleScroll);
 });
 </script>
 
 <template>
   <div class="c-historie">
     <h1>Historie</h1>
-    <div class="c-historie__filters">
-      <FilterGame />
-      <InputGebruikersnaam label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
-      <FilterDatum />
+    <div ref="filtersRef" class="c-historie__filters">
+      <FilterGame v-model="selectedGame" @update:gameName="gameName = $event" />
+      <InputGebruikersnaam v-model="gebruikersnaam" label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
+      <FilterDatum v-model="selectedDatum" />
+    </div>
+
+    <button v-if="!isFiltersVisible" class="c-historie__filter-button" @click="togglePopup">
+      <SlidersHorizontal :size="20" />
+      Filters
+    </button>
+
+    <!-- Filter popup modal -->
+    <div v-if="showPopup" class="c-historie__popup-overlay" @click="closePopup">
+      <div class="c-historie__popup" @click.stop>
+        <div class="c-historie__popup-header">
+          <h2>Filters</h2>
+          <button class="c-historie__popup-close" @click="closePopup">
+            <X :size="24" />
+          </button>
+        </div>
+        <div class="c-historie__popup-filters">
+          <FilterGame v-model="selectedGame" @update:gameName="gameName = $event" />
+          <InputGebruikersnaam v-model="gebruikersnaam" label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
+          <FilterDatum v-model="selectedDatum" />
+        </div>
+      </div>
     </div>
 
     <div class="c-historie__overzicht">
       <div>
-        <h3>Color Sprint</h3>
-        <p>Alle Resultaten</p>
+        <h3>{{ gameName || 'Selecteer een game' }}</h3>
+        <p>{{ historieData.length }} Resultaten</p>
       </div>
-      <div class="c-historie__scroll-wrapper">
-        <div ref="scrollContainer" class="c-historie__resultaten">
-          <CardHistorie gebruiker="Jan" datumtijd="12-03-2024 14:30" gemtijd="00:45" score="1500" url="/resultaten/1/proficiat" />
-          <CardHistorie gebruiker="Piet" datumtijd="10-03-2024 16:00" gemtijd="00:50" score="1400" url="/resultaten/2/proficiat" />
-          <CardHistorie gebruiker="Klaas" datumtijd="08-03-2024 10:15" gemtijd="00:55" score="1300" url="/resultaten/3/proficiat" />
-          <CardHistorie gebruiker="Marie" datumtijd="05-03-2024 09:45" gemtijd="00:48" score="1450" url="/resultaten/4/proficiat" />
-          <CardHistorie gebruiker="Sophie" datumtijd="03-03-2024 11:20" gemtijd="00:52" score="1350" url="/resultaten/overzicht/5" />
-        </div>
-        <div ref="scrollTrack" class="c-historie__scrollbar" @click="onTrackClick">
-          <div ref="scrollThumb" class="c-historie__scrollbar-thumb" @mousedown="onThumbMouseDown"></div>
-        </div>
+      <div class="c-historie__resultaten">
+        <CardHistorie v-for="item in historieData" :key="item.id" :gebruiker="item.gebruiker" :datumtijd="item.datumtijd" :score="item.score" :eenheid="item.eenheid" :url="item.url" />
+        <p v-if="historieData.length === 0" class="c-historie__empty">Geen resultaten gevonden</p>
       </div>
     </div>
   </div>
@@ -121,70 +162,122 @@ onUnmounted(() => {
     gap: 1rem;
   }
 
+  .c-historie__filter-button {
+    position: fixed;
+    bottom: 5rem;
+    left: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background: var(--blue-100);
+    color: white;
+    border: none;
+    border-radius: var(--radius-40);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s;
+    z-index: 100;
+
+    &:hover {
+      background: var(--blue-80);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    &:active {
+      transform: translateY(0);
+    }
+  }
+
+  .c-historie__popup-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s;
+  }
+
+  .c-historie__popup {
+    background: white;
+    border-radius: var(--radius-20);
+    padding: 2rem;
+    max-width: 90%;
+    width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+    animation: slideUp 0.3s;
+  }
+
+  .c-historie__popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1.5rem;
+    }
+  }
+
+  .c-historie__popup-close {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    color: var(--gray-60);
+    transition: color 0.2s;
+
+    &:hover {
+      color: var(--gray-100);
+    }
+  }
+
+  .c-historie__popup-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(20px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
   .c-historie__overzicht {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-blocks);
 
-    .c-historie__scroll-wrapper {
-      position: relative;
-      display: flex;
-      gap: 0.5rem;
-    }
-
     .c-historie__resultaten {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-      height: 18.75rem;
-      overflow-y: scroll;
-      flex: 1;
-      padding-right: 0.25rem;
-
-      /* Hide native scrollbar */
-      &::-webkit-scrollbar {
-        display: none;
-      }
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-
-    .c-historie__scrollbar {
-      width: 0.5rem;
-      height: 18.75rem;
-      background: var(--gray-20);
-      border-radius: var(--radius-40);
-      position: relative;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-
-    .c-historie__scrollbar-thumb {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      background: var(--blue-100);
-      border-radius: var(--radius-40);
-      cursor: grab;
-      transition: background 0.2s;
-
-      &:hover {
-        background: var(--blue-80);
-      }
-
-      &:active {
-        cursor: grabbing;
-      }
     }
   }
-}
-
-.c-historie__resultaten::-webkit-scrollbar-track {
-  visibility: visible !important;
-}
-
-.c-historie__resultaten::-webkit-scrollbar-thumb {
-  visibility: visible !important;
 }
 </style>

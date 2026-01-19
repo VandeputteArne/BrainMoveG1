@@ -10,13 +10,13 @@ const props = defineProps({
     type: String,
     required: true,
   },
-  gemtijd: {
-    type: String,
-    required: true,
-  },
   score: {
+    type: Number,
+    required: false,
+  },
+  eenheid: {
     type: String,
-    required: true,
+    required: false,
   },
   url: {
     type: String,
@@ -37,7 +37,7 @@ const props = defineProps({
     <div class="c-card-historie__end">
       <div class="c-card-historie__score">
         <p class="small c-card-historie__gray">Gem Tijd</p>
-        <h3>{{ props.gemtijd }}</h3>
+        <h3>{{ props.score }}{{ props.eenheid }}</h3>
       </div>
       <ChevronRight class="c-card-historie__icon" />
     </div>

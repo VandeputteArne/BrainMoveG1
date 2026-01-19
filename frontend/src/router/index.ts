@@ -61,6 +61,12 @@ const routes = [
     meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false },
   },
   {
+    path: '/resultaten/overzicht/:id',
+    name: 'resultaten-overzicht-detail',
+    component: ResultatenOverzicht,
+    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false },
+  },
+  {
     path: '/apparaten',
     name: 'apparaten',
     component: ApparatenView,
