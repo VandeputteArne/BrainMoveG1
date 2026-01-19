@@ -6,6 +6,9 @@ const props = defineProps({
   name: { type: String, required: true },
   time: { type: Number, required: true },
   count: { type: Number, required: true },
+  full: { type: Boolean, default: false },
+  borderDark: { type: Boolean, default: false },
+  total: { type: Number, default: 0 },
 });
 
 const medalClass = computed(() => {
@@ -16,18 +19,21 @@ const medalClass = computed(() => {
 });
 
 const borderClass = computed(() => {
-  if (props.count === 3) return 'last-of-type';
+  if (props.total > 0 && props.count === props.total) return 'last-of-type';
+  if (props.total === 0 && props.count === 3) return 'last-of-type';
   return '';
 });
+
+const showTrophy = computed(() => props.count <= 3);
 </script>
 
 <template>
   <div class="c-leaderboard">
-    <div class="c-leaderboard__item" :class="borderClass">
+    <div class="c-leaderboard__item" :class="[borderClass, props.borderDark ? 'border-dark' : '']">
       <div class="c-leaderboard__left">
-        <p :class="['c-leaderboard__rank', medalClass]">{{ props.count }}</p>
+        <p :class="['c-leaderboard__rank', medalClass, !showTrophy ? 'c-leaderboard__rank--under-3' : '', full ? 'c-leaderboard__rank--full' : '']">{{ props.count }}</p>
 
-        <div :class="['c-leaderboard__icon-block', medalClass]">
+        <div v-if="showTrophy" :class="['c-leaderboard__icon-block', medalClass]">
           <Trophy class="c-leaderboard__icon" />
         </div>
 
@@ -55,6 +61,10 @@ const borderClass = computed(() => {
     justify-content: space-between;
     padding: 0.5rem 0;
     border-bottom: solid 1px var(--gray-20);
+  }
+
+  .c-leaderboard__item.border-dark {
+    border-bottom: solid 1px var(--gray-30);
   }
 
   .c-leaderboard__item.last-of-type {
@@ -104,18 +114,18 @@ const borderClass = computed(() => {
     background: #cd7f32;
   }
 
+  .c-leaderboard__rank {
+    font-weight: 700;
+  }
+
   .c-leaderboard__rank.is-gold {
     color: #d4af37;
-    font-weight: 700;
-    width: 0.625rem;
   }
   .c-leaderboard__rank.is-silver {
     color: #6f6f6f;
-    width: 0.625rem;
   }
   .c-leaderboard__rank.is-bronze {
     color: #cd7f32;
-    width: 0.625rem;
   }
 
   .c-leaderboard__time {
@@ -126,6 +136,19 @@ const borderClass = computed(() => {
   .c-leaderboard__small {
     font-size: 0.75rem;
     color: var(--gray-60);
+  }
+  .c-leaderboard__rank--under-3 {
+  }
+
+  .c-leaderboard__rank--full {
+    background-color: var(--color-white);
+    width: 1.5rem;
+    height: 1.5rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 100%;
   }
 }
 </style>

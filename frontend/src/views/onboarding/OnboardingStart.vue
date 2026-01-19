@@ -32,7 +32,7 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  height: 100dvh;
   padding: 0rem 1.25rem;
 
   position: relative;

@@ -9,6 +9,7 @@ import ResultatenProficiat from '../views/resultaten/ResultatenProficiat.vue';
 import ResultatenOverzicht from '../views/resultaten/ResultatenOverzicht.vue';
 import ApparatenView from '../views/apparaten/AppApparaten.vue';
 import AppHistorie from '../views/historie/AppHistorie.vue';
+import AppLeaderboard from '../views/leaderboard/AppLeaderboard.vue';
 
 const routes = [
   {
@@ -69,6 +70,12 @@ const routes = [
     path: '/historie',
     name: 'historie',
     component: AppHistorie,
+    meta: { showTopbar: true, showNav: true, showBack: false, fullScreen: false, paddingbottom: true, paddingtop: true },
+  },
+  {
+    path: '/leaderboard',
+    name: 'leaderboard',
+    component: AppLeaderboard,
     meta: { showTopbar: true, showNav: true, showBack: false, fullScreen: false, paddingbottom: true, paddingtop: true },
   },
 ];
