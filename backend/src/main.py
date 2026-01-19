@@ -26,13 +26,16 @@ from backend.src.models.models import (
     GameVoorFilter,
     Instellingen,
     LeaderboardItem,
+    Moeilijkheid,
+    MoeilijkheidVoorLeaderboard,
     RondeWaarde,
     Resultaat,
     Training,
     CorrecteRondeWaarde,
     GameVoorOverzicht,
     DetailGame,
-    TrainingVoorHistorie
+    TrainingVoorHistorie,
+    RondeWaardenVoorDetails,
 )
 
 logger = logging.getLogger(__name__)
@@ -348,11 +351,39 @@ async def get_training_history(game_id: int, gebruikersnaam: str | None = None, 
     trainingen = DataRepository.get_trainingen_with_filters(game_id, datum, gebruikersnaam)
     return trainingen
 
+@app.get("/trainingen/{training_id}/details", response_model=RondeWaardenVoorDetails, summary="Haal de details op voor een specifieke training", tags=["Spelletjes"])
+async def get_training_details(training_id: int):
+    rondewaarden = DataRepository.get_allerondewaarden_by_trainingsId(training_id)
+
+    return RondeWaardenVoorDetails(
+        gemmidelde_waarde=round(sum(float(item.waarde) for item in rondewaarden) / len(rondewaarden), 2) if rondewaarden else 0,
+        beste_waarde=round(min(float(item.waarde) for item in rondewaarden), 2) if rondewaarden else 0,
+        ranking=DataRepository.get_ranking_for_onetraining(training_id) or 0,
+        exactheid=round(len([item for item in rondewaarden if item.uitkomst == 'correct']) / len(rondewaarden) * 100, 0) if rondewaarden else 0,
+        lijst_voor_grafiek=[CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=item.waarde) for item in rondewaarden if item.uitkomst == 'correct'],
+        aantal_correct=len([item for item in rondewaarden if item.uitkomst == 'correct']),
+        aantal_fout=len([item for item in rondewaarden if item.uitkomst == 'fout']),
+        aantal_telaat=len([item for item in rondewaarden if item.uitkomst == 'te laat'])
+    )
+
+
 #leaderboard endpoint --------------------------------
 @app.get("/games/{game_id}/leaderboard/{max}", response_model=list[LeaderboardItem], summary="Haal de leaderboard op voor een specifiek spel", tags=["Spelletjes"])
 async def get_leaderboard(game_id: int, max: int):
     leaderboard = DataRepository.get_leaderboard_for_game(game_id, max)
     return leaderboard
+
+
+@app.get("/leaderboard/filters/{game_id}", response_model=list[MoeilijkheidVoorLeaderboard], summary="Haal de lijst van spellen op voor filterdoeleinden in de leaderboard", tags=["Spelletjes"])
+async def get_moeilijkheden_for_filter(game_id: int):
+    moeilijkheden = DataRepository.get_moeilijkheden_for_game(game_id)
+    return moeilijkheden
+
+
+@app.get("/leaderboard/overview/{game_id}/{moeilijkheids_id}", response_model=list[LeaderboardItem], summary="Haal een overzicht op van alle spellen met hun highscores voor de leaderboard", tags=["Spelletjes"])
+async def get_leaderboard_overview(game_id:int, moeilijkheids_id:int):
+    trainingen = DataRepository.get_leaderboard_with_filters(game_id, moeilijkheids_id)
+    return trainingen
 
 # Apparaat Endpoints -----------------------------------------------------------
 @app.post("/devices/stop-scan", summary="Stop scanning for devices", tags=["Apparaten"])

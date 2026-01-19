@@ -1,6 +1,7 @@
 from typing import List, Optional, Any, Dict
 from backend.src.database import Database
 from backend.src.models.models import (
+    MoeilijkheidVoorLeaderboard,
     RondeWaarde,
     Training,
     GameVoorOverzicht,
@@ -235,9 +236,11 @@ class DataRepository:
                 t.TrainingsId, 
                 t.Start, 
                 g.Gebruikersnaam,
-                t.AantalKleuren as waarde
+                t.AantalKleuren as waarde,
+                ga.Eenheid
             FROM Trainingen t
             JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
+            JOIN Games ga ON t.GameId = ga.GameId
             WHERE t.GameId = ?
             """
         else:
@@ -246,10 +249,12 @@ class DataRepository:
                 t.TrainingsId, 
                 t.Start, 
                 g.Gebruikersnaam,
-                ROUND(AVG(rv.Waarde), 2) as waarde
+                ROUND(AVG(rv.Waarde), 2) as waarde,
+                ga.Eenheid
             FROM Trainingen t
             JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
             JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+            JOIN Games ga ON t.GameId = ga.GameId
             WHERE t.GameId = ?
             """
         
@@ -287,7 +292,7 @@ class DataRepository:
         if game_id == 2:
             sql_query += " ORDER BY t.Start DESC"
         else:
-            sql_query += " GROUP BY t.TrainingsId, t.Start, g.Gebruikersnaam ORDER BY t.Start DESC"
+            sql_query += " GROUP BY t.TrainingsId, t.Start, g.Gebruikersnaam, ga.Eenheid ORDER BY t.Start DESC"
         
         rows = Database.get_rows(sql_query, tuple(params))
         
@@ -299,8 +304,86 @@ class DataRepository:
                     training_id=row['TrainingsId'],
                     start_tijd=row['Start'],
                     gebruikersnaam=row['Gebruikersnaam'],
-                    waarde=float(row['waarde'])
+                    waarde=float(row['waarde']),
+                    eenheid=row['Eenheid']
                 )
                 trainingen.append(training)
         
         return trainingen
+
+    @staticmethod
+    def get_allerondewaarden_by_trainingsId(trainings_id: int) -> List[RondeWaarde]:
+        """Haal alle rondewaarden op voor een specifieke training"""
+        sql_query = "SELECT * FROM RondeWaarden WHERE TrainingsId = ? ORDER BY RondeNummer ASC"
+        rows = Database.get_rows(sql_query, (trainings_id,))
+        
+        rondewaarden = []
+        if rows:
+            for row in rows:
+                rondewaarde = RondeWaarde(
+                    trainings_id=row['TrainingsId'],
+                    ronde_nummer=row['RondeNummer'],
+                    waarde=row['Waarde'],
+                    uitkomst=row['Uitkomst']
+                )
+                rondewaarden.append(rondewaarde)
+        
+        return rondewaarden
+    
+
+    @staticmethod
+    def get_moeilijkheden_for_game(game_id: int) -> List[MoeilijkheidVoorLeaderboard]:
+        """Haal alle moeilijkheden op voor een specifieke game"""
+        sql_query = "SELECT MoeilijkheidsId, Moeilijkheid FROM Moeilijkheden WHERE GameId = ?"
+        rows = Database.get_rows(sql_query, (game_id,))
+        
+        moeilijkheden = []
+        if rows:
+            for row in rows:
+                moeilijkheid = MoeilijkheidVoorLeaderboard(
+                    moeilijkheid_id=row['MoeilijkheidsId'],
+                    moeilijkheid=row['Moeilijkheid']
+                )
+                moeilijkheden.append(moeilijkheid)
+        
+        return moeilijkheden
+    
+
+    @staticmethod
+    def get_leaderboard_with_filters(game_id: int, moeilijkheids_id: Optional[int] = None) -> List[LeaderboardItem]:
+        """Haal de leaderboard op voor een specifieke game met optionele moeilijkheidsfilter"""
+        sql_query = """
+        SELECT 
+            ROW_NUMBER() OVER (ORDER BY AVG(rv.Waarde) ASC) as plaats,
+            g.Gebruikersnaam,
+            AVG(rv.Waarde) as waarde
+        FROM Trainingen t
+        JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
+        JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+        WHERE t.GameId = ?
+        """
+        params = [game_id]
+        
+        if moeilijkheids_id is not None:
+            sql_query += " AND t.MoeilijkheidsId = ?"
+            params.append(moeilijkheids_id)
+        
+        sql_query += """
+        GROUP BY g.GebruikersId, g.Gebruikersnaam
+        ORDER BY waarde ASC
+        LIMIT 10
+        """
+        
+        rows = Database.get_rows(sql_query, tuple(params))
+        
+        leaderboard = []
+        if rows:
+            for row in rows:
+                item = LeaderboardItem(
+                    plaats=row['plaats'],
+                    gebruikersnaam=row['Gebruikersnaam'],
+                    waarde=round(row['waarde'], 2)
+                )
+                leaderboard.append(item)
+        
+        return leaderboard
