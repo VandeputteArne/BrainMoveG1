@@ -1,20 +1,31 @@
 <script setup>
 import { Gamepad2, ChevronDown } from 'lucide-vue-next';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
-// hardcoded filters game
-const gameoptions = ref([
-  {
-    id: '1',
-    gametype: 'color sprint',
-  },
-  {
-    id: '2',
-    gametype: 'memory match',
-  },
-]);
-
+const gameoptions = ref([]);
 const selectRef = ref(null);
+
+onMounted(async () => {
+  const cachedGames = sessionStorage.getItem('gameFilters');
+  if (cachedGames) {
+    gameoptions.value = JSON.parse(cachedGames);
+    return;
+  }
+
+  try {
+    const res = await fetch('http://10.42.0.1:8000/games/filters');
+    const data = await res.json();
+
+    gameoptions.value = data.map((game) => ({
+      id: String(game.game_id),
+      gametype: game.game_naam,
+    }));
+
+    sessionStorage.setItem('gameFilters', JSON.stringify(gameoptions.value));
+  } catch (error) {
+    console.error('Failed to fetch game filters:', error);
+  }
+});
 
 function openSelect(event) {
   if (event.target !== selectRef.value && selectRef.value) {
