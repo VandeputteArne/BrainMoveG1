@@ -1,6 +1,6 @@
-// ...existing code...
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { Download, ChartNoAxesCombined } from 'lucide-vue-next';
 
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
@@ -8,7 +8,8 @@ import OverzichtCountItem from '../../components/overzicht/OverzichtCountItem.vu
 import OverzichtCard from '../../components/overzicht/OverzichtCard.vue';
 import OverzichtGraph from '../../components/overzicht/OverzichtGraph.vue';
 
-// Data uit localStorage
+const route = useRoute();
+
 const stats = ref([
   { waarde: 0, label: 'Gemiddelde' },
   { waarde: 0, label: 'Beste' },
@@ -19,41 +20,86 @@ const stats = ref([
 const rounds = ref([]);
 
 const counts = ref([
-  { type: 'correct', value: 0 },
-  { type: 'wrong', value: 0 },
-  { type: 'late', value: 0 },
+  { type: 'correct', label: 'Correct', value: 0 },
+  { type: 'telaat', label: 'Te laat', value: 0 },
+  { type: 'fout', label: 'Fout', value: 0 },
 ]);
 
-onMounted(() => {
-  try {
-    const data = JSON.parse(localStorage.getItem('laatste_rondewaarden') || '{}');
+function applyData(data) {
+  if (!data || typeof data !== 'object') return;
 
-    // Update stats
-    stats.value = [
-      { waarde: data.gemiddelde_waarde || 0, label: 'Gemiddelde' },
-      { waarde: data.beste_waarde || 0, label: 'Beste' },
-      { waarde: data.ranking || 0, label: 'Ranking' },
-      { waarde: data.exactheid || 0, label: 'Exactheid' },
-    ];
+  // Update stats - support both old (correcte_rondewaarden) and new (lijst_voor_grafiek) API
+  stats.value = [
+    { waarde: data.gemmidelde_waarde ?? data.gemiddelde_waarde ?? 0, label: 'Gemiddelde' },
+    { waarde: data.beste_waarde ?? 0, label: 'Beste' },
+    { waarde: data.ranking ?? 0, label: 'Ranking' },
+    { waarde: data.exactheid ?? 0, label: 'Exactheid' },
+  ];
 
-    // Update counts
-    counts.value = [
-      { type: 'correct', label: 'Correct', value: data.aantal_correct || 0 },
-      { type: 'telaat', label: 'Te laat', value: data.aantal_telaat || 0 },
-      { type: 'fout', label: 'Fout', value: data.aantal_fout || 0 },
-    ];
+  // Update counts
+  counts.value = [
+    { type: 'correct', label: 'Correct', value: data.aantal_correct ?? 0 },
+    { type: 'telaat', label: 'Te laat', value: data.aantal_telaat ?? 0 },
+    { type: 'fout', label: 'Fout', value: data.aantal_fout ?? 0 },
+  ];
 
-    // Update rounds from API
-    if (data.correcte_rondewaarden && Array.isArray(data.correcte_rondewaarden)) {
-      rounds.value = data.correcte_rondewaarden.map((r) => ({
-        round: r.ronde_nummer,
-        time: r.waarde,
-      }));
-    }
-  } catch (error) {
-    console.error('Error loading results from localStorage:', error);
+  // Update rounds - support both old and new field names
+  const rondeData = data.lijst_voor_grafiek ?? data.correcte_rondewaarden;
+  if (Array.isArray(rondeData)) {
+    rounds.value = rondeData.map((r) => ({
+      round: r.ronde_nummer,
+      time: r.waarde,
+    }));
+  } else {
+    rounds.value = [];
   }
-});
+}
+
+async function loadResults() {
+  const id = route.params.id;
+
+  if (id) {
+    // Load from API with id
+    const cacheKey = `training_result_${id}`;
+    const cached = sessionStorage.getItem(cacheKey);
+
+    if (cached) {
+      try {
+        applyData(JSON.parse(cached));
+        return;
+      } catch (err) {
+        console.warn('Failed to parse cached data:', err);
+      }
+    }
+
+    try {
+      const res = await fetch(`http://10.42.0.1:8000/trainingen/${id}/details`);
+      if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+      const data = await res.json();
+      sessionStorage.setItem(cacheKey, JSON.stringify(data));
+      applyData(data);
+    } catch (err) {
+      console.error('Failed to fetch training result:', err);
+    }
+  } else {
+    // Load from localStorage (old behavior)
+    try {
+      const data = JSON.parse(localStorage.getItem('laatste_rondewaarden') || '{}');
+      applyData(data);
+    } catch (error) {
+      console.error('Error loading results from localStorage:', error);
+    }
+  }
+}
+
+onMounted(loadResults);
+
+watch(
+  () => route.params.id,
+  () => {
+    loadResults();
+  }
+);
 
 // derive values from arrays (keeps UI consistent if you later replace with API data)
 const computedAverage = computed(() => {
