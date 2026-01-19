@@ -10,6 +10,9 @@ import OverzichtGraph from '../../components/overzicht/OverzichtGraph.vue';
 
 const route = useRoute();
 
+const backUrl = computed(() => (route.params.id ? '/historie' : '/games'));
+const backText = computed(() => (route.params.id ? 'Terug naar historie' : 'Terug naar games'));
+
 const stats = ref([
   { waarde: 0, label: 'Gemiddelde' },
   { waarde: 0, label: 'Beste' },
@@ -167,7 +170,7 @@ function exportCsv() {
 
     <div class="c-overzicht__buttons">
       <ButtonsPrimary url="/games" title="Speel opnieuw"></ButtonsPrimary>
-      <router-link to="/games" class="c-overzicht__back">Terug naar games</router-link>
+      <router-link :to="backUrl" class="c-overzicht__back">{{ backText }}</router-link>
     </div>
   </div>
 </template>

@@ -24,6 +24,9 @@ const circumference = computed(() => 2 * Math.PI * radius.value);
 const normalizedProgress = computed(() => Math.max(0, Math.min(100, Number(props.progress || 0))));
 const dashoffset = computed(() => circumference.value * (1 - normalizedProgress.value / 100));
 
+// Switch between button and router-link based on disabled state
+const componentType = computed(() => (props.disabled ? 'button' : 'router-link'));
+
 function handleClick(e) {
   if (props.disabled) {
     e && e.preventDefault && e.preventDefault();
@@ -35,7 +38,7 @@ function handleClick(e) {
 </script>
 
 <template>
-  <router-link :to="props.to" class="c-btn-next" :style="{ width: size + 'px', height: size + 'px' }" :aria-disabled="disabled" @click="handleClick">
+  <component :is="componentType" :to="props.to" class="c-btn-next" :style="{ width: size + 'px', height: size + 'px' }" :aria-disabled="disabled" @click="handleClick">
     <svg class="c-btn-next__ring" :width="size" :height="size" :viewBox="`0 0 ${size} ${size}`" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
       <circle class="c-btn-next__track" :cx="size / 2" :cy="size / 2" :r="radius" :stroke-width="stroke" fill="none" />
       <circle class="c-btn-next__progress" :cx="size / 2" :cy="size / 2" :r="radius" :stroke-width="stroke" fill="none" stroke-linecap="round" :style="{ strokeDasharray: circumference + ' ' + circumference, strokeDashoffset: dashoffset + 'px' }" />
@@ -44,7 +47,7 @@ function handleClick(e) {
     <span class="c-btn-next__inner" :style="{ backgroundColor: color }">
       <component :is="ChevronRight" size="20" color="white" />
     </span>
-  </router-link>
+  </component>
 </template>
 
 <style scoped>

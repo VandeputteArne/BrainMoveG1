@@ -1,11 +1,26 @@
 <script setup>
+import { computed, onMounted } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgressBlock.vue';
 import ButtonsNext from '../../components/buttons/ButtonsNext.vue';
 
 import { useDeviceStatus } from '../../composables/useDeviceStatus.js';
 
-const { allDevicesConnected, connectedDevices, disconnectedDevices } = useDeviceStatus();
+const { allDevicesConnected, connectedDevices, fetchDeviceStatus } = useDeviceStatus();
+
+const isDeviceConnected = (kleur) => {
+  return connectedDevices.value.some((device) => device.kleur === kleur);
+};
+
+const allPotsConnected = computed(() => {
+  return isDeviceConnected('rood') && isDeviceConnected('blauw') && isDeviceConnected('groen') && isDeviceConnected('geel');
+});
+
+const buttonProgress = computed(() => (allPotsConnected.value ? 100 : 50));
+
+onMounted(() => {
+  fetchDeviceStatus();
+});
 </script>
 
 <template>
@@ -15,11 +30,13 @@ const { allDevicesConnected, connectedDevices, disconnectedDevices } = useDevice
       <p>Tik op het fysieke knopje onder een potje om het aan te zetten. Op het scherm en via geluid hoor je of het gelukt is.</p>
     </div>
     <div class="c-setup__potjes">
-      <CardPotjes kleur="rood" :status="true" />
-      <CardPotjes kleur="blauw" :status="false" />
-      <CardPotjes kleur="groen" :status="true" />
-      <CardPotjes kleur="geel" :status="false" />
+      <CardPotjes kleur="rood" :status="isDeviceConnected('rood')" />
+      <CardPotjes kleur="blauw" :status="isDeviceConnected('blauw')" />
+      <CardPotjes kleur="groen" :status="isDeviceConnected('groen')" />
+      <CardPotjes kleur="geel" :status="isDeviceConnected('geel')" />
     </div>
+
+    <p v-if="!allPotsConnected" class="c-setup__warning">Zet alle potjes aan om verder te gaan</p>
 
     <div class="c-setup__progress">
       <div class="c-setup__progess-blocks">
@@ -27,7 +44,7 @@ const { allDevicesConnected, connectedDevices, disconnectedDevices } = useDevice
         <OnboardingProgressBlock :active="true" />
         <OnboardingProgressBlock :active="false" />
       </div>
-      <ButtonsNext :progress="50" to="/warning" />
+      <ButtonsNext :progress="buttonProgress" :disabled="!allPotsConnected" to="/warning" />
     </div>
   </div>
 </template>
@@ -97,5 +114,17 @@ const { allDevicesConnected, connectedDevices, disconnectedDevices } = useDevice
   align-items: flex-start;
   width: 100%;
   padding-right: 2rem;
+}
+
+.c-setup__warning {
+  color: var(--red-50, #f44336);
+  font-weight: 500;
+  text-align: center;
+  margin: 0;
+  padding: 0.5rem 1rem;
+  background-color: rgba(244, 67, 54, 0.1);
+  border-radius: var(--radius-10, 0.5rem);
+  width: 100%;
+  box-sizing: border-box;
 }
 </style>
