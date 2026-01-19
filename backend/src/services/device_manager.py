@@ -16,6 +16,39 @@ logger.setLevel(logging.DEBUG)
 
 # DeviceManager class------------------------------------------------
 class DeviceManager:
+        async def keepalive_loop(self, interval: float = 600.0, battery_timeout: float = 5.0):
+            """
+            Periodically send keepalive to each connected device (not polling), one by one, waiting for battery response.
+            interval: seconds between keepalive rounds (default 10 minutes)
+            battery_timeout: seconds to wait for battery response per device
+            """
+            while True:
+                for apparaat in self._apparaten.values():
+                    if not apparaat.verbonden or apparaat.is_aan_het_pollen:
+                        continue
+
+                    # Clear previous battery event if needed
+                    batterij_event = asyncio.Event()
+                    batterij_response = {}
+
+                    def _batterij_callback(gebeurtenis):
+                        batterij_response.update(gebeurtenis)
+                        batterij_event.set()
+
+                    # Temporarily set callback
+                    orig_callback = apparaat.bij_batterij
+                    apparaat.bij_batterij = _batterij_callback
+
+                    await apparaat.send_keepalive()
+
+                    try:
+                        await asyncio.wait_for(batterij_event.wait(), timeout=battery_timeout)
+                    except asyncio.TimeoutError:
+                        logger.warning(f"Geen batterij response van {apparaat.naam} na keepalive")
+                    finally:
+                        apparaat.bij_batterij = orig_callback
+
+                await asyncio.sleep(interval)
     def __init__(self, sio=None) -> None:
         
         self._apparaten = {}

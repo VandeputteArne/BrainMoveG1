@@ -1,3 +1,6 @@
+    async def send_keepalive(self) -> bool:
+        """Send a keepalive command to the device."""
+        return await self._stuur_commando(Command.KEEPALIVE)
 import asyncio
 import os
 import struct
