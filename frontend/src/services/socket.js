@@ -7,6 +7,7 @@ export function getSocket() {
   if (!socket) {
     socket = io(API_BASE_URL, {
       transports: ['websocket'],
+      upgrade: false,
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: 5,

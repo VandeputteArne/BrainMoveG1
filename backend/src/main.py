@@ -64,7 +64,12 @@ app.add_middleware(
 
 HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
 
-sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
+sio = socketio.AsyncServer(
+    async_mode='asgi',
+    cors_allowed_origins='*',
+    ping_interval=10,
+    ping_timeout=5,
+)
 sio_app = socketio.ASGIApp(sio, app)
 device_manager = DeviceManager(sio=sio)
 
