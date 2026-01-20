@@ -67,28 +67,79 @@ class DataRepository:
 
     @staticmethod
     def get_ranking_for_onetraining(trainings_id: int) -> Optional[int]:
-        sql_avg = "SELECT AVG(Waarde) as avg_w FROM RondeWaarden WHERE TrainingsId = ?"
-        row = Database.get_one_row(sql_avg, (trainings_id,))
+        # Haal eerst de game_id en moeilijkheidsgraad op voor deze training
+        sql_training = "SELECT GameId, MoeilijkheidsId FROM Trainingen WHERE TrainingsId = ?"
+        training_row = Database.get_one_row(sql_training, (trainings_id,))
         
-        if not row or row.get('avg_w') is None:
+        if not training_row:
             return None
+        
+        game_id = training_row.get('GameId')
+        moeilijkheids_id = training_row.get('MoeilijkheidsId')
+        
+        # Voor Memory (game_id = 2): ranking op basis van hoogste RondeNummer, dan gemiddelde waarde
+        if game_id == 2:
+            # Haal het hoogste RondeNummer en gemiddelde waarde voor deze training op
+            sql_stats = """
+                SELECT MAX(RondeNummer) as max_ronde, AVG(Waarde) as avg_waarde
+                FROM RondeWaarden
+                WHERE TrainingsId = ?
+            """
+            stats_row = Database.get_one_row(sql_stats, (trainings_id,))
             
-        target_avg = row.get('avg_w')
+            if not stats_row or stats_row.get('max_ronde') is None:
+                return None
+            
+            max_ronde = stats_row.get('max_ronde')
+            avg_waarde = stats_row.get('avg_waarde')
+            
+            # Tel hoeveel trainingen beter zijn (hoger max_ronde OF gelijk max_ronde maar lager avg_waarde)
+            # Filter op dezelfde moeilijkheidsgraad
+            sql_count = """
+                SELECT COUNT(*) as cnt FROM (
+                    SELECT MAX(rv.RondeNummer) as max_ronde, AVG(rv.Waarde) as avg_waarde
+                    FROM Trainingen t
+                    JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+                    WHERE t.GameId = ? AND t.MoeilijkheidsId = ?
+                    GROUP BY t.TrainingsId
+                ) AS sub 
+                WHERE max_ronde > ? OR (max_ronde = ? AND avg_waarde < ?)
+            """
+            count_row = Database.get_one_row(sql_count, (game_id, moeilijkheids_id, max_ronde, max_ronde, avg_waarde))
+            
+            if not count_row:
+                return None
+            
+            plaats = count_row.get('cnt', 0) + 1
+            return plaats
+        
+        # Voor andere games: ranking op basis van gemiddelde waarde (lager is beter)
+        # GEEN filter op moeilijkheidsgraad
+        else:
+            sql_avg = "SELECT AVG(Waarde) as avg_w FROM RondeWaarden WHERE TrainingsId = ?"
+            row = Database.get_one_row(sql_avg, (trainings_id,))
+            
+            if not row or row.get('avg_w') is None:
+                return None
+                
+            target_avg = row.get('avg_w')
 
-        sql_count = """
-            SELECT COUNT(*) as cnt FROM (
-                SELECT TrainingsId, AVG(Waarde) as avg_w 
-                FROM RondeWaarden 
-                GROUP BY TrainingsId
-            ) AS sub WHERE avg_w < ?
-        """
-        count_row = Database.get_one_row(sql_count, (target_avg,))
-        
-        if not count_row:
-            return None
+            sql_count = """
+                SELECT COUNT(*) as cnt FROM (
+                    SELECT t.TrainingsId, AVG(rv.Waarde) as avg_w 
+                    FROM Trainingen t
+                    JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+                    WHERE t.GameId = ?
+                    GROUP BY t.TrainingsId
+                ) AS sub WHERE avg_w < ?
+            """
+            count_row = Database.get_one_row(sql_count, (game_id, target_avg))
             
-        plaats = count_row.get('cnt', 0) + 1
-        return plaats
+            if not count_row:
+                return None
+                
+            plaats = count_row.get('cnt', 0) + 1
+            return plaats
 
     @staticmethod
     def get_last_training_id() -> Optional[int]:
@@ -144,8 +195,9 @@ class DataRepository:
         sql_rondes = "SELECT RondeId, Nummer FROM Rondes WHERE GameId = ?"
         rows_rondes = Database.get_rows(sql_rondes, (game_id,))
         
-        sql_game = "SELECT GameNaam, GameBeschrijving FROM Games WHERE GameId = ?"
+        sql_game = "SELECT GameNaam, GameBeschrijving, Eenheid FROM Games WHERE GameId = ?"
         row_game = Database.get_one_row(sql_game, (game_id,))
+        eenheid = row_game.get('Eenheid', '') if row_game else ''
         
         # Haal leaderboard op
         sql_leaderboard = """
@@ -166,7 +218,7 @@ class DataRepository:
         list_moeilijkheden = [Moeilijkheid(moeilijkheid=row['Moeilijkheid'], snelheid=row['Snelheid'], moeilijkheid_id=row['MoeilijkheidsId']) for row in rows_moeilijkheden] if rows_moeilijkheden else []
         list_rondes = [Ronde(ronde_id=row['RondeId'], nummer=row['Nummer']) for row in rows_rondes] if rows_rondes else []
         game_naam = row_game['GameNaam'] if row_game and 'GameNaam' in row_game else ""
-        leaderboard = [LeaderboardItem(plaats=row['plaats'], gebruikersnaam=row['Gebruikersnaam'], waarde=round(row['waarde'], 2)) for row in rows_leaderboard] if rows_leaderboard else []
+        leaderboard = [LeaderboardItem(plaats=row['plaats'], gebruikersnaam=row['Gebruikersnaam'], waarde=round(row['waarde'], 2), eenheid=eenheid) for row in rows_leaderboard] if rows_leaderboard else []
         
         return DetailGame(
             list_moeilijkheden=list_moeilijkheden,
@@ -179,6 +231,11 @@ class DataRepository:
     @staticmethod
     def get_leaderboard_for_game(game_id: int, top_n: int = 10) -> List[LeaderboardItem]:
         """Haal de leaderboard op voor een specifieke game"""
+        # Haal eenheid op voor deze game
+        sql_eenheid = "SELECT Eenheid FROM Games WHERE GameId = ?"
+        eenheid_row = Database.get_one_row(sql_eenheid, (game_id,))
+        eenheid = eenheid_row.get('Eenheid', '') if eenheid_row else ''
+        
         sql_query = """
         SELECT 
             ROW_NUMBER() OVER (ORDER BY AVG(rv.Waarde) ASC) as plaats,
@@ -200,7 +257,8 @@ class DataRepository:
                 item = LeaderboardItem(
                     plaats=row['plaats'],
                     gebruikersnaam=row['Gebruikersnaam'],
-                    waarde=round(row['waarde'], 2)
+                    waarde=round(row['waarde'], 2),
+                    eenheid=eenheid
                 )
                 leaderboard.append(item)
         
@@ -352,27 +410,67 @@ class DataRepository:
     @staticmethod
     def get_leaderboard_with_filters(game_id: int, moeilijkheids_id: Optional[int] = None) -> List[LeaderboardItem]:
         """Haal de leaderboard op voor een specifieke game met optionele moeilijkheidsfilter"""
-        sql_query = """
-        SELECT 
-            ROW_NUMBER() OVER (ORDER BY AVG(rv.Waarde) ASC) as plaats,
-            g.Gebruikersnaam,
-            AVG(rv.Waarde) as waarde
-        FROM Trainingen t
-        JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
-        JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
-        WHERE t.GameId = ?
-        """
-        params = [game_id]
         
-        if moeilijkheids_id is not None:
-            sql_query += " AND t.MoeilijkheidsId = ?"
-            params.append(moeilijkheids_id)
+        # Haal eenheid op voor deze game
+        sql_eenheid = "SELECT Eenheid FROM Games WHERE GameId = ?"
+        eenheid_row = Database.get_one_row(sql_eenheid, (game_id,))
+        eenheid = eenheid_row.get('Eenheid', '') if eenheid_row else ''
         
-        sql_query += """
-        GROUP BY g.GebruikersId, g.Gebruikersnaam
-        ORDER BY waarde ASC
-        LIMIT 10
-        """
+        # Voor Memory (game_id = 2): sorteer eerst op hoogste RondeNummer (DESC), dan op gemiddelde waarde (ASC)
+        if game_id == 2:
+            moeilijkheids_filter = ""
+            params = [game_id]
+            if moeilijkheids_id is not None:
+                moeilijkheids_filter = " AND t.MoeilijkheidsId = ?"
+                params.append(moeilijkheids_id)
+            
+            sql_query = f"""
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY beste_kleuren DESC, gem_waarde ASC) as plaats,
+                Gebruikersnaam,
+                beste_kleuren as waarde
+            FROM (
+                SELECT 
+                    g.Gebruikersnaam,
+                    MAX(rondes_per_training.max_ronde) as beste_kleuren,
+                    AVG(rv.Waarde) as gem_waarde
+                FROM Gebruikers g
+                JOIN Trainingen t ON g.GebruikersId = t.GebruikersId
+                LEFT JOIN (
+                    SELECT TrainingsId, MAX(RondeNummer) as max_ronde
+                    FROM RondeWaarden
+                    GROUP BY TrainingsId
+                ) rondes_per_training ON t.TrainingsId = rondes_per_training.TrainingsId
+                LEFT JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+                WHERE t.GameId = ?{moeilijkheids_filter}
+                GROUP BY g.GebruikersId, g.Gebruikersnaam
+            ) ranked
+            ORDER BY beste_kleuren DESC, gem_waarde ASC
+            LIMIT 10
+            """
+        else:
+            # Voor andere games: sorteer alleen op gemiddelde waarde (ASC)
+            sql_query = """
+            SELECT 
+                ROW_NUMBER() OVER (ORDER BY AVG(rv.Waarde) ASC) as plaats,
+                g.Gebruikersnaam,
+                AVG(rv.Waarde) as waarde
+            FROM Trainingen t
+            JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
+            JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+            WHERE t.GameId = ?
+            """
+            params = [game_id]
+            
+            if moeilijkheids_id is not None:
+                sql_query += " AND t.MoeilijkheidsId = ?"
+                params.append(moeilijkheids_id)
+            
+            sql_query += """
+            GROUP BY g.GebruikersId, g.Gebruikersnaam
+            ORDER BY waarde ASC
+            LIMIT 10
+            """
         
         rows = Database.get_rows(sql_query, tuple(params))
         
@@ -382,7 +480,8 @@ class DataRepository:
                 item = LeaderboardItem(
                     plaats=row['plaats'],
                     gebruikersnaam=row['Gebruikersnaam'],
-                    waarde=round(row['waarde'], 2)
+                    waarde=round(row['waarde'], 2),
+                    eenheid=eenheid
                 )
                 leaderboard.append(item)
         
@@ -396,4 +495,44 @@ class DataRepository:
         
         if row and 'GameId' in row:
             return row['GameId']
+        return None
+    
+    @staticmethod
+    def get_totale_aantal_rondes_by_rondeid(ronde_id: int):
+        """Haal het totale aantal rondes op voor een specifieke ronde ID"""
+        sql_query = "SELECT Nummer as totaal FROM Rondes WHERE RondeId = ?"
+        row = Database.get_one_row(sql_query, (ronde_id,))
+        
+        if row and 'totaal' in row:
+            return row['totaal']
+        return 0
+    
+    @staticmethod
+    def get_totale_aantal_rondes_by_trainingid(training_id: int):
+        """Haal het totale aantal rondes op voor een specifieke training ID"""
+        sql_query = """
+            SELECT r.Nummer as totaal 
+            FROM Rondes r
+            INNER JOIN Trainingen t ON t.RondeId = r.RondeId
+            WHERE t.TrainingsId = ?
+        """
+        row = Database.get_one_row(sql_query, (training_id,))
+        
+        if row and 'totaal' in row:
+            return row['totaal']
+        return 0
+    
+    @staticmethod
+    def get_gebruikersnaam_by_trainingid(training_id: int) -> Optional[str]:
+        """Haal de gebruikersnaam op voor een specifieke training ID"""
+        sql_query = """
+            SELECT g.Gebruikersnaam 
+            FROM Gebruikers g
+            INNER JOIN Trainingen t ON t.GebruikersId = g.GebruikersId
+            WHERE t.TrainingsId = ?
+        """
+        row = Database.get_one_row(sql_query, (training_id,))
+        
+        if row and 'Gebruikersnaam' in row:
+            return row['Gebruikersnaam']
         return None

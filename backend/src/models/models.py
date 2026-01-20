@@ -29,6 +29,7 @@ class CorrecteRondeWaarde(BaseModel):
 
 class Resultaat(BaseModel):
     game_id: int
+    gebruikersnaam: str
     ranking: int
     gemiddelde_waarde: float
     beste_waarde: float
@@ -57,6 +58,7 @@ class LeaderboardItem(BaseModel):
     plaats: int
     gebruikersnaam: str
     waarde: float
+    eenheid: str
 
 class DetailGame(BaseModel):
     list_moeilijkheden: list[Moeilijkheid]
@@ -83,6 +85,7 @@ class TrainingVoorHistorie(BaseModel):
 
 class RondeWaardenVoorDetails(BaseModel):
     game_id: int
+    gebruikersnaam: str
     gemmidelde_waarde: float
     beste_waarde: float
     ranking: int
@@ -95,6 +98,18 @@ class RondeWaardenVoorDetails(BaseModel):
 class MoeilijkheidVoorLeaderboard(BaseModel):
     moeilijkheid_id: int
     moeilijkheid: str
+
+class StatistiekenVoorMemoryGame(BaseModel):
+    game_id: int
+    gebruikersnaam: str
+    ranking: int
+    aantal_kleuren: int
+    gemiddelde_waarde: float
+    exactheid: float
+    correcte_rondewaarden: list[CorrecteRondeWaarde]
+    aantal_correct: int
+    aantal_fout: int
+    aantal_rondes_niet_gespeeld: int
 
 
 

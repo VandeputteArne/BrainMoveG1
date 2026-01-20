@@ -87,9 +87,9 @@ def add_memory_game():
     print('✓ Game "Memory" succesvol toegevoegd met ID 2')
 
     moeilijkheden = [
-        ('Gemakkelijk', 10, 2),
-        ('Gemiddeld', 5, 2),
-        ('Moeilijk', 3, 2)
+        ('Gemakkelijk', 3, 2),
+        ('Gemiddeld', 2, 2),
+        ('Moeilijk', 1, 2)
     ]
     
     for moeilijkheid, snelheid, game_id in moeilijkheden:
