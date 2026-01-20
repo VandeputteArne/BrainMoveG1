@@ -77,28 +77,30 @@ onMounted(() => {
 
 <template>
   <div class="c-leaderboard">
-    <h1>Leaderboard</h1>
-    <div class="c-leaderboard__filters">
-      <FilterGame v-model="selectedGame" />
-      <div class="c-leaderboard__dif">
-        <p>Moeilijkheidsgraad</p>
-        <div class="c-leaderboard__row">
-          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
+    <div class="c-leaderboard__container">
+      <div class="c-leaderboard__filters">
+        <h1>Leaderboard</h1>
+        <FilterGame v-model="selectedGame" />
+        <div class="c-leaderboard__dif">
+          <p>Moeilijkheidsgraad</p>
+          <div class="c-leaderboard__row">
+            <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="c-leaderboard__board">
-      <div class="c-leaderboard__header">
-        <div class="c-leaderboard__podium">
-          <LeaderboardPlayer v-if="leaderboardData[1]" :name="leaderboardData[1].name" :rank="2" class="c-leaderboard__player c-leaderboard__player--second" />
-          <LeaderboardPlayer v-if="leaderboardData[0]" :name="leaderboardData[0].name" :rank="1" class="c-leaderboard__player c-leaderboard__player--first" />
-          <LeaderboardPlayer v-if="leaderboardData[2]" :name="leaderboardData[2].name" :rank="3" class="c-leaderboard__player c-leaderboard__player--third" />
+      <div class="c-leaderboard__board">
+        <div class="c-leaderboard__header">
+          <div class="c-leaderboard__podium">
+            <LeaderboardPlayer v-if="leaderboardData[1]" :name="leaderboardData[1].name" :rank="2" class="c-leaderboard__player c-leaderboard__player--second" />
+            <LeaderboardPlayer v-if="leaderboardData[0]" :name="leaderboardData[0].name" :rank="1" class="c-leaderboard__player c-leaderboard__player--first" />
+            <LeaderboardPlayer v-if="leaderboardData[2]" :name="leaderboardData[2].name" :rank="3" class="c-leaderboard__player c-leaderboard__player--third" />
+          </div>
+          <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
         </div>
-        <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
-      </div>
-      <div class="c-leaderboard__body">
-        <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" />
+        <div class="c-leaderboard__body">
+          <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" />
+        </div>
       </div>
     </div>
   </div>
@@ -106,17 +108,16 @@ onMounted(() => {
 
 <style scoped>
 .c-leaderboard {
-  .c-leaderboard__body {
-    background-color: var(--blue-10);
-    padding: 0.5rem 1rem;
-    border-radius: var(--radius-20);
-  }
-
-  .c-leaderboard__row {
+  .c-leaderboard__container {
     display: flex;
-    flex-direction: row;
-    gap: 1rem;
-    justify-content: space-between;
+    flex-direction: column;
+    gap: var(--spacing-title);
+
+    @media (width >= 768px) {
+      flex-direction: row;
+      gap: 3rem;
+      align-items: flex-start;
+    }
   }
 
   .c-leaderboard__filters {
@@ -124,10 +125,44 @@ onMounted(() => {
     flex-direction: column;
     gap: var(--spacing-blocks);
     margin-bottom: var(--spacing-title);
+
+    @media (width >= 768px) {
+      flex: 0 0 300px;
+      position: sticky;
+      top: 6.5rem;
+    }
   }
 
   .c-leaderboard__board {
-    margin-top: 7rem;
+    margin-top: 3.2rem;
+
+    @media (width >= 768px) {
+      flex: 1;
+      margin-top: 6rem;
+    }
+  }
+
+  .c-leaderboard__body {
+    background-color: var(--blue-10);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-20);
+    position: relative;
+    max-width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: -2.5rem;
+    z-index: 2;
+
+    @media (width < 576px) {
+      max-width: 100%;
+    }
+  }
+
+  .c-leaderboard__row {
+    display: flex;
+    flex-direction: row;
+    gap: 1rem;
+    justify-content: space-between;
   }
 
   .c-leaderboard__image {
@@ -180,19 +215,6 @@ onMounted(() => {
 
     @media (width < 576px) {
       right: 11%;
-    }
-  }
-
-  .c-leaderboard__body {
-    position: relative;
-    max-width: 90%;
-    margin-left: auto;
-    margin-right: auto;
-    margin-top: -2.5rem;
-    z-index: 2;
-
-    @media (width < 576px) {
-      max-width: 100%;
     }
   }
 }

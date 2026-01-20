@@ -79,7 +79,7 @@ const props = defineProps({
 
   .c-potje__image {
     width: 60%;
-    max-width: 10rem;
+    max-width: 5rem;
     height: auto;
   }
 

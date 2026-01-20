@@ -27,6 +27,8 @@ import { Power } from 'lucide-vue-next';
   display: flex;
   flex-direction: column;
   gap: var(--spacing-title);
+  max-width: 75rem;
+  margin: 0 auto;
 }
 
 .c-apparaten__grid {
@@ -36,9 +38,21 @@ import { Power } from 'lucide-vue-next';
   width: 100%;
   box-sizing: border-box;
   justify-items: center;
+
+  @media (width >= 768px) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.5rem;
+  }
+
+  @media (width >= 1024px) {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 2rem;
+  }
 }
 
 .c-apparaten__button {
   margin-top: 1rem;
+  max-width: 400px;
+  align-self: center;
 }
 </style>

@@ -26,6 +26,10 @@ const paddingtop = computed(() => !!route.meta.paddingtop);
   padding: 1.25rem 1.25rem;
   margin-bottom: 4.375rem;
   margin-top: 3.5625rem;
+
+  @media (width >= 768px) {
+    margin-top: 5.0625rem;
+  }
 }
 
 .c-body--no-padding-bottom {
