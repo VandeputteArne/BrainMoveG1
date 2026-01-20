@@ -48,6 +48,12 @@ const items = [
   box-shadow: var(--shadow);
 }
 
+@media (min-width: 768px) {
+  .c-navbar {
+    display: none;
+  }
+}
+
 .c-navbar__list {
   display: flex;
   justify-content: space-around;
@@ -75,7 +81,9 @@ const items = [
 }
 
 .c-navbar__icon {
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+  transition:
+    transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 0.3s ease;
 }
 
 .c-navbar__label {
