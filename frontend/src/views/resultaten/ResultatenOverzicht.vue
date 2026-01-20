@@ -7,6 +7,7 @@ import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import OverzichtCountItem from '../../components/overzicht/OverzichtCountItem.vue';
 import OverzichtCard from '../../components/overzicht/OverzichtCard.vue';
 import OverzichtGraph from '../../components/overzicht/OverzichtGraph.vue';
+import { getApiUrl } from '../../config/api.js';
 
 const route = useRoute();
 
@@ -83,7 +84,7 @@ async function loadResults() {
     }
 
     try {
-      const res = await fetch(`http://10.42.0.1:8000/trainingen/${id}/details`);
+      const res = await fetch(getApiUrl(`trainingen/${id}/details`));
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
       sessionStorage.setItem(cacheKey, JSON.stringify(data));
@@ -94,7 +95,7 @@ async function loadResults() {
   } else {
     // Fetch latest round values from API (after game completion)
     try {
-      const response = await fetch('http://10.42.0.1:8000/laatste_rondewaarden');
+      const response = await fetch(getApiUrl('laatste_rondewaarden'));
 
       if (response.ok) {
         const data = await response.json();

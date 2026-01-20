@@ -1,13 +1,17 @@
 import { io } from 'socket.io-client';
+import { API_BASE_URL } from '../config/api.js';
 
 let socket = null;
 
 export function getSocket() {
   if (!socket) {
-    socket = io('http://10.42.0.1:8000', {
+    socket = io(API_BASE_URL, {
       transports: ['websocket'],
       autoConnect: false,
-      withCredentials: true,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 500,
+      timeout: 5000,
     });
   }
   return socket;

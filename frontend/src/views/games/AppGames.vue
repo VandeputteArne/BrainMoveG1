@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import GameCard from '../../components/cards/CardsGame.vue';
+import { getApiUrl } from '../../config/api.js';
 
 const games = ref([]);
 
@@ -12,7 +13,7 @@ onMounted(async () => {
   }
 
   try {
-    const res = await fetch('http://10.42.0.1:8000/games/overview');
+    const res = await fetch(getApiUrl('games/overview'));
     const data = await res.json();
 
     games.value = data.map((game, index) => ({

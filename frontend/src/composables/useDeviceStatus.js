@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { connectSocket, disconnectSocket } from '../services/socket.js';
+import { getApiUrl } from '../config/api.js';
 
 // Shared state across all components
 const allDevicesConnected = ref(false);
@@ -42,7 +43,7 @@ export function useDeviceStatus() {
 
   async function fetchDeviceStatus() {
     try {
-      const res = await fetch('http://10.42.0.1:8000/devices/status');
+      const res = await fetch(getApiUrl('devices/status'));
       if (!res.ok) throw new Error(`Request failed: ${res.status}`);
       const data = await res.json();
 

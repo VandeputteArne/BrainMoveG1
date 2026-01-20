@@ -228,7 +228,7 @@ class DeviceManager:
                         if await app.verbind(): 
                             await self._emit_status(app, "online")
                             
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(3.0)
         except asyncio.CancelledError: 
             self._scan_actief = False
             raise

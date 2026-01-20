@@ -4,6 +4,7 @@ import FilterGame from '../../components/filters/FilterGame.vue';
 import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
 import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue';
 import LeaderboardPlayer from '../../components/leaderboard/LeaderboardPlayer.vue';
+import { getApiUrl } from '../../config/api.js';
 
 const selectedGame = ref(null);
 const selectedDifficulty = ref('2');
@@ -19,7 +20,7 @@ async function fetchDifficulties() {
   }
 
   try {
-    const res = await fetch(`http://10.42.0.1:8000/leaderboard/filters/${selectedGame.value}`);
+    const res = await fetch(getApiUrl(`leaderboard/filters/${selectedGame.value}`));
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
     const data = await res.json();
 
@@ -47,7 +48,7 @@ async function fetchLeaderboard() {
   }
 
   try {
-    const res = await fetch(`http://10.42.0.1:8000/leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}`);
+    const res = await fetch(getApiUrl(`leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}`));
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
     const data = await res.json();
 

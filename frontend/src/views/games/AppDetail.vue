@@ -9,6 +9,7 @@ import { Play } from 'lucide-vue-next';
 
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { getApiUrl } from '../../config/api.js';
 
 const router = useRouter();
 const route = useRoute();
@@ -53,7 +54,7 @@ onMounted(async () => {
   } else {
     // Fetch game details from API if not cached
     try {
-      const res = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/details`);
+      const res = await fetch(getApiUrl(`games/${gameId.value}/details`));
       const data = await res.json();
 
       // Store in sessionStorage (without leaderboard)
@@ -68,7 +69,7 @@ onMounted(async () => {
 
   // Always fetch fresh leaderboard
   try {
-    const leaderboardRes = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/leaderboard/3`);
+    const leaderboardRes = await fetch(getApiUrl(`games/${gameId.value}/leaderboard/3`));
     const leaderboardData = await leaderboardRes.json();
 
     smallLeaderboardData.value = leaderboardData.map((entry) => ({
@@ -161,7 +162,7 @@ async function startGame() {
   }
 
   try {
-    const res = await fetch(`http://10.42.0.1:8000/games/${gameId.value}/instellingen`, {
+    const res = await fetch(getApiUrl(`games/${gameId.value}/instellingen`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

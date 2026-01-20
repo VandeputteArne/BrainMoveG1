@@ -5,6 +5,7 @@ import InputGebruikersnaam from '../../components/inputs/InputGebruikersnaam.vue
 import FilterDatum from '../../components/filters/FilterDatum.vue';
 import CardHistorie from '../../components/cards/CardHistorie.vue';
 import { SlidersHorizontal, X } from 'lucide-vue-next';
+import { getApiUrl } from '../../config/api.js';
 
 const selectedGame = ref(null);
 const gebruikersnaam = ref('');
@@ -38,7 +39,7 @@ async function fetchHistorie() {
   }
 
   const queryString = params.toString();
-  const url = `http://10.42.0.1:8000/trainingen/historie/${gameId}${queryString ? '?' + queryString : ''}`;
+  const url = getApiUrl(`trainingen/historie/${gameId}${queryString ? '?' + queryString : ''}`);
 
   console.log('Fetching historie from:', url);
 

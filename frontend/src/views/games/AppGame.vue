@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 
 import { Timer, OctagonX } from 'lucide-vue-next';
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
+import { getApiUrl } from '../../config/api.js';
 
 const countdown = ref(3);
 const showCountdown = ref(true);
@@ -113,7 +114,7 @@ onMounted(async () => {
     countdown.value = i;
     if (i === 1) {
       try {
-        await fetch('http://10.42.0.1:8000/games/1/play', { method: 'GET' });
+        await fetch(getApiUrl('games/1/play'), { method: 'GET' });
       } catch (e) {
         // ignore network/CORS errors for this signal
       }

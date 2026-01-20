@@ -1,6 +1,7 @@
 <script setup>
 import { Gamepad2, ChevronDown } from 'lucide-vue-next';
 import { ref, onMounted } from 'vue';
+import { getApiUrl } from '../../config/api.js';
 
 const gameoptions = ref([]);
 const selectRef = ref(null);
@@ -21,7 +22,7 @@ onMounted(async () => {
   }
 
   try {
-    const res = await fetch('http://10.42.0.1:8000/games/filters');
+    const res = await fetch(getApiUrl('games/filters'));
     const data = await res.json();
 
     gameoptions.value = data.map((game) => ({
