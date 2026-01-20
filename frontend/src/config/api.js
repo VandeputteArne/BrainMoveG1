@@ -1,7 +1,6 @@
 // API Configuration
 // Uses environment variables to configure base URL
-// Development (npm run dev): http://10.42.0.1:8000
-// Production (npm run build): http://brainmove.g1:8000
+// Both dev and production use the RPI hotspot IP: http://10.42.0.1:8000
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://10.42.0.1:8000';
 

@@ -67,8 +67,9 @@ HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
 sio = socketio.AsyncServer(
     async_mode='asgi',
     cors_allowed_origins='*',
-    ping_interval=10,
-    ping_timeout=5,
+    ping_interval=5,
+    ping_timeout=3,
+    always_connect=True,
 )
 sio_app = socketio.ASGIApp(sio, app)
 device_manager = DeviceManager(sio=sio)
@@ -129,6 +130,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 
         gekozen_kleur = random.choice(kleuren).upper()
         await sio.emit('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
+        await asyncio.sleep(0)  # Flush socket
         print("Frontend socketio:", gekozen_kleur.upper())
 
         await device_manager.set_correct_kegel(gekozen_kleur)
@@ -206,6 +208,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
     # Clear callback after game
     device_manager.zet_detectie_callback(None)
     await sio.emit('game_einde', {"status":"game gedaan"})
+    await asyncio.sleep(0)  # Yield to flush socket
     return colorgame_rondes
 
 async def memorygame(snelheid, aantal_rondes, kleuren):
