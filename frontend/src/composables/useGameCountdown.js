@@ -20,22 +20,22 @@ export function useGameCountdown(options = {}) {
     for (let i = 3; i >= 1; i--) {
       countdown.value = i;
       countdownText.value = 'Maak je klaar...';
-
-      // Signal backend when countdown reaches 1 (if gameId provided)
-      if (i === 1 && gameId) {
-        try {
-          await fetch(`http://10.42.0.1:8000/games/${gameId}/play`, { method: 'GET' });
-        } catch (e) {
-          console.warn('Failed to signal game start to backend:', e);
-        }
-      }
-
       await new Promise((r) => setTimeout(r, 700));
     }
 
-    // Show "GO!"
+    // Show "GO!" and signal backend
     countdown.value = 'GO!';
     countdownText.value = '';
+
+    // Signal backend when showing GO! (if gameId provided)
+    if (gameId) {
+      try {
+        await fetch(`http://10.42.0.1:8000/games/${gameId}/play`, { method: 'GET' });
+      } catch (e) {
+        console.warn('Failed to signal game start to backend:', e);
+      }
+    }
+
     await new Promise((r) => setTimeout(r, 500));
 
     // Hide countdown and trigger callback
