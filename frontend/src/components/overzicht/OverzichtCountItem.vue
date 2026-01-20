@@ -36,14 +36,14 @@ const props = defineProps({
 }
 
 .c-overzicht__count-item--correct {
-  background-color: #83d087;
+  background-color: rgba(131, 208, 135, 0.8);
 }
 
 .c-overzicht__count-item--fout {
-  background-color: #ff7b7b;
+  background-color: rgba(255, 123, 123, 0.8);
 }
 
 .c-overzicht__count-item--telaat {
-  background-color: #ffb961;
+  background-color: rgba(255, 181, 97, 0.8);
 }
 </style>
