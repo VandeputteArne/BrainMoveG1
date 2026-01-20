@@ -138,13 +138,14 @@ class Cone:
     async def send_keepalive(self) -> bool:
         return await self._stuur_commando(Command.KEEPALIVE)
 
-    async def _stuur_commando(self, commando: Command, data: bytes = b'') -> bool:
+    async def _stuur_commando(self, commando: Command, data: bytes = b'', wacht_op_antwoord: bool = False) -> bool:
         if not self._verbonden: return False
         try:
             payload = bytes([commando]) + data
-            await self._client.write_gatt_char(CHAR_COMMAND_UUID, payload)
+            # response=False means "write without response" - much faster, doesn't wait for ACK
+            await self._client.write_gatt_char(CHAR_COMMAND_UUID, payload, response=wacht_op_antwoord)
             return True
-        except Exception: 
+        except Exception:
             return False
 
     async def start_pollen(self) -> None:
