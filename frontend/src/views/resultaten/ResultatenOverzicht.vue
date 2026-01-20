@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { Download, ChartNoAxesCombined } from 'lucide-vue-next';
-import ExcelJS from 'exceljs';
+import { exportToExcel } from '../../composables/useExcelExport.js';
 
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import OverzichtCountItem from '../../components/overzicht/OverzichtCountItem.vue';
@@ -15,6 +15,7 @@ const backUrl = computed(() => (route.params.id ? '/historie' : '/games'));
 const backText = computed(() => (route.params.id ? 'Terug naar historie' : 'Terug naar games'));
 
 const gameId = ref(null);
+const username = ref('');
 
 const stats = ref([
   { waarde: 0, label: 'Gemiddelde' },
@@ -34,9 +35,12 @@ const counts = ref([
 function applyData(data) {
   if (!data || typeof data !== 'object') return;
 
-  // Store game_id if available
+  // Store game_id and username if available
   if (data.game_id) {
     gameId.value = data.game_id;
+  }
+  if (data.gebruikersnaam) {
+    username.value = data.gebruikersnaam;
   }
 
   // Check if this is memory game (game_id: 2)
@@ -133,26 +137,14 @@ const computedBest = computed(() => {
   return Math.min(...rounds.value.map((r) => r.time));
 });
 
-// CSV export (simple)
-function exportCsv() {
-  const data = stats.value;
-  const rows = [['Stat', 'Value'], ['Gemiddelde', data[0]?.waarde || 0], ['Beste', data[1]?.waarde || 0], ['Ranking', data[2]?.waarde || 0], ['Exactheid (%)', data[3]?.waarde || 0], [], ['Type', 'Count'], ['Correct', counts.value[0]?.value || 0], ['Wrong', counts.value[1]?.value || 0], ['Late', counts.value[2]?.value || 0]];
-
-  if (rounds.value.length) {
-    rows.push([], ['Round', 'Time (s)']);
-    rounds.value.forEach((r) => rows.push([r.round, r.time]));
-  }
-
-  const csv = rows.map((r) => r.join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `results_${Date.now()}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
+// Excel export
+async function exportCsv() {
+  await exportToExcel({
+    stats: stats.value,
+    counts: counts.value,
+    rounds: rounds.value,
+    username: username.value,
+  });
 }
 </script>
 
