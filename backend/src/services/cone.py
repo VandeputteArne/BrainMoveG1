@@ -25,6 +25,7 @@ class Command(IntEnum):
     START = 0x01
     STOP = 0x02
     KEEPALIVE = 0x05
+    SET_CORRECT = 0x06
     GELUID_CORRECT = 0x10
     GELUID_INCORRECT = 0x11
 
@@ -146,10 +147,13 @@ class Cone:
         except Exception: 
             return False
 
-    async def start_pollen(self, correcte_kegel: bool = False) -> None:
-        payload = bytes([int(correcte_kegel)])
-        if await self._stuur_commando(Command.START, payload):
+    async def start_pollen(self) -> None:
+        if await self._stuur_commando(Command.START):
             self._aan_het_pollen = True
+
+    async def set_correct(self, is_correct: bool = False) -> bool:
+        payload = bytes([int(is_correct)])
+        return await self._stuur_commando(Command.SET_CORRECT, payload)
 
     async def stop_pollen(self) -> None:
         if await self._stuur_commando(Command.STOP):

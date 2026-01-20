@@ -115,6 +115,9 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 
     device_manager.zet_detectie_callback(on_detectie)
 
+    await device_manager.start_alle()
+    await asyncio.sleep(0.05)
+
     for ronde_idx in range(aantal_rondes):
         device_manager.verwijder_alle_laatste_detecties()
         ronde = ronde_idx + 1
@@ -123,27 +126,23 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         await sio.emit('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
         print("Frontend socketio:", gekozen_kleur.upper())
 
-        starttijd = time.time()
-        await device_manager.start_alle(gekozen_kleur)
-        await asyncio.sleep(0.05)
-        
-        # Capture baseline (stuck sensors)
+        await device_manager.set_correct_kegel(gekozen_kleur)
+
         baseline_detecties = device_manager.verkrijg_alle_laatste_detecties()
         baseline_apparaten = set(baseline_detecties.keys())
         if baseline_apparaten:
             print(f"Voorgaande detecties genegeerd: {', '.join(baseline_apparaten)}")
-        
-        # Clear event and detection
+
         detectie_event.clear()
         detected_device.clear()
         device_manager.verwijder_alle_laatste_detecties()
-        
-        # Wacht voor detectie (ORIGINELE LOGICA HERSTELD)
+
+        starttijd = time.time()
+
         await detectie_event.wait()
         eindtijd = time.time()
         reactietijd = round(eindtijd - starttijd, 2) - HARDWARE_DELAY
-                
-        await device_manager.stop_alle()
+
         print(detected_device)
 
         # Bepaal welke kleur gedetecteerd is
@@ -192,7 +191,13 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             "waarde": reactietijd,
             "uitkomst": status,
         })
-    
+
+        # Reset the correct cone back to incorrect for clean state
+        await device_manager.reset_correct_kegel(gekozen_kleur)
+
+    # Stop polling after all rounds are done
+    await device_manager.stop_alle()
+
     # Clear callback after game
     device_manager.zet_detectie_callback(None)
     await sio.emit('game_einde', {"status":"game gedaan"})

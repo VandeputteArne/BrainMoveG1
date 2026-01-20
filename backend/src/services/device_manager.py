@@ -142,11 +142,20 @@ class DeviceManager:
         for app in self._apparaten.values(): 
             await app.verbreek()
 
-    async def start_alle(self, correcte_kegel: str) -> None:
+    async def start_alle(self) -> None:
         for app in self._apparaten.values():
-            if app.verbonden: 
-                is_correct = str(correcte_kegel).lower() in app.naam.lower()
-                await app.start_pollen(is_correct)
+            if app.verbonden:
+                await app.start_pollen()
+
+    async def set_correct_kegel(self, correcte_kegel: str) -> None:
+        for app in self._apparaten.values():
+            if app.verbonden and str(correcte_kegel).lower() in app.naam.lower():
+                await app.set_correct(True)
+
+    async def reset_correct_kegel(self, kegel: str) -> None:
+        for app in self._apparaten.values():
+            if app.verbonden and str(kegel).lower() in app.naam.lower():
+                await app.set_correct(False)
 
     async def stop_alle(self) -> None:
         for app in self._apparaten.values():
