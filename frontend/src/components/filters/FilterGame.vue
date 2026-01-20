@@ -5,10 +5,18 @@ import { ref, onMounted } from 'vue';
 const gameoptions = ref([]);
 const selectRef = ref(null);
 
+const modelValue = defineModel();
+const emit = defineEmits(['update:gameName']);
+
 onMounted(async () => {
   const cachedGames = sessionStorage.getItem('gameFilters');
   if (cachedGames) {
     gameoptions.value = JSON.parse(cachedGames);
+    // Set default to first game
+    if (gameoptions.value.length > 0) {
+      modelValue.value = gameoptions.value[0].id;
+      emit('update:gameName', gameoptions.value[0].gametype);
+    }
     return;
   }
 
@@ -22,6 +30,12 @@ onMounted(async () => {
     }));
 
     sessionStorage.setItem('gameFilters', JSON.stringify(gameoptions.value));
+
+    // Set default to first game
+    if (gameoptions.value.length > 0) {
+      modelValue.value = gameoptions.value[0].id;
+      emit('update:gameName', gameoptions.value[0].gametype);
+    }
   } catch (error) {
     console.error('Failed to fetch game filters:', error);
   }
@@ -32,6 +46,12 @@ function openSelect(event) {
     selectRef.value.showPicker?.() || selectRef.value.focus();
   }
 }
+
+function handleChange(event) {
+  const selectedOption = event.target.selectedOptions[0];
+  modelValue.value = selectedOption.dataset.id;
+  emit('update:gameName', selectedOption.value);
+}
 </script>
 
 <template>
@@ -39,7 +59,7 @@ function openSelect(event) {
     <p>Gametype</p>
     <div class="c-filter-game__filter" @click="openSelect">
       <Gamepad2 class="c-filter-game__icon" />
-      <select ref="selectRef" id="gametype-select" class="c-filter-game__select" @click.stop>
+      <select ref="selectRef" id="gametype-select" class="c-filter-game__select" @change="handleChange" @click.stop>
         <option v-for="option in gameoptions" :key="option.id" :data-id="option.id" :value="option.gametype">{{ option.gametype }}</option>
       </select>
       <ChevronDown class="c-filter-game__icon" />

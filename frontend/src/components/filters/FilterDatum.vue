@@ -3,7 +3,7 @@ import { Calendar } from 'lucide-vue-next';
 import { ref } from 'vue';
 
 const dateRef = ref(null);
-const selectedDate = ref('');
+const modelValue = defineModel();
 
 function openDatePicker(event) {
   if (event.target !== dateRef.value && dateRef.value) {
@@ -17,7 +17,7 @@ function openDatePicker(event) {
     <p>Datum</p>
     <div class="c-filter-datum__filter" @click="openDatePicker">
       <Calendar class="c-filter-datum__icon" />
-      <input ref="dateRef" type="date" v-model="selectedDate" class="c-filter-datum__input" @click.stop />
+      <input ref="dateRef" type="date" v-model="modelValue" class="c-filter-datum__input" @click.stop />
     </div>
   </div>
 </template>

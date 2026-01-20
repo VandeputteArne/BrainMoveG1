@@ -154,6 +154,7 @@ p {
   background: var(--blue-100);
   color: var(--color-white);
   text-decoration: none;
+  width: 100%;
 
   .c-button__icon {
     display: flex;

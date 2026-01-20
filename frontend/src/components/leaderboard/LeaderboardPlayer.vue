@@ -10,6 +10,11 @@ const firstLetter = computed(() => {
   return props.name ? props.name.charAt(0).toUpperCase() : '';
 });
 
+const displayName = computed(() => {
+  if (!props.name) return '';
+  return props.name.length > 7 ? props.name.substring(0, 7) + '...' : props.name;
+});
+
 const backgroundClass = computed(() => {
   if (props.rank === 1) return 'is-gold';
   if (props.rank === 2) return 'is-silver';
@@ -21,7 +26,7 @@ const backgroundClass = computed(() => {
 <template>
   <div class="c-player">
     <div class="c-player__img" :class="backgroundClass">{{ firstLetter }}</div>
-    <p class="c-player__name">{{ props.name }}</p>
+    <p class="c-player__name">{{ displayName }}</p>
   </div>
 </template>
 

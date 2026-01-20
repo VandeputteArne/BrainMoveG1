@@ -1,39 +1,89 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import FilterGame from '../../components/filters/FilterGame.vue';
 import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
 import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue';
 import LeaderboardPlayer from '../../components/leaderboard/LeaderboardPlayer.vue';
 
+const selectedGame = ref(null);
 const selectedDifficulty = ref('2');
 
-const difficulties = ref([
-  { id: '1', snelheid: 10, stars: 1 },
-  { id: '2', snelheid: 5, stars: 2 },
-  { id: '3', snelheid: 3, stars: 3 },
-]);
+const difficulties = ref([]);
 
-const leaderboardData = ref([
-  { name: 'Jonathan', time: 1.22, rank: 1 },
-  { name: 'Maarten', time: 1.79, rank: 2 },
-  { name: 'Anna', time: 2.06, rank: 3 },
-  { name: 'Sophie', time: 2.34, rank: 4 },
-  { name: 'Piet', time: 2.89, rank: 5 },
-  { name: 'Klaas', time: 3.12, rank: 6 },
-  { name: 'Marie', time: 3.45, rank: 7 },
-  { name: 'Jan', time: 3.78, rank: 8 },
-]);
+const leaderboardData = ref([]);
+
+async function fetchDifficulties() {
+  if (!selectedGame.value) {
+    difficulties.value = [];
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://10.42.0.1:8000/leaderboard/filters/${selectedGame.value}`);
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    const data = await res.json();
+
+    difficulties.value = data.map((diff, index) => ({
+      id: String(diff.moeilijkheid_id),
+      stars: index + 1,
+    }));
+
+    if (difficulties.value.length > 0) {
+      const exists = difficulties.value.some((d) => d.id === selectedDifficulty.value);
+      if (!exists) {
+        selectedDifficulty.value = difficulties.value[0].id;
+      }
+    }
+  } catch (error) {
+    console.error('Failed to fetch difficulties:', error);
+    difficulties.value = [];
+  }
+}
+
+async function fetchLeaderboard() {
+  if (!selectedGame.value || !selectedDifficulty.value) {
+    leaderboardData.value = [];
+    return;
+  }
+
+  try {
+    const res = await fetch(`http://10.42.0.1:8000/leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}`);
+    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    const data = await res.json();
+
+    leaderboardData.value = data.map((entry) => ({
+      name: entry.gebruikersnaam,
+      time: entry.waarde,
+      rank: entry.plaats,
+    }));
+  } catch (error) {
+    console.error('Failed to fetch leaderboard:', error);
+    leaderboardData.value = [];
+  }
+}
+
+watch(selectedGame, () => {
+  fetchDifficulties();
+});
+
+watch([selectedGame, selectedDifficulty], () => {
+  fetchLeaderboard();
+});
+
+onMounted(() => {
+  fetchLeaderboard();
+});
 </script>
 
 <template>
   <div class="c-leaderboard">
     <h1>Leaderboard</h1>
     <div class="c-leaderboard__filters">
-      <FilterGame />
+      <FilterGame v-model="selectedGame" />
       <div class="c-leaderboard__dif">
         <p>Moeilijkheidsgraad</p>
         <div class="c-leaderboard__row">
-          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :snelheid="opt.snelheid" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
+          <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
         </div>
       </div>
     </div>
@@ -48,7 +98,7 @@ const leaderboardData = ref([
         <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
       </div>
       <div class="c-leaderboard__body">
-        <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" :full="true" :borderDark="true" :total="leaderboardData.length" />
+        <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" />
       </div>
     </div>
   </div>
@@ -118,7 +168,7 @@ const leaderboardData = ref([
     transform: scale(clamp(0.8, 1vw, 1.2));
 
     @media (width < 576px) {
-      left: 12%;
+      left: 11%;
     }
   }
 
@@ -129,7 +179,7 @@ const leaderboardData = ref([
     transform: scale(clamp(0.8, 1vw, 1.2));
 
     @media (width < 576px) {
-      right: 14%;
+      right: 11%;
     }
   }
 
