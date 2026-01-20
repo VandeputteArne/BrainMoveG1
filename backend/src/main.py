@@ -289,7 +289,10 @@ async def get_laatste_rondewaarden():
     # Hier kun je verdere verwerking van correcte_rondewaarden toevoegen, bijvoorbeeld voor een grafiek
     correcte_rondewaarden_data = [CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=item.waarde) for item in correcte_rondewaarden]
 
+    game_id = DataRepository.get_gameid_by_trainingid(last_training_id) if last_training_id else None
+
     return Resultaat(
+        game_id=game_id or 0,
         ranking=ranking or 0,
         gemiddelde_waarde=round(gemiddelde_tijd, 2),
         beste_waarde=round(beste_tijd, 2),
@@ -354,8 +357,10 @@ async def get_training_history(game_id: int, gebruikersnaam: str | None = None, 
 @app.get("/trainingen/{training_id}/details", response_model=RondeWaardenVoorDetails, summary="Haal de details op voor een specifieke training", tags=["Spelletjes"])
 async def get_training_details(training_id: int):
     rondewaarden = DataRepository.get_allerondewaarden_by_trainingsId(training_id)
+    game_id = DataRepository.get_gameid_by_trainingid(training_id)
 
     return RondeWaardenVoorDetails(
+        game_id=game_id or 0,
         gemmidelde_waarde=round(sum(float(item.waarde) for item in rondewaarden) / len(rondewaarden), 2) if rondewaarden else 0,
         beste_waarde=round(min(float(item.waarde) for item in rondewaarden), 2) if rondewaarden else 0,
         ranking=DataRepository.get_ranking_for_onetraining(training_id) or 0,

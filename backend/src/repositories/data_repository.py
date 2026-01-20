@@ -387,3 +387,13 @@ class DataRepository:
                 leaderboard.append(item)
         
         return leaderboard
+    
+    @staticmethod
+    def get_gameid_by_trainingid(training_id: int) -> Optional[int]:
+        """Haal de GameId op voor een specifieke training"""
+        sql_query = "SELECT GameId FROM Trainingen WHERE TrainingsId = ?"
+        row = Database.get_one_row(sql_query, (training_id,))
+        
+        if row and 'GameId' in row:
+            return row['GameId']
+        return None
