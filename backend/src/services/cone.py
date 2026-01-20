@@ -2,13 +2,12 @@ import asyncio
 import os
 import struct
 import logging
-from datetime import datetime
 from enum import IntEnum
 from bleak import BleakClient
 from bleak.exc import BleakError
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 SERVICE_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a7"
 CHAR_DATA_UUID = "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -25,6 +24,7 @@ class MessageType(IntEnum):
 class Command(IntEnum):
     START = 0x01
     STOP = 0x02
+    KEEPALIVE = 0x05
     GELUID_CORRECT = 0x10
     GELUID_INCORRECT = 0x11
 
@@ -36,7 +36,7 @@ class Cone:
     def __init__(self, mac_adres: str, naam: str, lock: asyncio.Lock = None, auto_herverbinden: bool = True):
         self.mac_adres = mac_adres
         self.naam = naam
-        self._lock = lock # Lock voor bluetooth operaties
+        self._lock = lock
         self.auto_herverbinden = auto_herverbinden
         
         self._client: BleakClient
@@ -57,69 +57,57 @@ class Cone:
         self.laatste_detectie = None
 
     @property
-    def verbonden(self) -> bool:
-        return self._verbonden
+    def verbonden(self) -> bool: return self._verbonden
     
     @property
-    def geauthenticeerd(self) -> bool:
-        return self._geauthenticeerd
+    def geauthenticeerd(self) -> bool: return self._geauthenticeerd
     
     @property
-    def is_aan_het_pollen(self) -> bool:
-        return self._aan_het_pollen
+    def is_aan_het_pollen(self) -> bool: return self._aan_het_pollen
         
     async def verbind(self, timeout: float = 30.0) -> bool:
         async def _doe_verbinden():
             try:
                 self._client = BleakClient(
-                    self.mac_adres,
-                    timeout=timeout,
+                    self.mac_adres, 
+                    timeout=timeout, 
                     disconnected_callback=self._verwerk_verbreek
                 )
-                
                 await self._client.connect()
                 
                 if self._client.is_connected:
                     self._verbonden = True
-                    
                     try:
                         await self._client.start_notify(CHAR_DATA_UUID, self._notificatie_handler)
-                    except BleakError as e:
-                        if "Notify acquired" in str(e):
-                            logger.warning(f"{self.naam}: Notify was al actief (BlueZ), we gaan door.")
-                        else:
-                            raise e
-
+                    except BleakError: 
+                        pass
+                        
                     self._herverbind_pogingen = 0
-                    logger.info(f"Verbonden met {self.naam}")
+                    logger.info(f"Verbonden: {self.naam}")
                     return True
-                
                 return False
-                
             except Exception as e:
-                logger.error(f"Verbinden mislukt {self.naam}: {e}")
+                logger.error(f"Fout {self.naam}: {e}")
                 self._verbonden = False
                 return False
 
         if self._lock:
-            async with self._lock:
+            async with self._lock: 
                 return await _doe_verbinden()
-        else:
-            return await _doe_verbinden()
+        return await _doe_verbinden()
 
     async def verbreek(self) -> None:
         self.auto_herverbinden = False
-        
         if self._herverbind_taak:
             self._herverbind_taak.cancel()
             self._herverbind_taak = None
         
         if self._client and self._verbonden:
-            try:
+            try: 
                 await self._client.stop_notify(CHAR_DATA_UUID)
-            except Exception:
+            except Exception: 
                 pass
-
+            
             await self._client.disconnect()
             self._verbonden = False
             self._geauthenticeerd = False
@@ -130,116 +118,88 @@ class Cone:
         self._geauthenticeerd = False
         self._aan_het_pollen = False
         
-        if self.bij_verbreek:
+        if self.bij_verbreek: 
             self.bij_verbreek()
-        
+            
         if self.auto_herverbinden and self._herverbind_pogingen < self._max_herverbind_pogingen:
             self._herverbind_taak = asyncio.create_task(self._herverbind())
 
     async def _herverbind(self) -> None:
         self._herverbind_pogingen += 1
-        logger.info(f"{self.naam} herverbinding poging {self._herverbind_pogingen}")
         await asyncio.sleep(self._herverbind_vertraging)
         
         if await self.verbind():
-            logger.info(f"Herverbonden met {self.naam}")
-            if self.bij_herverbind:
+            if self.bij_herverbind: 
                 self.bij_herverbind()
         elif self._herverbind_pogingen < self._max_herverbind_pogingen:
             self._herverbind_taak = asyncio.create_task(self._herverbind())
-        else:
-            logger.error(f"{self.naam} herverbinding mislukt na {self._max_herverbind_pogingen} pogingen")
+
+    async def send_keepalive(self) -> bool:
+        return await self._stuur_commando(Command.KEEPALIVE)
 
     async def _stuur_commando(self, commando: Command, data: bytes = b'') -> bool:
-        if not self._verbonden:
-            return False
-        
+        if not self._verbonden: return False
         try:
-            volledig_commando = bytes([commando]) + data
-            await self._client.write_gatt_char(CHAR_COMMAND_UUID, volledig_commando)
+            payload = bytes([commando]) + data
+            await self._client.write_gatt_char(CHAR_COMMAND_UUID, payload)
             return True
-        except Exception as e:
-            logger.error(f"Commando mislukt {self.naam}: {e}")
+        except Exception: 
             return False
 
-    async def start_pollen(self, correcte_kegel: int = 0) -> None:
-        kegel_byte = bytes([int(correcte_kegel)])
-        if await self._stuur_commando(Command.START, kegel_byte):
+    async def start_pollen(self, correcte_kegel: bool = False) -> None:
+        payload = bytes([int(correcte_kegel)])
+        if await self._stuur_commando(Command.START, payload):
             self._aan_het_pollen = True
-            logger.info(f"{self.naam} pollen gestart (correcte_kegel={bool(correcte_kegel)})")
-        else:
-            logger.warning(f"{self.naam} start pollen commando mislukt")
 
     async def stop_pollen(self) -> None:
         if await self._stuur_commando(Command.STOP):
             self._aan_het_pollen = False
             self.laatste_detectie = None
 
-    async def speel_correct_geluid(self) -> None:
+    async def speel_correct_geluid(self) -> None: 
         await self._stuur_commando(Command.GELUID_CORRECT)
-
-    async def speel_incorrect_geluid(self) -> None:
+        
+    async def speel_incorrect_geluid(self) -> None: 
         await self._stuur_commando(Command.GELUID_INCORRECT)
     
     def _notificatie_handler(self, sender, data: bytearray) -> None:
-        if len(data) < 8:
-            logger.debug(f"{self.naam} ontvangen te kort bericht ({len(data)} bytes)")
-            return
+        if len(data) < 4: return
         
-        bericht_type, apparaat_id, veiligheid_byte, gereserveerd, timestamp = struct.unpack('<BBBBI', data[:8])
+        bericht_type, _, veiligheid_byte, _ = struct.unpack('<BBBB', data[:4])
         
-        if veiligheid_byte != VEILIGHEIDS_BYTE:
-            logger.warning(f"{self.naam} ongeldig veiligheids_byte: 0x{veiligheid_byte:02X}")
-            return
+        if veiligheid_byte != VEILIGHEIDS_BYTE: return
+        if not self._geauthenticeerd: self._geauthenticeerd = True
         
-        if not self._geauthenticeerd:
-            self._geauthenticeerd = True
-        
-        nu = datetime.now()
-        
-        if bericht_type == MessageType.DETECTIE:
-            self._verwerk_detectie_bericht(data, apparaat_id, timestamp, nu)
-        elif bericht_type == MessageType.BATTERIJ:
-            self._verwerk_batterij_bericht(data, apparaat_id, timestamp, nu)
+        if bericht_type == MessageType.DETECTIE: 
+            self._verwerk_detectie_bericht(data, data[1])
+        elif bericht_type == MessageType.BATTERIJ: 
+            self._verwerk_batterij_bericht(data, data[1])
     
-    def _verwerk_detectie_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
-        if len(data) < 10:
-            return
+    def _verwerk_detectie_bericht(self, data: bytes, apparaat_id: int) -> None:
+        if len(data) < 6: return
         
-        detectie_waar = struct.unpack('<H', data[8:10])[0]
-        
+        detectie_waar = struct.unpack('<H', data[4:6])[0]
         gebeurtenis = {
-            "apparaat_naam": self.naam,
-            "apparaat_id": apparaat_id,
-            "detectie_bool": detectie_waar,
-            "timestamp_ms": timestamp,
-            "ontvangen_op": nu
+            "apparaat_naam": self.naam, 
+            "apparaat_id": apparaat_id, 
+            "detectie_bool": detectie_waar
         }
         self.laatste_detectie = gebeurtenis
-        
-        if self.bij_detectie:
-            self.bij_detectie(gebeurtenis)
+        if self.bij_detectie: self.bij_detectie(gebeurtenis)
 
-    def _verwerk_batterij_bericht(self, data: bytes, apparaat_id: int, timestamp: int, nu: datetime) -> None:
-        if len(data) < 9:
-            return
+    def _verwerk_batterij_bericht(self, data: bytes, apparaat_id: int) -> None:
+        if len(data) < 5: return
         
-        percentage = data[8]
-        
-        if self.bij_batterij:
-            gebeurtenis = {
-                "apparaat_naam": self.naam,
-                "apparaat_id": apparaat_id,
-                "percentage": percentage,
-                "timestamp_ms": timestamp,
-                "ontvangen_op": nu
-            }
-            self.bij_batterij(gebeurtenis)
+        gebeurtenis = {
+            "apparaat_naam": self.naam, 
+            "apparaat_id": apparaat_id, 
+            "percentage": data[4]
+        }
+        if self.bij_batterij: self.bij_batterij(gebeurtenis)
 
-    def __str__(self) -> str:
-        status = "verbonden" if self._verbonden else "verbroken"
+    def __str__(self) -> str: 
+        status = 'verbonden' if self._verbonden else 'verbroken'
         return f"{self.naam} ({self.mac_adres}) - {status}"
-
-    def __repr__(self) -> str:
-        status = "verbonden" if self._verbonden else "verbroken"
-        return f"Cone({self.naam!r}, {self.mac_adres!r}, {status})"
+        
+    def __repr__(self) -> str: 
+        return f"Cone({self.naam!r}, {self.mac_adres!r})"
