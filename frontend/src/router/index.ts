@@ -4,7 +4,8 @@ import OnboardingSetup from '../views/onboarding/OnboardingSetup.vue';
 import OnboardingWarning from '../views/onboarding/OnboardingWarning.vue';
 import AppGames from '../views/games/AppGames.vue';
 import AppDetail from '../views/games/AppDetail.vue';
-import AppGame from '../views/games/AppGame.vue';
+import AppGame from '../views/games/AppGameColor.vue';
+import AppGameMemory from '../views/games/AppGameMemory.vue';
 import ResultatenProficiat from '../views/resultaten/ResultatenProficiat.vue';
 import ResultatenOverzicht from '../views/resultaten/ResultatenOverzicht.vue';
 import ApparatenView from '../views/apparaten/AppApparaten.vue';
@@ -43,9 +44,15 @@ const routes = [
     meta: { showTopbar: true, showNav: false, showBack: true, fullScreen: false, paddingbottom: false, paddingtop: true },
   },
   {
-    path: '/games/:id/play',
+    path: '/games/1/play',
     name: 'game-play',
     component: AppGame,
+    meta: { showTopbar: false, showNav: false, showBack: true, fullScreen: true, paddingbottom: false, paddingtop: false },
+  },
+  {
+    path: '/games/2/play',
+    name: 'game-memory-play',
+    component: AppGameMemory,
     meta: { showTopbar: false, showNav: false, showBack: true, fullScreen: true, paddingbottom: false, paddingtop: false },
   },
   {
