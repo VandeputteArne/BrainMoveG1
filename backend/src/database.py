@@ -45,12 +45,15 @@ class Database:
             cursor.close()
             db.close()
             if row is None:
-                raise ValueError("Geen resultaat gevonden.[DB Error]")
+                return None
             return dict(row)
         except Exception as error:
             print(f"Query fout: {error}")
-            cursor.close()
-            db.close()
+            try:
+                cursor.close()
+                db.close()
+            except:
+                pass
             return None
 
     # Executes INSERT, UPDATE, DELETE

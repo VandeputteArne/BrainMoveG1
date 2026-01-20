@@ -9,6 +9,7 @@ import random
 import time
 import sys
 import os
+from typing import Union
 from contextlib import asynccontextmanager # <--- 1. Toegevoegd
 
 from fastapi import FastAPI, BackgroundTasks
@@ -36,6 +37,7 @@ from backend.src.models.models import (
     DetailGame,
     TrainingVoorHistorie,
     RondeWaardenVoorDetails,
+    StatistiekenVoorMemoryGame,
 )
 
 logger = logging.getLogger(__name__)
@@ -196,6 +198,55 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
     await sio.emit('game_einde', {"status":"game gedaan"})
     return colorgame_rondes
 
+async def memorygame(snelheid, aantal_rondes, kleuren):
+    geheugen_lijst = []
+    rondes_memory = []
+    
+    for ronde in range(1, aantal_rondes + 1):
+        nieuwe_kleur = random.choice(kleuren)
+        geheugen_lijst.append(nieuwe_kleur)
+        await sio.emit('ronde_start', {'rondenummer': ronde, 'maxronden': aantal_rondes})
+
+        # even wachten met starten
+        await asyncio.sleep(3)
+        await sio.emit('wacht_even', {'bericht': 'start'})
+        
+        for kleur in geheugen_lijst:
+            await sio.emit('toon_kleur', {'kleur': kleur.upper()})
+            print(kleur)
+            await asyncio.sleep(snelheid)
+
+        await sio.emit('kleuren_getoond', {'aantal': len(geheugen_lijst)})
+        print("Kleuren getoond, wacht op invoer")
+
+        starttijd = time.time()
+        status = "correct"
+        for kleur in geheugen_lijst:
+            invoer = input("Welke kleur werd gedetecteerd? ").strip().lower()
+            if invoer != kleur:
+                await sio.emit('fout_kleur', {'status': 'game over'})
+                status = "fout"
+                break
+            print("Correct")
+
+        eindtijd = time.time()
+        reactietijd = round(eindtijd - starttijd, 2)
+        await sio.emit('ronde_einde', {'ronde': ronde, 'status': status})
+        print(f"Ronde {ronde} klaar: {status}")
+        
+        rondes_memory.append({
+            'rondenummer': ronde, 
+            'reactietijd': reactietijd,
+            'status': status
+        })
+        
+        if status == "fout":
+            break
+            
+    await sio.emit('game_einde', {"status":"game gedaan"})
+    print("Einde memory game")
+    return rondes_memory
+
 @app.post("/games/{game_id}/instellingen",response_model=Instellingen, summary="Haal de instellingen op voor een specifiek spel",tags=["Spelletjes"])
 async def get_game_instellingen (json: Instellingen):
     #alles vanuit de json globaal zetten zodat ik die in de andere functie kan gebruiken
@@ -252,11 +303,51 @@ async def run_colorgame_background():
         print(f"Fout in colorgame: {e}")
         await sio.emit('game_error', {"error": str(e)})
 
+async def run_memorygame_background():
+    """Draait het memorygame in de achtergrond en stuurt resultaten via Socket.IO"""
+    global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren, starttijd
+    
+    try:
+        memorygame_rondes = await memorygame(snelheid, rondes, kleuren)
+        
+        newuserid = DataRepository.add_gebruiker(gebruikersnaam)
+        print(f"Nieuwe gebruiker toegevoegd met ID: {newuserid}")
+
+        # Voeg training toe
+        training_id = DataRepository.add_training(
+            Training(
+            start_tijd=starttijd.isoformat(),
+            aantal_kleuren=len(kleuren),
+            gebruikers_id=newuserid,
+            ronde_id=ronde_id,
+            moeilijkheids_id=moeilijkheids_id,
+            game_id=game_id
+            )
+        )
+        print(f"Nieuwe training toegevoegd met ID: {training_id}")
+        # Database opslag
+        for ronde in memorygame_rondes:
+            DataRepository.add_ronde_waarde(
+                RondeWaarde(
+                trainings_id=training_id,
+                ronde_nummer=ronde["rondenummer"],
+                waarde=ronde["reactietijd"],
+                uitkomst=ronde["status"]
+                )
+            )
+        
+    except Exception as e:
+        print(f"Fout in memorygame: {e}")
+        await sio.emit('game_error', {"error": str(e)})
+
 #play game endpoint 
 @app.get("/games/{game_id}/play")
-async def play_game(background_tasks: BackgroundTasks):
+async def play_game(background_tasks: BackgroundTasks, game_id: int):
     # Start het spel in de achtergrond
-    background_tasks.add_task(run_colorgame_background)
+    if(game_id == 1):
+        background_tasks.add_task(run_colorgame_background)
+    if(game_id == 2):
+        background_tasks.add_task(run_memorygame_background)
     
     # Geef direct een response terug
     return {
@@ -274,25 +365,28 @@ async def get_laatste_rondewaarden():
 
     # Bepaal ID van de laatst toegevoegde training en vraag ranking op
     last_training_id = DataRepository.get_last_training_id()
-    ranking = None
-    if last_training_id:
-        ranking = DataRepository.get_ranking_for_onetraining(last_training_id)
-    
-    exactheid = len([item for item in list_rondewaarden if item.uitkomst == 'correct']) / len(list_rondewaarden) * 100 if list_rondewaarden else 0
 
-    aantal_correct = len([item for item in list_rondewaarden if item.uitkomst == 'correct'])
-    aantal_fout = len([item for item in list_rondewaarden if item.uitkomst == 'fout'])
-    aantal_telaat = len([item for item in list_rondewaarden if item.uitkomst == 'te laat'])
+     
+    gebruikersnaam = DataRepository.get_gebruikersnaam_by_trainingid(last_training_id)
+    exactheid = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'correct']) / len(list_rondewaarden) * 100 if list_rondewaarden else 0
+
+    aantal_correct = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'correct'])
+    aantal_fout = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'fout'])
+    aantal_telaat = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'te laat'])
+    
+    print(f"DEBUG: aantal_correct = {aantal_correct}, aantal_fout = {aantal_fout}, aantal_telaat = {aantal_telaat}")
 
     #ophalen welke rondes met hun rondenummers en waardes waar correct voor de grafiek
-    correcte_rondewaarden = [item for item in list_rondewaarden if item.uitkomst == 'correct']
+    correcte_rondewaarden = [item for item in list_rondewaarden if item.uitkomst.lower() == 'correct']
     # Hier kun je verdere verwerking van correcte_rondewaarden toevoegen, bijvoorbeeld voor een grafiek
     correcte_rondewaarden_data = [CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=item.waarde) for item in correcte_rondewaarden]
 
     game_id = DataRepository.get_gameid_by_trainingid(last_training_id) if last_training_id else None
-
-    return Resultaat(
+    if(game_id ==1):
+        ranking = DataRepository.get_ranking_for_onetraining(last_training_id)
+        return Resultaat(
         game_id=game_id or 0,
+        gebruikersnaam=gebruikersnaam or "",
         ranking=ranking or 0,
         gemiddelde_waarde=round(gemiddelde_tijd, 2),
         beste_waarde=round(beste_tijd, 2),
@@ -301,6 +395,41 @@ async def get_laatste_rondewaarden():
         aantal_fout=aantal_fout,
         aantal_telaat=aantal_telaat,
         correcte_rondewaarden=correcte_rondewaarden_data
+    )
+    if(game_id ==2):
+        totaal_aantal_rondes = DataRepository.get_totale_aantal_rondes_by_trainingid(last_training_id) if last_training_id else 0   
+        exactheid_memory = aantal_correct / totaal_aantal_rondes * 100 if totaal_aantal_rondes > 0 else 0
+        correcte_rondewaarden_memory = [item for item in list_rondewaarden if item.uitkomst.lower() == 'correct']
+
+        #nu wil ik van de correcte rondes de avg tijd berekene per ronde, dit aan de hand van de ronde nummers, dus deel de reactietijden door het ronde nummer
+        correcte_rondewaarden_data_memory = [
+            CorrecteRondeWaarde(
+                ronde_nummer=item.ronde_nummer,
+                waarde=round(float(item.waarde) / item.ronde_nummer, 2)
+            ) for item in correcte_rondewaarden_memory
+        ]
+
+        aantal_correct_memory = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'correct'])
+        aantal_fout_memory = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'fout'])
+        aantal_rondes_niet_gespeeld = totaal_aantal_rondes - len(list_rondewaarden)
+
+        #gemiddelde waarde is gwn het gemiddelde van de waardes van de correcte rondes (gedeeld door ronde_nummer)
+        gemiddelde_waarde_memory = sum(item.waarde for item in correcte_rondewaarden_data_memory) / len(correcte_rondewaarden_data_memory) if correcte_rondewaarden_data_memory else 0
+
+        ranking = DataRepository.get_ranking_for_onetraining(last_training_id) or 0
+
+
+        return StatistiekenVoorMemoryGame(
+        game_id=game_id or 0,
+        gebruikersnaam=gebruikersnaam or "",
+        ranking=ranking or 0,
+        aantal_kleuren=aantal_correct,
+        gemiddelde_waarde=round(gemiddelde_waarde_memory, 2),
+        exactheid=round(exactheid_memory, 0),
+        correcte_rondewaarden=correcte_rondewaarden_data_memory,
+        aantal_correct=aantal_correct_memory,
+        aantal_fout=aantal_fout_memory,
+        aantal_rondes_niet_gespeeld=aantal_rondes_niet_gespeeld
     )
 
 #games overview endpoint
@@ -354,13 +483,16 @@ async def get_training_history(game_id: int, gebruikersnaam: str | None = None, 
     trainingen = DataRepository.get_trainingen_with_filters(game_id, datum, gebruikersnaam)
     return trainingen
 
-@app.get("/trainingen/{training_id}/details", response_model=RondeWaardenVoorDetails, summary="Haal de details op voor een specifieke training", tags=["Spelletjes"])
+@app.get("/trainingen/{training_id}/details", response_model=Union[RondeWaardenVoorDetails, StatistiekenVoorMemoryGame], summary="Haal de details op voor een specifieke training", tags=["Spelletjes"])
 async def get_training_details(training_id: int):
     rondewaarden = DataRepository.get_allerondewaarden_by_trainingsId(training_id)
     game_id = DataRepository.get_gameid_by_trainingid(training_id)
+    gebruikersnaam = DataRepository.get_gebruikersnaam_by_trainingid(training_id)
 
-    return RondeWaardenVoorDetails(
+    if(game_id==1):
+        return RondeWaardenVoorDetails(
         game_id=game_id or 0,
+        gebruikersnaam=gebruikersnaam or "",
         gemmidelde_waarde=round(sum(float(item.waarde) for item in rondewaarden) / len(rondewaarden), 2) if rondewaarden else 0,
         beste_waarde=round(min(float(item.waarde) for item in rondewaarden), 2) if rondewaarden else 0,
         ranking=DataRepository.get_ranking_for_onetraining(training_id) or 0,
@@ -369,7 +501,22 @@ async def get_training_details(training_id: int):
         aantal_correct=len([item for item in rondewaarden if item.uitkomst == 'correct']),
         aantal_fout=len([item for item in rondewaarden if item.uitkomst == 'fout']),
         aantal_telaat=len([item for item in rondewaarden if item.uitkomst == 'te laat'])
-    )
+        )
+    if(game_id==2):
+        return StatistiekenVoorMemoryGame(
+        game_id=game_id or 0,
+        gebruikersnaam=gebruikersnaam or "",
+        ranking=DataRepository.get_ranking_for_onetraining(training_id) or 0,
+        aantal_kleuren=len(rondewaarden),
+        gemiddelde_waarde=round(sum(float(item.waarde) for item in rondewaarden) / len(rondewaarden), 2) if rondewaarden else 0,
+        #bereken de exactheid voor memory game aan de hand van de voltooide rondes t.o.v. het totale aantal rondes
+        exactheid=round(len([item for item in rondewaarden if item.uitkomst == 'correct']) / DataRepository.get_totale_aantal_rondes_by_trainingid(training_id) * 100, 0) if rondewaarden else 0,
+        correcte_rondewaarden=[CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=round(float(item.waarde) / item.ronde_nummer, 2)) for item in rondewaarden if item.uitkomst == 'correct'],
+        aantal_correct=len([item for item in rondewaarden if item.uitkomst == 'correct']),
+        aantal_fout=len([item for item in rondewaarden if item.uitkomst == 'fout']),
+        aantal_rondes_niet_gespeeld=DataRepository.get_totale_aantal_rondes_by_trainingid(training_id) - len(rondewaarden)
+        )
+
 
 
 #leaderboard endpoint --------------------------------
