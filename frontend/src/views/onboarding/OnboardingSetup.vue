@@ -56,7 +56,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  height: 100dvh;
+  max-height: 100dvh;
   gap: 2rem;
 }
 
@@ -102,6 +102,9 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
+
+  position: absolute;
+  bottom: 2rem;
 }
 
 .c-setup__progess-blocks {
