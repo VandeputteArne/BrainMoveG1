@@ -1,4 +1,4 @@
-# BrainMoveAJM Installatiehandleiding
+# BrainMoveAJM: Installatiegids
 
 **Samenvatting Project**
 
@@ -8,6 +8,7 @@
 * **OS:** Debian Trixie (via RPi Imager)
 * **Netwerk:** Hotspot `10.42.0.1`, Ethernet `192.168.137.50`
 * **URL:** `http://10.42.0.1` (Poort 80)
+* **SSID:** `BrainMoveG1`
 
 ---
 
@@ -138,7 +139,7 @@ sudo reboot
 
 ## Fase 6: Project Ophalen & Hotspot
 
-*Doel: Code downloaden en WiFi netwerk maken.*
+*Doel: Code downloaden en WiFi netwerk (BrainMoveG1) maken.*
 
 1. **Clone Repository:**
 ```bash
@@ -153,8 +154,9 @@ git clone <JOUW_REPO_URL> BrainMoveG1
 *Controleer met `ip link` welke interface je dongle is (meestal `wlan1` bij RPi5).*
 ```bash
 sudo raspi-config nonint do_wifi_country BE
-sudo nmcli con add type wifi ifname wlan1 con-name "BrainMoveAJM" autoconnect yes ssid "BrainMoveAJM" mode ap ipv4.method shared wifi-sec.key-mgmt wpa-psk wifi-sec.psk "YOUR_SECURE_PASSWORD"
-sudo nmcli connection up "BrainMoveAJM"
+# Let op: SSID is BrainMoveG1
+sudo nmcli con add type wifi ifname wlan1 con-name "BrainMoveG1" autoconnect yes ssid "BrainMoveG1" mode ap ipv4.method shared wifi-sec.key-mgmt wpa-psk wifi-sec.psk "YOUR_SECURE_PASSWORD"
+sudo nmcli connection up "BrainMoveG1"
 
 ```
 
@@ -162,7 +164,9 @@ sudo nmcli connection up "BrainMoveAJM"
 
 ---
 
-## Fase 7: Backend Installatie
+## Fase 7: Backend Installatie (met venv)
+
+*Doel: Virtuele omgeving opzetten en dependencies installeren.*
 
 1. Ga naar de map en maak de omgeving:
 ```bash
@@ -174,6 +178,7 @@ source venv/bin/activate
 
 
 2. Installeer packages:
+*Zorg dat je requirements.txt in deze map staat, of navigeer naar `backend/` indien nodig.*
 ```bash
 pip install -r requirements.txt
 
@@ -262,9 +267,9 @@ sudo systemctl restart nginx
 
 ---
 
-## Fase 10: Services (Autostart)
+## Fase 10: Services (Autostart met venv)
 
-*Doel: Alles automatisch laten starten bij boot.*
+*Doel: Alles automatisch laten starten. We wijzen direct naar de python binary in de venv.*
 
 1. **Backend Service:** `sudo nano /etc/systemd/system/brainmove-backend.service`
 ```ini
@@ -275,7 +280,9 @@ After=network.target
 [Service]
 User=bmajm
 WorkingDirectory=/home/bmajm/BrainMove/BrainMoveG1/backend
+# PYTHONPATH zorgt dat imports werken
 Environment="PYTHONPATH=/home/bmajm/BrainMove/BrainMoveG1/backend:/home/bmajm/BrainMove/BrainMoveG1/backend/src"
+# BELANGRIJK: Hier verwijzen we direct naar de venv uvicorn
 ExecStart=/home/bmajm/BrainMove/BrainMoveG1/venv/bin/uvicorn src.main:app --host 0.0.0.0 --port 8000
 Restart=always
 RestartSec=5

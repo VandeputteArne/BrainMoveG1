@@ -4,7 +4,7 @@ let socket = null;
 
 export function getSocket() {
   if (!socket) {
-    socket = io('http://10.42.0.1:8000', {
+    socket = io('http://brainmove.game:8000', {
       transports: ['websocket'],
       autoConnect: false,
       withCredentials: true,
