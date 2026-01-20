@@ -50,7 +50,7 @@ const props = defineProps({
     gap: 0.625rem;
     background-color: var(--blue-100);
     width: fit-content;
-    padding: 0.125rem 0.3125rem;
+    padding: 0.125rem 0.5rem;
     border-radius: var(--radius-40);
   }
 
