@@ -41,12 +41,14 @@ class DeviceManager:
 
     async def keepalive_loop(self, interval: float = 600.0, battery_timeout: float = 5.0):
         logger.info("Keepalive gestart")
+        import datetime
         try:
             while True:
+                keepalive_status = []
                 for apparaat in list(self._apparaten.values()):
-                    if not apparaat.verbonden or apparaat.is_aan_het_pollen: 
+                    if not apparaat.verbonden or apparaat.is_aan_het_pollen:
                         continue
-                    
+
                     evt = asyncio.Event()
                     originele_callback = apparaat.bij_batterij
 
@@ -54,24 +56,42 @@ class DeviceManager:
                         evt.set()
                         percentage = gebeurtenis.get("percentage", 0)
                         self._apparaat_batterijen[apparaat.naam] = percentage
-                        if originele_callback: 
+                        if originele_callback:
                             originele_callback(gebeurtenis)
 
                     apparaat.bij_batterij = _tijdelijke_wrapper
-                    
+
                     try:
-                        if await apparaat.send_keepalive():
-                            try: 
+                        result = await apparaat.send_keepalive()
+                        if result:
+                            try:
                                 await asyncio.wait_for(evt.wait(), timeout=battery_timeout)
-                            except asyncio.TimeoutError: 
+                                status = "ok"
+                            except asyncio.TimeoutError:
                                 logger.warning(f"Keepalive timeout {apparaat.naam}")
-                    except Exception as e: 
+                                status = "timeout"
+                        else:
+                            status = "failed"
+                    except Exception as e:
                         logger.error(f"Keepalive fout {apparaat.naam}: {e}")
-                    finally: 
+                        status = "error"
+                    finally:
                         apparaat.bij_batterij = originele_callback
-                        
+
+                    keepalive_status.append({
+                        "apparaat": apparaat.naam,
+                        "status": status,
+                        "batterij": self._apparaat_batterijen.get(apparaat.naam)
+                    })
+
+                if self._sio:
+                    await self._sio.emit("keepalive", {
+                        "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                        "apparaten": keepalive_status
+                    })
+
                 await asyncio.sleep(interval)
-        except asyncio.CancelledError: 
+        except asyncio.CancelledError:
             logger.info("Keepalive gestopt")
 
     def _bind_detectie_aan_apparaat(self, app: Cone) -> None:
