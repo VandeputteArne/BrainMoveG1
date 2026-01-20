@@ -108,43 +108,47 @@ onUnmounted(() => {
 
 <template>
   <div class="c-historie">
-    <h1>Historie</h1>
-    <div ref="filtersRef" class="c-historie__filters">
-      <FilterGame v-model="selectedGame" @update:gameName="gameName = $event" />
-      <InputGebruikersnaam v-model="gebruikersnaam" label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
-      <FilterDatum v-model="selectedDatum" />
-    </div>
-
-    <button v-if="!isFiltersVisible" class="c-historie__filter-button" @click="togglePopup">
-      <SlidersHorizontal :size="20" />
-      Filters
-    </button>
-
-    <!-- Filter popup modal -->
-    <div v-if="showPopup" class="c-historie__popup-overlay" @click="closePopup">
-      <div class="c-historie__popup" @click.stop>
-        <div class="c-historie__popup-header">
-          <h2>Filters</h2>
-          <button class="c-historie__popup-close" @click="closePopup">
-            <X :size="24" />
-          </button>
-        </div>
-        <div class="c-historie__popup-filters">
-          <FilterGame v-model="selectedGame" @update:gameName="gameName = $event" />
-          <InputGebruikersnaam v-model="gebruikersnaam" label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
-          <FilterDatum v-model="selectedDatum" />
-        </div>
+    <div class="c-historie__container">
+      <div ref="filtersRef" class="c-historie__filters">
+        <h1>Historie</h1>
+        <FilterGame v-model="selectedGame" @update:gameName="gameName = $event" />
+        <InputGebruikersnaam v-model="gebruikersnaam" label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
+        <FilterDatum v-model="selectedDatum" />
       </div>
-    </div>
 
-    <div class="c-historie__overzicht">
-      <div>
-        <h3>{{ gameName || 'Selecteer een game' }}</h3>
-        <p>{{ historieData.length }} Resultaten</p>
-      </div>
-      <div class="c-historie__resultaten">
-        <CardHistorie v-for="item in historieData" :key="item.id" :gebruiker="item.gebruiker" :datumtijd="item.datumtijd" :score="item.score" :eenheid="item.eenheid" :url="item.url" />
-        <p v-if="historieData.length === 0" class="c-historie__empty">Geen resultaten gevonden</p>
+      <div class="c-historie__content">
+        <button v-if="!isFiltersVisible" class="c-historie__filter-button" @click="togglePopup">
+          <SlidersHorizontal :size="20" />
+          Filters
+        </button>
+
+        <!-- Filter popup modal -->
+        <div v-if="showPopup" class="c-historie__popup-overlay" @click="closePopup">
+          <div class="c-historie__popup" @click.stop>
+            <div class="c-historie__popup-header">
+              <h2>Filters</h2>
+              <button class="c-historie__popup-close" @click="closePopup">
+                <X :size="24" />
+              </button>
+            </div>
+            <div class="c-historie__popup-filters">
+              <FilterGame v-model="selectedGame" @update:gameName="gameName = $event" />
+              <InputGebruikersnaam v-model="gebruikersnaam" label="Zoek op gebruikersnaam" placeholder="Voer een gebruikersnaam in" />
+              <FilterDatum v-model="selectedDatum" />
+            </div>
+          </div>
+        </div>
+
+        <div class="c-historie__overzicht">
+          <div>
+            <h3>{{ gameName || 'Selecteer een game' }}</h3>
+            <p>{{ historieData.length }} Resultaten</p>
+          </div>
+          <div class="c-historie__resultaten">
+            <CardHistorie v-for="item in historieData" :key="item.id" :gebruiker="item.gebruiker" :datumtijd="item.datumtijd" :score="item.score" :eenheid="item.eenheid" :url="item.url" />
+            <p v-if="historieData.length === 0" class="c-historie__empty">Geen resultaten gevonden</p>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -156,10 +160,34 @@ onUnmounted(() => {
   flex-direction: column;
   gap: var(--spacing-title);
 
+  .c-historie__container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-title);
+
+    @media (width >= 768px) {
+      flex-direction: row;
+      gap: 3rem;
+      align-items: flex-start;
+    }
+  }
+
   .c-historie__filters {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+
+    @media (width >= 768px) {
+      flex: 0 0 300px;
+      position: sticky;
+      top: 6.5rem;
+    }
+  }
+
+  .c-historie__content {
+    @media (width >= 768px) {
+      flex: 1;
+    }
   }
 
   .c-historie__filter-button {
