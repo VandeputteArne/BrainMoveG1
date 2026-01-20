@@ -28,6 +28,7 @@ class CorrecteRondeWaarde(BaseModel):
     waarde: float
 
 class Resultaat(BaseModel):
+    game_id: int
     ranking: int
     gemiddelde_waarde: float
     beste_waarde: float
@@ -81,6 +82,7 @@ class TrainingVoorHistorie(BaseModel):
     eenheid:str
 
 class RondeWaardenVoorDetails(BaseModel):
+    game_id: int
     gemmidelde_waarde: float
     beste_waarde: float
     ranking: int
