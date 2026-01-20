@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { Download, ChartNoAxesCombined } from 'lucide-vue-next';
+import ExcelJS from 'exceljs';
 
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import OverzichtCountItem from '../../components/overzicht/OverzichtCountItem.vue';
@@ -44,7 +45,7 @@ function applyData(data) {
   // Update stats - support both old (correcte_rondewaarden) and new (lijst_voor_grafiek) API
   stats.value = [
     { waarde: data.gemmidelde_waarde ?? data.gemiddelde_waarde ?? 0, label: 'Gemiddelde' },
-    { waarde: isMemoryGame ? (data.aantal_kleuren ?? 0) : (data.beste_waarde ?? 0), label: isMemoryGame ? 'Aantal kleuren' : 'Beste' },
+    { waarde: isMemoryGame ? (data.aantal_kleuren ?? 0) : (data.beste_waarde ?? 0), label: isMemoryGame ? 'Onthouden' : 'Beste' },
     { waarde: data.ranking ?? 0, label: 'Ranking' },
     { waarde: data.exactheid ?? 0, label: 'Exactheid' },
   ];
@@ -52,7 +53,7 @@ function applyData(data) {
   // Update counts
   counts.value = [
     { type: 'correct', label: 'Correct', value: data.aantal_correct ?? 0 },
-    { type: 'telaat', label: isMemoryGame ? 'Niet gespeeld' : 'Te laat', value: isMemoryGame ? (data.aantal_rondes_niet_gespeeld ?? 0) : (data.aantal_telaat ?? 0) },
+    { type: 'telaat', label: isMemoryGame ? 'Ongespeeld' : 'Te laat', value: isMemoryGame ? (data.aantal_rondes_niet_gespeeld ?? 0) : (data.aantal_telaat ?? 0) },
     { type: 'fout', label: 'Fout', value: data.aantal_fout ?? 0 },
   ];
 
