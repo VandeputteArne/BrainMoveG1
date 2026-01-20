@@ -25,27 +25,29 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="c-setup">
-    <div class="c-setup__text">
-      <h1>Potjes aanzetten</h1>
-      <p>Tik op het fysieke knopje onder een potje om het aan te zetten. Op het scherm en via geluid hoor je of het gelukt is.</p>
-    </div>
-    <div class="c-setup__potjes">
-      <CardPotjes kleur="rood" :status="isDeviceConnected('rood')" />
-      <CardPotjes kleur="blauw" :status="isDeviceConnected('blauw')" />
-      <CardPotjes kleur="groen" :status="isDeviceConnected('groen')" />
-      <CardPotjes kleur="geel" :status="isDeviceConnected('geel')" />
-    </div>
-
-    <p v-if="!allPotsConnected" class="c-setup__warning"><TriangleAlert /> Niet alle potjes zijn verbonden</p>
-
-    <div class="c-setup__progress">
-      <div class="c-setup__progess-blocks">
-        <OnboardingProgressBlock :active="false" />
-        <OnboardingProgressBlock :active="true" />
-        <OnboardingProgressBlock :active="false" />
+  <div class="o-container-desktop">
+    <div class="c-setup">
+      <div class="c-setup__text">
+        <h1>Potjes aanzetten</h1>
+        <p>Tik op het fysieke knopje onder een potje om het aan te zetten. Op het scherm en via geluid hoor je of het gelukt is.</p>
       </div>
-      <ButtonsNext :progress="buttonProgress" :disabled="!allPotsConnected" to="/warning" />
+      <div class="c-setup__potjes">
+        <CardPotjes kleur="rood" :status="isDeviceConnected('rood')" />
+        <CardPotjes kleur="blauw" :status="isDeviceConnected('blauw')" />
+        <CardPotjes kleur="groen" :status="isDeviceConnected('groen')" />
+        <CardPotjes kleur="geel" :status="isDeviceConnected('geel')" />
+      </div>
+
+      <p v-if="!allPotsConnected" class="c-setup__warning"><TriangleAlert /> Niet alle potjes zijn verbonden</p>
+
+      <div class="c-setup__progress">
+        <div class="c-setup__progess-blocks">
+          <OnboardingProgressBlock :active="false" />
+          <OnboardingProgressBlock :active="true" />
+          <OnboardingProgressBlock :active="false" />
+        </div>
+        <ButtonsNext :progress="buttonProgress" :disabled="!allPotsConnected" to="/warning" />
+      </div>
     </div>
   </div>
 </template>
@@ -58,6 +60,11 @@ onMounted(() => {
   justify-content: start;
   max-height: 100dvh;
   gap: 2rem;
+
+  @media (width >= 768px) {
+    align-items: start;
+    gap: 3rem;
+  }
 }
 
 .c-setup__potjes {
@@ -67,9 +74,10 @@ onMounted(() => {
   width: 100%;
   box-sizing: border-box;
   justify-items: center;
-}
 
-.c-setup__progress {
+  @media (width >= 768px) {
+    display: flex;
+  }
 }
 
 .c-setup__circle {
@@ -105,6 +113,11 @@ onMounted(() => {
 
   position: absolute;
   bottom: 2rem;
+
+  @media (width >= 768px) {
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
 
 .c-setup__progess-blocks {
@@ -118,15 +131,22 @@ onMounted(() => {
   align-items: flex-start;
   width: 100%;
   padding-right: 2rem;
+
+  @media (width >= 768px) {
+    width: 60%;
+  }
 }
 
 .c-setup__warning {
-  color: var(--red-50, #f44336);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: center;
   font-weight: 500;
   text-align: center;
   margin: 0;
   padding: 0.5rem 1rem;
-  background-color: rgba(244, 67, 54, 0.1);
   border-radius: var(--radius-10, 0.5rem);
   width: 100%;
   box-sizing: border-box;

@@ -163,3 +163,11 @@ p {
     height: 1.5rem;
   }
 }
+
+.o-container-desktop {
+  @media (min-width: 768px) {
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+}

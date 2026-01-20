@@ -4,17 +4,19 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
 </script>
 
 <template>
-  <div class="c-warning">
-    <h1>Waarschuwing</h1>
-    <img src="/images/waarschuwing.png" alt="Waarschuwing" class="c-warning__img" />
-    <p class="c-warning__text">Schakel het systeem altijd uit via de pagina Apparaten. Trek nooit de stekker uit het stopcontact, dit kan het systeem beschadigen.</p>
-    <div class="c-warning__progress">
-      <div class="c-warning__progess-blocks">
-        <OnboardingProgressBlock :active="false" />
-        <OnboardingProgressBlock :active="false" />
-        <OnboardingProgressBlock :active="true" />
+  <div class="o-container-desktop">
+    <div class="c-warning">
+      <h1>Waarschuwing</h1>
+      <img src="/images/waarschuwing.png" alt="Waarschuwing" class="c-warning__img" />
+      <p class="c-warning__text">Schakel het systeem altijd uit via de pagina Apparaten. Trek nooit de stekker uit het stopcontact, dit kan het systeem beschadigen.</p>
+      <div class="c-warning__progress">
+        <div class="c-warning__progess-blocks">
+          <OnboardingProgressBlock :active="false" />
+          <OnboardingProgressBlock :active="false" />
+          <OnboardingProgressBlock :active="true" />
+        </div>
+        <buttons-primary url="/games" title="Begin met trainen" />
       </div>
-      <buttons-primary url="/games" title="Begin met trainen" />
     </div>
   </div>
 </template>
@@ -50,6 +52,10 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
 
     position: absolute;
     bottom: 2rem;
+
+    @media (width >= 768px) {
+      max-width: 30rem;
+    }
   }
 
   .c-warning__img {
