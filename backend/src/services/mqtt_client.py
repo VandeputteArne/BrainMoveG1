@@ -1,6 +1,3 @@
-"""
-MQTT Client for BrainMove - Replaces BLE communication
-"""
 import asyncio
 import logging
 from typing import Callable, Optional
@@ -16,18 +13,12 @@ COLORS = ["rood", "blauw", "geel", "groen"]
 
 
 class MQTTDeviceManager:
-    """
-    Manages ESP32 devices via MQTT.
-    Replaces the BLE-based DeviceManager.
-    """
-
     def __init__(self, sio=None):
         self._sio = sio
         self._client: Optional[aiomqtt.Client] = None
         self._connected = False
         self._running = False
 
-        # Device state
         self._apparaten = {color: {"status": "offline", "batterij": None} for color in COLORS}
         self._detectie_callback: Optional[Callable] = None
 
@@ -36,7 +27,6 @@ class MQTTDeviceManager:
         return self._apparaten.copy()
 
     async def start(self):
-        """Start MQTT client and subscribe to topics."""
         self._running = True
 
         while self._running:
@@ -46,12 +36,10 @@ class MQTTDeviceManager:
                     self._connected = True
                     logger.info("MQTT connected to broker")
 
-                    # Subscribe to all device topics
                     await client.subscribe(f"{TOPIC_PREFIX}/+/detect")
                     await client.subscribe(f"{TOPIC_PREFIX}/+/battery")
                     await client.subscribe(f"{TOPIC_PREFIX}/+/status")
 
-                    # Process incoming messages
                     async for message in client.messages:
                         await self._handle_message(message)
 
@@ -59,7 +47,7 @@ class MQTTDeviceManager:
                 logger.error(f"MQTT error: {e}")
                 self._connected = False
                 if self._running:
-                    await asyncio.sleep(2)  # Reconnect delay
+                    await asyncio.sleep(2)
             except asyncio.CancelledError:
                 break
 
@@ -67,11 +55,9 @@ class MQTTDeviceManager:
         logger.info("MQTT client stopped")
 
     async def stop(self):
-        """Stop MQTT client."""
         self._running = False
 
     async def _handle_message(self, message: aiomqtt.Message):
-        """Process incoming MQTT message."""
         topic_parts = str(message.topic).split("/")
         if len(topic_parts) != 3:
             return
@@ -90,7 +76,6 @@ class MQTTDeviceManager:
             await self._handle_status(color, payload)
 
     async def _handle_detection(self, color: str, payload: str):
-        """Handle detection event from ESP."""
         logger.info(f"Detection: {color} = {payload}")
 
         if self._detectie_callback:
@@ -100,12 +85,10 @@ class MQTTDeviceManager:
                 "detectie_bool": payload == "1"
             })
 
-        # Emit to frontend
         if self._sio:
             await self._sio.emit("device_detection", {"kleur": color})
 
     async def _handle_battery(self, color: str, payload: str):
-        """Handle battery update from ESP."""
         try:
             percentage = int(payload)
             self._apparaten[color]["batterij"] = percentage
@@ -114,9 +97,8 @@ class MQTTDeviceManager:
             pass
 
     async def _handle_status(self, color: str, payload: str):
-        """Handle status update (online/offline) from ESP."""
         old_status = self._apparaten[color]["status"]
-        new_status = payload  # "online" or "offline"
+        new_status = payload
         self._apparaten[color]["status"] = new_status
 
         logger.info(f"Status: {color} = {new_status}")
@@ -129,64 +111,44 @@ class MQTTDeviceManager:
                 "batterij": self._apparaten[color]["batterij"]
             })
 
-    # ==================== Commands (RPI → ESP) ====================
-
     async def _publish(self, topic: str, payload: str):
-        """Publish message to MQTT broker."""
         if self._client and self._connected:
             await self._client.publish(topic, payload, qos=0)
 
     async def send_command(self, color: str, command: str):
-        """Send command to specific device."""
         await self._publish(f"{TOPIC_PREFIX}/{color}/cmd", command)
 
     async def send_command_all(self, command: str):
-        """Send command to all devices."""
         await self._publish(f"{TOPIC_PREFIX}/all/cmd", command)
 
     async def start_alle(self):
-        """Start polling on all devices."""
         await self.send_command_all("start")
         logger.info("Sent START to all devices")
 
     async def stop_alle(self):
-        """Stop polling on all devices."""
         await self.send_command_all("stop")
         logger.info("Sent STOP to all devices")
 
     async def set_correct_kegel(self, color: str):
-        """Mark a cone as the correct target."""
         await self.send_command(color.lower(), "correct")
         logger.info(f"Set {color} as correct")
 
     async def reset_correct_kegel(self, color: str):
-        """Reset a cone to not be the target."""
         await self.send_command(color.lower(), "incorrect")
 
     async def play_sound_correct(self, color: str):
-        """Play correct sound on device."""
         await self.send_command(color.lower(), "sound_ok")
 
     async def play_sound_incorrect(self, color: str):
-        """Play incorrect sound on device."""
         await self.send_command(color.lower(), "sound_fail")
 
-    # ==================== Callbacks ====================
-
     def zet_detectie_callback(self, callback: Optional[Callable]):
-        """Set detection callback for game logic."""
         self._detectie_callback = callback
 
-    def verwijder_alle_laatste_detecties(self):
-        """Clear detection state (compatibility)."""
-        pass  # Not needed with MQTT
-
     def verkrijg_alle_laatste_detecties(self):
-        """Get last detections (compatibility)."""
         return {}
 
     def verkrijg_apparaten_status(self) -> list:
-        """Get status of all devices."""
         return [
             {
                 "kleur": color,

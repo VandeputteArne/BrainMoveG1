@@ -45,12 +45,10 @@ logger.setLevel(logging.DEBUG)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Start MQTT client
     mqtt_task = asyncio.create_task(device_manager.start())
 
-    yield # App draait hier
+    yield
 
-    # Stop MQTT client
     await device_manager.stop()
     mqtt_task.cancel()
 
@@ -93,7 +91,6 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 
     max_tijd = float(snelheid)
 
-    # Detection event handling
     detectie_event = asyncio.Event()
     detected_color = {}
 
@@ -104,9 +101,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 
     device_manager.zet_detectie_callback(on_detectie)
 
-    # Start all devices
     await device_manager.start_alle()
-    await asyncio.sleep(0.1)  # Give devices time to start
 
     for ronde in range(1, aantal_rondes + 1):
         gekozen_kleur = random.choice(kleuren).upper()
@@ -119,10 +114,8 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         })
         print(f"Round {ronde}: Chosen color = {gekozen_kleur}")
 
-        # Set correct cone
         await device_manager.set_correct_kegel(gekozen_kleur)
 
-        # Wait for detection
         detectie_event.clear()
         detected_color.clear()
         starttijd = time.time()
@@ -131,7 +124,6 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             await asyncio.wait_for(detectie_event.wait(), timeout=max_tijd)
             reactietijd = round(time.time() - starttijd, 2) - HARDWARE_DELAY
 
-            # Check if correct color
             detected_kleur = detected_color.get("kleur", "").lower()
             if detected_kleur == gekozen_kleur.lower():
                 status = "correct"
@@ -155,13 +147,10 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
             "uitkomst": status,
         })
 
-        # Reset cone
         await device_manager.reset_correct_kegel(gekozen_kleur)
 
-    # Stop polling after all rounds are done
     await device_manager.stop_alle()
 
-    # Clear callback after game
     device_manager.zet_detectie_callback(None)
     await sio.emit('game_einde', {"status":"game gedaan"})
     return colorgame_rondes
@@ -170,7 +159,6 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
     geheugen_lijst = []
     rondes_memory = []
 
-    # Detection event handling
     detectie_event = asyncio.Event()
     detected_color = {}
 
@@ -181,9 +169,7 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
 
     device_manager.zet_detectie_callback(on_detectie)
 
-    # Start all devices
     await device_manager.start_alle()
-    await asyncio.sleep(0.1)  # Give devices time to start
 
     for ronde in range(1, aantal_rondes + 1):
         nieuwe_kleur = random.choice(kleuren)
@@ -205,7 +191,6 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
         starttijd = time.time()
         status = "correct"
 
-        # Wait for user to touch cones in correct sequence
         for verwachte_kleur in geheugen_lijst:
             detectie_event.clear()
             detected_color.clear()
@@ -242,10 +227,8 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
         if status == "fout":
             break
 
-    # Stop polling after all rounds are done
     await device_manager.stop_alle()
 
-    # Clear callback after game
     device_manager.zet_detectie_callback(None)
     await sio.emit('game_einde', {"status":"game gedaan"})
     print("Einde memory game")
@@ -552,7 +535,7 @@ async def get_device_status():
     return {
         "apparaten": device_manager.verkrijg_apparaten_status(),
         "connected": device_manager._connected,
-        "totaal_verwacht": 4  # 4 colors: blauw, rood, geel, groen
+        "totaal_verwacht": 4
     }
 
 @app.get("/")
