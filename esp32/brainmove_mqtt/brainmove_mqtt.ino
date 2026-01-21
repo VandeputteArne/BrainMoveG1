@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
+
 #define DEVICE_COLOR "geel"
 
 const char* WIFI_SSID = "BrainMoveG1";
@@ -13,25 +14,29 @@ const char* MQTT_BROKER = "10.42.0.1";
 const int MQTT_PORT = 1883;
 const int MQTT_KEEPALIVE_DURATION = 60; 
 
-const int PIN_BATTERIJ_ADC_1 = 2; 
-const int PIN_KNOP = 3;           
-const int PIN_BATTERIJ_ADC_2 = 4; 
-const int PIN_ZOEMER = 5;         
+const int PIN_BATTERIJ_ADC_1 = 2; // D0
+const int PIN_KNOP = 3;           // D1 (Geschikt voor Deep Sleep wakeup)
+const int PIN_BATTERIJ_ADC_2 = 4; // D2
+const int PIN_ZOEMER = 5;         // D3
 
-const int PIN_I2C_SDA = 6;        
-const int PIN_I2C_SCL = 7;        
+const int PIN_I2C_SDA = 6;        // D4 (Standaard I2C SDA op XIAO)
+const int PIN_I2C_SCL = 7;        // D5 (Standaard I2C SCL op XIAO)
 
-const int PIN_LED_ROOD = 8;       
-const int PIN_LED_GROEN = 9;      
-const int PIN_LED_BLAUW = 10;     
+// LET OP: D6 wordt hier gebruikt voor VBUS (USB detectie).
+// Je moet fysiek een draadje leggen van de 5V pin (VBUS) naar D6 (met spanningsdeler!)
+const int PIN_USB_VBUS = 21;      // D6 
 
-const int PIN_USB_VBUS = 21;      
+// WAARSCHUWING: D8 en D9 zijn "strapping pins". 
+// Als de LEDs de pin naar GND trekken tijdens boot, start hij niet op.
+// Als hij niet start: Haal de LEDs los, of verplaats D9 naar D7.
+const int PIN_LED_ROOD = 8;       // D8
+const int PIN_LED_GROEN = 20;       // D7 (Veilige keuze, geen strapping pin)
+const int PIN_LED_BLAUW = 10;     // D10
 
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
 const uint16_t TOF_POLL_INTERVAL_MS = 33;
 const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
-
 const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
 const float BATTERIJ_SPANNINGSDELER = 2.0f;
@@ -40,11 +45,9 @@ const int BATTERIJ_NIVEAU_MIDDEL = 50;
 const int LED_OPLADEN_KNIPPEREN_MS = 500;
 const int LED_UPDATE_INTERVAL = 5000;
 const bool RGB_GEMEENSCHAPPELIJKE_ANODE = false;
-
 const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (30UL * 60UL * 1000UL);
 const unsigned long KNOP_DEBOUNCE_MS = 150;
 const uint16_t USB_VBUS_DREMPEL = 2000;
-
 const int ZOEMER_KANAAL = 0;
 const int ZOEMER_RESOLUTIE = 8;
 const int ZOEMER_FREQ_STANDAARD = 2000;
@@ -101,31 +104,23 @@ void gaaDiepeSlaap();
 
 void setup() {
   Serial.begin(115200);
-  delay(100);
-  
-  esp_sleep_wakeup_cause_t ontwaakOorzaak = esp_sleep_get_wakeup_cause();
-
-  initHardware();
-  
-  if (ontwaakOorzaak == ESP_SLEEP_WAKEUP_GPIO) {
+    delay(1000);
+    esp_sleep_wakeup_cause_t ontwaakOorzaak = esp_sleep_get_wakeup_cause();
+    initHardware();
+    if (ontwaakOorzaak == ESP_SLEEP_WAKEUP_GPIO) {
       speelOntwaakGeluid();
-  }
-
-  topic_detect = String("bm/") + DEVICE_COLOR + "/detect";
-  topic_battery = String("bm/") + DEVICE_COLOR + "/battery";
-  topic_status = String("bm/") + DEVICE_COLOR + "/status";
-  topic_cmd = String("bm/") + DEVICE_COLOR + "/cmd";
-  topic_cmd_all = "bm/all/cmd";
-
-  connectWiFi();
-
-  mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
-  mqttClient.setCallback(mqttCallback);
-  mqttClient.setKeepAlive(MQTT_KEEPALIVE_DURATION); 
-
-  connectMQTT();
-  
-  laatsteActiviteitTijd = millis();
+    }
+    topic_detect = String("bm/") + DEVICE_COLOR + "/detect";
+    topic_battery = String("bm/") + DEVICE_COLOR + "/battery";
+    topic_status = String("bm/") + DEVICE_COLOR + "/status";
+    topic_cmd = String("bm/") + DEVICE_COLOR + "/cmd";
+    topic_cmd_all = "bm/all/cmd";
+    connectWiFi();
+    mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
+    mqttClient.setCallback(mqttCallback);
+    mqttClient.setKeepAlive(MQTT_KEEPALIVE_DURATION);
+    connectMQTT();
+    laatsteActiviteitTijd = millis();
 }
 
 void loop() {
@@ -173,9 +168,8 @@ void connectWiFi() {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
   while (WiFi.status() != WL_CONNECTED) {
-    delay(500); 
+    delay(500);
     digitalWrite(PIN_LED_BLAUW, !digitalRead(PIN_LED_BLAUW));
   }
   digitalWrite(PIN_LED_BLAUW, LOW);
@@ -221,6 +215,7 @@ void initHardware() {
   pinMode(PIN_KNOP, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_KNOP), knopISR, FALLING);
 
+  // LEDC (PWM) initialisatie - Werkt op C3 met moderne ESP32 core
   ledcAttach(PIN_LED_ROOD, 5000, 8);
   ledcAttach(PIN_LED_GROEN, 5000, 8);
   ledcAttach(PIN_LED_BLAUW, 5000, 8);
@@ -229,9 +224,11 @@ void initHardware() {
   ledcAttach(PIN_ZOEMER, ZOEMER_FREQ_STANDAARD, ZOEMER_RESOLUTIE);
   ledcWrite(PIN_ZOEMER, 0);
 
+  // ADC instellingen voor C3
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
+  // I2C op D4 (SDA) en D5 (SCL)
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(400000);
 
@@ -377,6 +374,5 @@ void gaaDiepeSlaap() {
     if (tofGeinitialiseerd) tofSensor.stopContinuous();
 
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
-    
     esp_deep_sleep_start();
 }
