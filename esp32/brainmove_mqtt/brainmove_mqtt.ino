@@ -6,16 +6,13 @@
 
 #define DEVICE_COLOR "geel" 
 
-// WiFi Credentials
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
 
-// MQTT Config
 const char* MQTT_BROKER = "10.42.0.1";
 const int MQTT_PORT = 1883;
-const int MQTT_KEEPALIVE_DURATION = 5; // Snelle detectie van offline status
+const int MQTT_KEEPALIVE_DURATION = 5;
 
-// ==================== PIN DEFINITIES (Seeed XIAO ESP32-C3) ====================
 const int PIN_BATTERIJ_ADC_1 = 2; // D0
 const int PIN_KNOP = 3;           // D1
 const int PIN_BATTERIJ_ADC_2 = 4; // D2
@@ -31,13 +28,11 @@ const int PIN_LED_ROOD = 8;       // D8
 const int PIN_LED_GROEN = 20;     // D7
 const int PIN_LED_BLAUW = 10;     // D10
 
-// Sensoren Constanten
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
 const uint16_t TOF_POLL_INTERVAL_MS = 33;
 const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
 
-// Batterij Constanten
 const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
 const float BATTERIJ_SPANNINGSDELER = 2.0f;
@@ -45,12 +40,10 @@ const int BATTERIJ_NIVEAU_LAAG = 20;
 const int BATTERIJ_NIVEAU_MIDDEL = 50;
 const int LED_OPLADEN_KNIPPEREN_MS = 500;
 
-// === AANPASSING: Update elke 10 minuten (10 * 60 * 1000) ===
 const unsigned long LED_UPDATE_INTERVAL = 600000; 
 
 const bool RGB_GEMEENSCHAPPELIJKE_ANODE = false;
 
-// Systeem Constanten
 const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (30UL * 60UL * 1000UL); // 30 min
 const unsigned long KNOP_DEBOUNCE_MS = 150;
 const uint16_t USB_VBUS_DREMPEL = 2000;
@@ -80,7 +73,6 @@ unsigned long laatsteOplaadKnipperTijd = 0;
 unsigned long laatsteKnopDrukTijd = 0;
 uint8_t laatsteBatterijPercentage = 0;
 
-// Functie prototypes
 void IRAM_ATTR knopISR() { knopIngedrukt = true; }
 void verbindGeforceerd(); 
 void mqttCallback(char* topic, byte* payload, unsigned int length);
@@ -108,14 +100,12 @@ void setup() {
   initHardware();
   if (ontwaakOorzaak == ESP_SLEEP_WAKEUP_GPIO) speelOntwaakGeluid();
   
-  // Topics instellen
   topic_detect = String("bm/") + DEVICE_COLOR + "/detect";
   topic_battery = String("bm/") + DEVICE_COLOR + "/battery";
   topic_status = String("bm/") + DEVICE_COLOR + "/status";
   topic_cmd = String("bm/") + DEVICE_COLOR + "/cmd";
   topic_cmd_all = "bm/all/cmd";
   
-  // MQTT Setup
   mqttClient.setServer(MQTT_BROKER, MQTT_PORT);
   mqttClient.setCallback(mqttCallback);
   mqttClient.setKeepAlive(MQTT_KEEPALIVE_DURATION);
@@ -124,34 +114,27 @@ void setup() {
 }
 
 void loop() {
-  // 1. HARDE check op verbindingen.
-  // Als we niet verbonden zijn, stopt alles en wachten we hier.
   if (WiFi.status() != WL_CONNECTED || !mqttClient.connected()) {
     verbindGeforceerd(); 
   }
 
-  // 2. Als we hier zijn, is alles verbonden
   mqttClient.loop();
 
-  // 3. Logica (alleen uitvoeren als verbonden)
   verwerkKnopDruk();
 
   if (isPolling) {
     verwerkToF();
   }
 
-  // Batterij en LED updates (Elke 10 minuten)
   if (millis() - laatsteLedUpdateTijd >= LED_UPDATE_INTERVAL) {
     laatsteLedUpdateTijd = millis();
     laatsteBatterijPercentage = leesBatterijPercentage();
     
-    // We weten zeker dat we verbonden zijn, dus stuur direct
     String payload = String(laatsteBatterijPercentage);
     mqttClient.publish(topic_battery.c_str(), payload.c_str(), false);
   }
   updateBatterijLed();
 
-  // Slaap check
   if (millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
     gaaDiepeSlaap();
   }
@@ -159,7 +142,6 @@ void loop() {
   yield();
 }
 
-// =================== AANGEPASTE VERBINDINGS LOGICA ===================
 void verbindGeforceerd() {
   Serial.println("Verbinding verloren. Apparaat pauzeert...");
   
@@ -168,7 +150,6 @@ void verbindGeforceerd() {
   zoemerUit();
   isPolling = false; 
   
-  // 1. Zorg dat WiFi er is 
   if (WiFi.status() != WL_CONNECTED) {
     Serial.print("WiFi verbinden: ");
     Serial.println(WIFI_SSID);
@@ -187,9 +168,8 @@ void verbindGeforceerd() {
     digitalWrite(PIN_LED_BLAUW, LOW);
   }
 
-  // 2. Zorg dat MQTT er is
   while (!mqttClient.connected()) {
-    if (WiFi.status() != WL_CONNECTED) return; // Terug naar start
+    if (WiFi.status() != WL_CONNECTED) return;
 
     String clientId = String("BM-") + DEVICE_COLOR + "-" + String(ESP.getEfuseMac(), HEX);
     Serial.print("MQTT verbinden...");
@@ -197,22 +177,17 @@ void verbindGeforceerd() {
     if (mqttClient.connect(clientId.c_str(), topic_status.c_str(), 1, true, "offline")) {
       Serial.println("GELUKT!");
       
-      // Subscribe
       mqttClient.subscribe(topic_cmd.c_str());
       mqttClient.subscribe(topic_cmd_all.c_str());
       
-      // A. Handshake (MAC sturen)
       String macAdres = WiFi.macAddress();
       String statusPayload = "online|" + macAdres;
       mqttClient.publish(topic_status.c_str(), statusPayload.c_str(), true);
 
-      // B. === DIRECT BATTERIJ STUREN ===
       laatsteBatterijPercentage = leesBatterijPercentage();
       String battPayload = String(laatsteBatterijPercentage);
       mqttClient.publish(topic_battery.c_str(), battPayload.c_str(), false);
       
-      // Reset de timer zodat hij niet direct in de loop weer gaat sturen,
-      // maar pas over 10 minuten.
       laatsteLedUpdateTijd = millis();
       
       speelVerbindingGeluid(); 
@@ -227,8 +202,6 @@ void verbindGeforceerd() {
     }
   }
 }
-
-// =================== OVERIGE FUNCTIES ===================
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String message = "";
@@ -345,10 +318,7 @@ void rgbLedUit() { zetRgbKleur(0, 0, 0); }
 
 void updateBatterijLed() {
     usbVerbonden = isUsbVerbonden();
-    // LED indicatie op basis van 'laatsteBatterijPercentage'
-    // Omdat we deze maar eens in de 10 min updaten, blijft de kleur ook 10 min staan.
-    // Dit is prima voor batterij-indicatie.
-    
+
     if (isPolling && !usbVerbonden && laatsteBatterijPercentage > BATTERIJ_NIVEAU_LAAG) {
         if (isCorrectTarget) zetRgbKleur(0, 255, 0);
         else zetRgbKleur(255, 0, 0);
