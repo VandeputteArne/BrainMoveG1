@@ -1,10 +1,30 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
+import { LayoutGrid, Rows3 } from 'lucide-vue-next';
 import GameCard from '../../components/cards/CardsGame.vue';
 
 const games = ref([]);
+const viewMode = ref('row');
+const isMobile = ref(window.innerWidth < 768);
+
+const updateIsMobile = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+
+const toggleView = () => {
+  viewMode.value = viewMode.value === 'grid' ? 'row' : 'grid';
+};
+
+const showGridIcon = computed(() => {
+  if (isMobile.value) {
+    return viewMode.value === 'grid';
+  }
+  return viewMode.value === 'row';
+});
 
 onMounted(async () => {
+  window.addEventListener('resize', updateIsMobile);
+
   const cachedGames = sessionStorage.getItem('gamesData');
   if (cachedGames) {
     games.value = JSON.parse(cachedGames);
@@ -33,9 +53,15 @@ onMounted(async () => {
 
 <template>
   <div class="c-games-page">
-    <h1 class="title">Alle games</h1>
-    <div class="c-games">
-      <GameCard v-for="g in games" :key="g.id" :id="g.id" :title="g.title" :tag="g.tag" :best-time="g.bestTime" :unit="g.unit" :image="g.image" />
+    <div class="c-games__header">
+      <h1 class="title">Alle games</h1>
+      <button @click="toggleView" class="c-games__view-toggle" :aria-label="viewMode === 'grid' ? 'Switch to row view' : 'Switch to grid view'">
+        <LayoutGrid v-if="showGridIcon" :size="24" />
+        <Rows3 v-else :size="24" />
+      </button>
+    </div>
+    <div class="c-games" :class="`c-games--${viewMode}`">
+      <GameCard v-for="g in games" :key="g.id" :id="g.id" :title="g.title" :tag="g.tag" :best-time="g.bestTime" :unit="g.unit" :image="g.image" :view="viewMode" />
     </div>
   </div>
 </template>
@@ -45,7 +71,37 @@ onMounted(async () => {
   display: contents;
 }
 
-.c-games {
+.c-games__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.c-games__view-toggle {
+  background: transparent;
+  border: none;
+  color: var(--color-text);
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.c-games__view-toggle:hover {
+  background-color: var(--color-primary-light, rgba(0, 0, 0, 0.05));
+}
+
+.c-games__view-toggle:active {
+  transform: scale(0.95);
+}
+
+.c-games--row {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -53,6 +109,18 @@ onMounted(async () => {
   @media (width >= 768px) {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: 2rem;
+  }
+}
+
+.c-games--grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+
+  @media (width >= 768px) {
+    display: flex;
+    flex-direction: column;
     gap: 2rem;
   }
 }
