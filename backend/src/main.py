@@ -74,11 +74,6 @@ sio = socketio.AsyncServer(
 sio_app = socketio.ASGIApp(sio, app)
 device_manager = DeviceManager(sio=sio)
 
-async def emit_and_flush(event: str, data: dict, delay: float = 0.05):
-    """Emit socket event and give it time to flush before BLE operations."""
-    await sio.emit(event, data)
-    await asyncio.sleep(delay)
-
 global game_id
 global gebruikersnaam
 global moeilijkheids_id
@@ -134,7 +129,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         ronde = ronde_idx + 1
 
         gekozen_kleur = random.choice(kleuren).upper()
-        await emit_and_flush('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
+        await sio.emit('gekozen_kleur', {'rondenummer': ronde, 'maxronden': aantal_rondes, 'kleur': gekozen_kleur})
         print("Frontend socketio:", gekozen_kleur.upper())
 
         await device_manager.set_correct_kegel(gekozen_kleur)
@@ -211,7 +206,7 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
 
     # Clear callback after game
     device_manager.zet_detectie_callback(None)
-    await emit_and_flush('game_einde', {"status":"game gedaan"})
+    await sio.emit('game_einde', {"status":"game gedaan"})
     return colorgame_rondes
 
 async def memorygame(snelheid, aantal_rondes, kleuren):
