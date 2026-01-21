@@ -11,7 +11,6 @@ TOPIC_PREFIX = "bm"
 
 COLORS = ["rood", "blauw", "geel", "groen"]
 
-
 class MQTTDeviceManager:
     def __init__(self, sio=None):
         self._sio = sio
