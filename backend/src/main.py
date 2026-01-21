@@ -83,6 +83,10 @@ global rondes
 global kleuren
 global starttijd
 
+# Game control variabelen
+current_game_task = None
+game_stop_event = asyncio.Event()
+
 async def colorgame(aantal_rondes, kleuren, snelheid):
     colorgame_rondes = []
     aantal_correct = 0
@@ -104,6 +108,11 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
     await device_manager.start_alle()
 
     for ronde in range(1, aantal_rondes + 1):
+        # Check of de game gestopt moet worden
+        if game_stop_event.is_set():
+            print("Game gestopt door gebruiker")
+            break
+            
         gekozen_kleur = random.choice(kleuren).upper()
 
         # Emit to frontend
@@ -121,25 +130,50 @@ async def colorgame(aantal_rondes, kleuren, snelheid):
         starttijd = time.time()
 
         try:
-            await asyncio.wait_for(detectie_event.wait(), timeout=max_tijd)
-            reactietijd = round(time.time() - starttijd, 2) - HARDWARE_DELAY
+            # Wacht op detectie OF stop event
+            detectie_task = asyncio.create_task(detectie_event.wait())
+            stop_task = asyncio.create_task(game_stop_event.wait())
+            
+            done, pending = await asyncio.wait(
+                [detectie_task, stop_task],
+                timeout=max_tijd,
+                return_when=asyncio.FIRST_COMPLETED
+            )
+            
+            # Cancel pending tasks
+            for task in pending:
+                task.cancel()
+            
+            # Check of game gestopt is
+            if stop_task in done:
+                print("Game gestopt tijdens wachten op detectie")
+                break
+            
+            # Anders is detectie gebeurd
+            if detectie_task in done:
+                reactietijd = round(time.time() - starttijd, 2) - HARDWARE_DELAY
 
-            detected_kleur = detected_color.get("kleur", "").lower()
-            if detected_kleur == gekozen_kleur.lower():
-                status = "correct"
-                aantal_correct += 1
-                print(f"Correct! Reaction time: {reactietijd}s")
+                detected_kleur = detected_color.get("kleur", "").lower()
+                if detected_kleur == gekozen_kleur.lower():
+                    status = "correct"
+                    aantal_correct += 1
+                    print(f"Correct! Reaction time: {reactietijd}s")
+                else:
+                    status = "fout"
+                    aantal_fout += 1
+                    reactietijd += max_tijd  # Penalty
+                    print(f"Wrong color! Detected: {detected_kleur}, Expected: {gekozen_kleur}")
             else:
-                status = "fout"
-                aantal_fout += 1
-                reactietijd += max_tijd  # Penalty
-                print(f"Wrong color! Detected: {detected_kleur}, Expected: {gekozen_kleur}")
+                # Timeout
+                reactietijd = max_tijd
+                status = "te laat"
+                aantal_telaat += 1
+                print(f"Too late! Timeout after {max_tijd}s")
 
-        except asyncio.TimeoutError:
+        except Exception as e:
+            print(f"Error in colorgame ronde: {e}")
             reactietijd = max_tijd
-            status = "te laat"
-            aantal_telaat += 1
-            print(f"Too late! Timeout after {max_tijd}s")
+            status = "fout"
 
         colorgame_rondes.append({
             "rondenummer": ronde,
@@ -172,6 +206,11 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
     await device_manager.start_alle()
 
     for ronde in range(1, aantal_rondes + 1):
+        # Check of de game gestopt moet worden
+        if game_stop_event.is_set():
+            print("Game gestopt door gebruiker")
+            break
+            
         nieuwe_kleur = random.choice(kleuren)
         geheugen_lijst.append(nieuwe_kleur)
         await sio.emit('ronde_start', {'rondenummer': ronde, 'maxronden': aantal_rondes})
@@ -214,6 +253,11 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
         #         break
 
         for verwachte_kleur in geheugen_lijst:
+            # Check stop event ook tussen detecties
+            if game_stop_event.is_set():
+                print("Game gestopt tijdens memory sequence")
+                status = "gestopt"
+                break
             
             detectie_event.clear()
             detected_color.clear()
@@ -221,26 +265,50 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
             await device_manager.set_correct_kegel(verwachte_kleur)
 
             try:
-                await asyncio.wait_for(detectie_event.wait(), timeout=10.0)
+                # Wacht op detectie OF stop event
+                detectie_task = asyncio.create_task(detectie_event.wait())
+                stop_task = asyncio.create_task(game_stop_event.wait())
+                
+                done, pending = await asyncio.wait(
+                    [detectie_task, stop_task],
+                    timeout=10.0,
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                
+                # Cancel pending tasks
+                for task in pending:
+                    task.cancel()
                 
                 await device_manager.reset_correct_kegel(verwachte_kleur)
-
-                detected_kleur = detected_color.get("kleur", "").lower()
                 
-                if detected_kleur != verwachte_kleur.lower():
-                    await sio.emit('fout_kleur', {'status': 'game over'})
-                    status = "fout"
-                    print(f"Fout! Verwacht: {verwachte_kleur}, Gekregen: {detected_kleur}")
+                # Check of game gestopt is
+                if stop_task in done:
+                    print("Game gestopt tijdens wachten op aanraking")
+                    status = "gestopt"
                     break
                 
-                print(f"Correct: {detected_kleur}")
+                # Check of detectie gebeurd is
+                if detectie_task in done:
+                    detected_kleur = detected_color.get("kleur", "").lower()
+                    
+                    if detected_kleur != verwachte_kleur.lower():
+                        await sio.emit('fout_kleur', {'status': 'game over'})
+                        status = "fout"
+                        print(f"Fout! Verwacht: {verwachte_kleur}, Gekregen: {detected_kleur}")
+                        break
+                    
+                    print(f"Correct: {detected_kleur}")
+                else:
+                    # Timeout
+                    await sio.emit('fout_kleur', {'status': 'timeout'})
+                    status = "fout"
+                    print("Timeout: Te lang gewacht op aanraking")
+                    break
 
-            except asyncio.TimeoutError:
+            except Exception as e:
                 await device_manager.reset_correct_kegel(verwachte_kleur)
-                
-                await sio.emit('fout_kleur', {'status': 'timeout'})
+                print(f"Error in memory sequence: {e}")
                 status = "fout"
-                print("Timeout: Te lang gewacht op aanraking")
                 break
 
         eindtijd = time.time()
@@ -286,8 +354,12 @@ async def get_game_instellingen (json: Instellingen):
 async def run_colorgame_background():
     """Draait het colorgame in de achtergrond en stuurt resultaten via Socket.IO"""
     global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren, starttijd
+    global current_game_task, game_stop_event
     
     try:
+        # Reset stop event aan het begin van een nieuwe game
+        game_stop_event.clear()
+        
         colorgame_rondes = await colorgame(rondes, kleuren, snelheid)
         
         newuserid = DataRepository.add_gebruiker(gebruikersnaam)
@@ -323,8 +395,12 @@ async def run_colorgame_background():
 async def run_memorygame_background():
     """Draait het memorygame in de achtergrond en stuurt resultaten via Socket.IO"""
     global game_id, gebruikersnaam, moeilijkheids_id, snelheid, ronde_id, rondes, kleuren, starttijd
+    global current_game_task, game_stop_event
     
     try:
+        # Reset stop event aan het begin van een nieuwe game
+        game_stop_event.clear()
+        
         memorygame_rondes = await memorygame(snelheid, rondes, kleuren)
         
         newuserid = DataRepository.add_gebruiker(gebruikersnaam)
@@ -359,18 +435,58 @@ async def run_memorygame_background():
 
 #play game endpoint 
 @app.get("/games/{game_id}/play")
-async def play_game(background_tasks: BackgroundTasks, game_id: int):
+async def play_game(game_id: int):
+    global current_game_task, game_stop_event
+    
+    # Check of er al een game actief is
+    if current_game_task and not current_game_task.done():
+        return {
+            "status": "already_running",
+            "message": "Er is al een game actief. Stop deze eerst voordat je een nieuwe start."
+        }
+    
     # Start het spel in de achtergrond
-    if(game_id == 1):
-        background_tasks.add_task(run_colorgame_background)
-    if(game_id == 2):
-        background_tasks.add_task(run_memorygame_background)
+    if game_id == 1:
+        current_game_task = asyncio.create_task(run_colorgame_background())
+    elif game_id == 2:
+        current_game_task = asyncio.create_task(run_memorygame_background())
+    else:
+        return {
+            "status": "error",
+            "message": f"Onbekend game_id: {game_id}"
+        }
     
     # Geef direct een response terug
     return {
         "status": "started",
         "message": "Game is gestart, luister naar 'gekozen_kleur' en 'game_finished' events via Socket.IO"
     }
+
+@app.get("/games/stop")
+async def stop_game():
+    global current_game_task, game_stop_event
+    
+    if current_game_task is None or current_game_task.done():
+        return {
+            "status": "no_game_running",
+            "message": "Er is geen actieve game om te stoppen"
+        }
+    
+    # Zet stop event om game loops te laten stoppen
+    game_stop_event.set()
+    
+    # Cancel de achtergrond task
+    current_game_task.cancel()
+    
+    try:
+        await current_game_task
+    except asyncio.CancelledError:
+        print("Game task succesvol geannuleerd")
+    
+    # Stop alle apparaten
+    await device_manager.stop_alle()
+
+
 
 #resulaten endpoint
 @app.get("/laatste_rondewaarden",)
