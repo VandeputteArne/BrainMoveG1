@@ -29,11 +29,6 @@ sqlmodel>=0.0.8
 # Environment
 python-dotenv>=1.0.0
 
-# BLE (deprecated - replaced by MQTT)
-aioconsole>=0.7.0
-bless>=0.2.5
-bleak>=0.20.0
-
 # MQTT
 aiomqtt>=2.0.0
 
