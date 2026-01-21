@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import FilterGame from '../../components/filters/FilterGame.vue';
 import InputGebruikersnaam from '../../components/inputs/InputGebruikersnaam.vue';
 import FilterDatum from '../../components/filters/FilterDatum.vue';
@@ -15,6 +15,7 @@ const gameName = ref('');
 const filtersRef = ref(null);
 const showPopup = ref(false);
 const isFiltersVisible = ref(true);
+let observer = null;
 
 async function fetchHistorie() {
   if (!selectedGame.value) {
@@ -74,10 +75,42 @@ function formatDateTime(isoString) {
   return `${day}-${month}-${year}`;
 }
 
-// Watch for filter changes
-watch([selectedGame, gebruikersnaam, selectedDatum], () => {
-  fetchHistorie();
+watch([selectedGame, gebruikersnaam, selectedDatum], async () => {
+  await fetchHistorie();
+  // Setup observer for new cards after data loads
+  nextTick(() => {
+    setupIntersectionObserver();
+  });
 });
+
+function setupIntersectionObserver() {
+  // Clean up existing observer
+  if (observer) {
+    observer.disconnect();
+  }
+
+  // Create new observer
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px',
+    },
+  );
+
+  // Observe all cards
+  const cards = document.querySelectorAll('.c-historie__card');
+  cards.forEach((card) => {
+    observer.observe(card);
+  });
+}
 
 function handleScroll() {
   if (!filtersRef.value) return;
@@ -95,7 +128,6 @@ function closePopup() {
 }
 
 onMounted(() => {
-  // Initial fetch when page loads
   fetchHistorie();
 
   window.addEventListener('scroll', handleScroll);
@@ -123,7 +155,6 @@ onUnmounted(() => {
           Filters
         </button>
 
-        <!-- Filter popup modal -->
         <div v-if="showPopup" class="c-historie__popup-overlay" @click="closePopup">
           <div class="c-historie__popup" @click.stop>
             <div class="c-historie__popup-header">

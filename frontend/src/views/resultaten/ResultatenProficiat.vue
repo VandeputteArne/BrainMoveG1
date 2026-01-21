@@ -10,11 +10,9 @@ const router = useRouter();
 onMounted(async () => {
   await loadConfettiScript();
 
-  // Kleine delay om zeker te zijn dat navigatie voltooid is
   setTimeout(() => {
     fireConfetti();
 
-    // Speel geluid af - dit werkt omdat gebruiker navigeerde vanuit game (user interaction)
     if (audioRef.value) {
       audioRef.value.volume = 0.5;
       const playPromise = audioRef.value.play();
@@ -32,7 +30,7 @@ onMounted(async () => {
 <template>
   <div class="o-container-desktop">
     <audio ref="audioRef" autoplay preload="auto">
-      <source src="/images/sounds/fahhhhhhhhhhhhhh.mp3" type="audio/mpeg" />
+      <source src="/images/sounds/1gift-confetti-447240.mp3" type="audio/mpeg" />
     </audio>
 
     <div class="c-proficiat">

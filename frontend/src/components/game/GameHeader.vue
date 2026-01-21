@@ -1,5 +1,6 @@
 <script setup>
 import { Timer, OctagonX } from 'lucide-vue-next';
+import { getApiUrl } from '../../config/api.js';
 
 const props = defineProps({
   formattedTime: {
@@ -10,14 +11,27 @@ const props = defineProps({
 
 const emit = defineEmits(['stop']);
 
-function handleStop() {
+import { ref } from 'vue';
+
+const isLoading = ref(false);
+
+async function handleStop() {
+  try {
+    isLoading.value = true;
+    await fetch(getApiUrl('games/stop'), { method: 'GET' });
+  } catch (err) {
+    console.error('Stop API call failed', err);
+  } finally {
+    isLoading.value = false;
+  }
+
   emit('stop');
 }
 </script>
 
 <template>
   <div class="c-game-header">
-    <button class="c-game-header__stop" @click="handleStop">
+    <button class="c-game-header__stop" @click="handleStop" :disabled="isLoading" :aria-busy="isLoading">
       <span class="c-game-header__icon"><OctagonX /></span>
       <span class="c-game-header__text">stop</span>
     </button>
@@ -46,6 +60,11 @@ function handleStop() {
   border: none;
   cursor: pointer;
   font-size: 1rem;
+}
+
+.c-game-header__stop[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .c-game-header__timer {
