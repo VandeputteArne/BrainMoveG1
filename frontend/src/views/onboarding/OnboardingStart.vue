@@ -1,18 +1,27 @@
 <script setup>
+import { ref, onMounted } from 'vue';
 import ButtonsNext from '../../components/buttons/ButtonsNext.vue';
 import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgressBlock.vue';
+
+const isLoaded = ref(false);
+
+onMounted(() => {
+  requestAnimationFrame(() => {
+    isLoaded.value = true;
+  });
+});
 </script>
 
 <template>
   <div class="c-onboarding">
-    <div class="c-onboarding__inhoud">
+    <div class="c-onboarding__inhoud" :class="{ 'is-loaded': isLoaded }">
       <img class="c-onboarding__image" src="/images/BrainMove-Logo.png" alt="BrainMove Logo" />
       <div class="c-onboarding__text">
         <h1>BrainMove</h1>
         <h3 class="c-onboarding__h2">Beweeg slimmer, denk scherper</h3>
       </div>
     </div>
-    <div class="c-onboarding__progress">
+    <div class="c-onboarding__progress" :class="{ 'is-loaded': isLoaded }">
       <div class="c-onboarding__progess-blocks">
         <OnboardingProgressBlock :active="true" />
         <OnboardingProgressBlock :active="false" />
@@ -38,18 +47,6 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
   position: relative;
   overflow: hidden;
 
-  .c-onboarding__image {
-    width: 60%;
-    max-width: 20rem;
-    height: auto;
-  }
-
-  .c-onboarding__text {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
   .c-onboarding__inhoud {
     display: flex;
     flex-direction: column;
@@ -58,16 +55,62 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
     width: 100%;
     gap: 2rem;
     margin-bottom: 4rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.6s ease-out,
+      transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    will-change: opacity, transform;
+
+    &.is-loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .c-onboarding__image {
+    width: 60%;
+    max-width: 20rem;
+    height: auto;
+    transform: scale(0.9);
+    transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
+    will-change: transform;
+
+    .is-loaded & {
+      transform: scale(1);
+    }
+  }
+
+  .c-onboarding__text {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
   .c-onboarding__progress {
     position: absolute;
     bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.6s ease-out 0.3s,
+      transform 0.6s ease-out 0.3s;
+    will-change: opacity, transform;
+
+    &.is-loaded {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .c-onboarding__circle {
     border-radius: 100%;
     z-index: -1;
+    animation: float 6s ease-in-out infinite;
   }
 
   .c-onboarding__circle--1 {
@@ -88,13 +131,7 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
     right: -5rem;
 
     background-color: var(--blue-10);
-  }
-
-  .c-onboarding__progress {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2rem;
+    animation-delay: 3s;
   }
 
   .c-onboarding__progess-blocks {
@@ -104,6 +141,16 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
 
   .c-onboarding__h2 {
     text-align: center;
+  }
+
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0) scale(1);
+    }
+    50% {
+      transform: translateY(-15px) scale(1.05);
+    }
   }
 }
 </style>

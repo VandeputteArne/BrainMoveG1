@@ -1,11 +1,20 @@
 <script setup>
+import { ref, onMounted } from 'vue';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgressBlock.vue';
+
+const isLoaded = ref(false);
+
+onMounted(() => {
+  requestAnimationFrame(() => {
+    isLoaded.value = true;
+  });
+});
 </script>
 
 <template>
   <div class="o-container-desktop">
-    <div class="c-warning">
+    <div class="c-warning" :class="{ 'is-loaded': isLoaded }">
       <h1>Waarschuwing</h1>
       <img src="/images/waarschuwing.png" alt="Waarschuwing" class="c-warning__img" />
       <p class="c-warning__text">Schakel het systeem altijd uit via de pagina Apparaten. Trek nooit de stekker uit het stopcontact, dit kan het systeem beschadigen.</p>
@@ -26,9 +35,20 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  height: calc(100dvh - 5.5rem);
   gap: 3rem;
   margin-top: 3rem;
+  opacity: 0;
+  transition:
+    opacity 0.4s ease-out,
+    transform 0.4s ease-out;
+  will-change: opacity, transform;
+  transform: translateY(10px);
+
+  &.is-loaded {
+    opacity: 1;
+    transform: translateY(0);
+  }
 
   .c-warning__text {
     text-align: center;
@@ -49,9 +69,10 @@ import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgr
     margin-top: 2rem;
     width: 100%;
     padding: 0rem 1.25rem;
-
     position: absolute;
     bottom: 2rem;
+    visibility: visible;
+    opacity: 1;
 
     @media (width >= 768px) {
       max-width: 30rem;

@@ -32,13 +32,19 @@ onMounted(async () => {
 </script>
 
 <template>
-  <h1 class="title">Alle games</h1>
-  <div class="c-games">
-    <GameCard v-for="g in games" :key="g.id" :id="g.id" :title="g.title" :tag="g.tag" :best-time="g.bestTime" :unit="g.unit" :image="g.image" />
+  <div class="c-games-page">
+    <h1 class="title">Alle games</h1>
+    <div class="c-games">
+      <GameCard v-for="g in games" :key="g.id" :id="g.id" :title="g.title" :tag="g.tag" :best-time="g.bestTime" :unit="g.unit" :image="g.image" />
+    </div>
   </div>
 </template>
 
 <style scoped>
+.c-games-page {
+  display: contents;
+}
+
 .c-games {
   display: flex;
   flex-direction: column;
