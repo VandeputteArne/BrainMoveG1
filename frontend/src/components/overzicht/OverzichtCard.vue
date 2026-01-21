@@ -1,6 +1,6 @@
 <script setup>
 import { defineProps } from 'vue';
-import { Download, Clock, Zap, Trophy, Disc2, ChartNoAxesCombined } from 'lucide-vue-next';
+import { Download, Clock, Zap, Trophy, Disc2, ChartNoAxesCombined, Blend } from 'lucide-vue-next';
 
 const props = defineProps({
   waarde: {
@@ -21,6 +21,7 @@ const props = defineProps({
         <Trophy class="c-overzicht__stat-svg" v-else-if="props.label == 'Beste'" />
         <Zap class="c-overzicht__stat-svg" v-else-if="props.label == 'Ranking'" />
         <Disc2 class="c-overzicht__stat-svg" v-else-if="props.label == 'Exactheid'" />
+        <Blend class="c-overzicht__stat-svg" v-else />
       </span>
     </div>
     <h2>

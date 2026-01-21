@@ -31,6 +31,13 @@ watch(username, (v) => {
 const difficulties = ref([]);
 const selectedDifficulty = ref('Gemiddeld');
 
+// Fetch leaderboard when difficulty changes
+watch(selectedDifficulty, async (newDifficulty) => {
+  if (newDifficulty && gameId.value) {
+    await fetchLeaderboard();
+  }
+});
+
 const roundsOptions = ref([]);
 const selectedRounds = ref('');
 
@@ -67,19 +74,26 @@ onMounted(async () => {
     }
   }
 
-  // Always fetch fresh leaderboard
+  // Fetch leaderboard based on selected difficulty
+  await fetchLeaderboard();
+});
+
+async function fetchLeaderboard() {
+  if (!gameId.value || !selectedDifficulty.value) return;
+
   try {
-    const leaderboardRes = await fetch(getApiUrl(`games/${gameId.value}/leaderboard/3`));
+    const leaderboardRes = await fetch(getApiUrl(`leaderboard/overview/${gameId.value}/${selectedDifficulty.value}`));
     const leaderboardData = await leaderboardRes.json();
 
-    smallLeaderboardData.value = leaderboardData.map((entry) => ({
+    smallLeaderboardData.value = leaderboardData.slice(0, 3).map((entry) => ({
       name: entry.gebruikersnaam,
       time: entry.waarde,
+      unit: entry.eenheid,
     }));
   } catch (error) {
     console.error('Failed to fetch leaderboard:', error);
   }
-});
+}
 
 function loadGameData(data) {
   // Set game info
@@ -228,7 +242,7 @@ async function startGame() {
 
       <div class="c-game-detail__leader">
         <h2>Leaderboard</h2>
-        <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" />
+        <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" :unit="entry.unit" />
       </div>
     </div>
   </div>

@@ -56,6 +56,7 @@ async function fetchLeaderboard() {
       name: entry.gebruikersnaam,
       time: entry.waarde,
       rank: entry.plaats,
+      unit: entry.eenheid,
     }));
   } catch (error) {
     console.error('Failed to fetch leaderboard:', error);
@@ -100,7 +101,7 @@ onMounted(() => {
           <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
         </div>
         <div class="c-leaderboard__body">
-          <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" />
+          <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" :unit="entry.unit" />
         </div>
       </div>
     </div>
