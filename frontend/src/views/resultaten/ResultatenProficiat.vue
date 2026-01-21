@@ -1,9 +1,40 @@
 <script setup>
+import { onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
+import { loadConfettiScript, fireConfetti } from '../../utils/confetti.js';
+
+const audioRef = ref(null);
+const router = useRouter();
+
+onMounted(async () => {
+  await loadConfettiScript();
+
+  // Kleine delay om zeker te zijn dat navigatie voltooid is
+  setTimeout(() => {
+    fireConfetti();
+
+    // Speel geluid af - dit werkt omdat gebruiker navigeerde vanuit game (user interaction)
+    if (audioRef.value) {
+      audioRef.value.volume = 0.5;
+      const playPromise = audioRef.value.play();
+
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.log('Audio autoplay geblokkeerd:', error.message);
+        });
+      }
+    }
+  }, 100);
+});
 </script>
 
 <template>
   <div class="o-container-desktop">
+    <audio ref="audioRef" autoplay preload="auto">
+      <source src="/images/sounds/fahhhhhhhhhhhhhh.mp3" type="audio/mpeg" />
+    </audio>
+
     <div class="c-proficiat">
       <div class="c-proficiat__text">
         <h1>Proficiat!</h1>

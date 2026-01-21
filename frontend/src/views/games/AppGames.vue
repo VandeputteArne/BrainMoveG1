@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { LayoutGrid, Rows3 } from 'lucide-vue-next';
 import GameCard from '../../components/cards/CardsGame.vue';
 import { getApiUrl } from '../../config/api.js';
@@ -50,12 +50,16 @@ onMounted(async () => {
     console.error('Failed to fetch games:', error);
   }
 });
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile);
+});
 </script>
 
 <template>
   <div class="c-games-page">
     <div class="c-games__header">
-      <h1 class="title">Alle games</h1>
+      <h1>Alle games</h1>
       <button @click="toggleView" class="c-games__view-toggle" :aria-label="viewMode === 'grid' ? 'Switch to row view' : 'Switch to grid view'">
         <LayoutGrid v-if="showGridIcon" :size="24" />
         <Rows3 v-else :size="24" />
@@ -77,6 +81,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  margin-bottom: var(--spacing-title);
 }
 
 .c-games__view-toggle {
