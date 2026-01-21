@@ -1,11 +1,13 @@
 <script setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import OnboardingProgressBlock from '../../components/onboarding/OnboardingProgressBlock.vue';
 import ButtonsNext from '../../components/buttons/ButtonsNext.vue';
 import { TriangleAlert } from 'lucide-vue-next';
 
 import { useDeviceStatus } from '../../composables/useDeviceStatus.js';
+
+const isLoaded = ref(false);
 
 const { allDevicesConnected, connectedDevices, fetchDeviceStatus } = useDeviceStatus();
 
@@ -21,12 +23,15 @@ const buttonProgress = computed(() => (allPotsConnected.value ? 100 : 50));
 
 onMounted(() => {
   fetchDeviceStatus();
+  requestAnimationFrame(() => {
+    isLoaded.value = true;
+  });
 });
 </script>
 
 <template>
   <div class="o-container-desktop">
-    <div class="c-setup">
+    <div class="c-setup" :class="{ 'is-loaded': isLoaded }">
       <div class="c-setup__text">
         <h1>Potjes aanzetten</h1>
         <p>Tik op het fysieke knopje onder een potje om het aan te zetten. Op het scherm en via geluid hoor je of het gelukt is.</p>
@@ -58,8 +63,20 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  max-height: 100dvh;
+  height: calc(100dvh - 2.5rem);
+  overflow: hidden;
   gap: 2rem;
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.4s ease-out,
+    transform 0.4s ease-out;
+  will-change: opacity, transform;
+
+  &.is-loaded {
+    opacity: 1;
+    transform: translateY(0);
+  }
 
   @media (width >= 768px) {
     align-items: start;
@@ -110,9 +127,10 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   gap: 2rem;
-
   position: absolute;
   bottom: 2rem;
+  visibility: visible;
+  opacity: 1;
 
   @media (width >= 768px) {
     left: 50%;

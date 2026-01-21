@@ -16,7 +16,11 @@ const paddingtop = computed(() => !!route.meta.paddingtop);
 <template>
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
-    <router-view />
+    <router-view v-slot="{ Component, route }">
+      <transition :name="route.meta.transition || 'fade'" mode="out-in">
+        <component :is="Component" :key="route.path" />
+      </transition>
+    </router-view>
   </div>
   <AppNav v-if="showNav" />
 </template>
@@ -38,5 +42,61 @@ const paddingtop = computed(() => !!route.meta.paddingtop);
 
 .c-body--no-padding-top {
   margin-top: 0;
+}
+
+.fade-enter-active {
+  transition: opacity 0.25s ease-in;
+}
+
+.fade-leave-active {
+  transition: opacity 0.2s ease-out;
+}
+
+.fade-enter-from {
+  opacity: 0;
+}
+
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-left-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-left-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.slide-left-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-right-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slide-right-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+.slide-right-enter-from {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.c-body > div {
+  min-height: 100%;
 }
 </style>

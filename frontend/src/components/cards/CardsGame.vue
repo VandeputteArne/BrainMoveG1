@@ -1,6 +1,6 @@
 <script setup>
 import { Zap, Crown } from 'lucide-vue-next';
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -9,14 +9,36 @@ const props = defineProps({
   bestTime: { type: Number, default: 0 },
   unit: { type: String, default: 's' },
   image: { type: String, default: 'images/cards/color-sprint.png' },
+  view: { type: String, default: 'row' },
+});
+
+const isMobile = ref(window.innerWidth < 768);
+
+const updateIsMobile = () => {
+  isMobile.value = window.innerWidth < 768;
+};
+
+onMounted(() => {
+  window.addEventListener('resize', updateIsMobile);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('resize', updateIsMobile);
+});
+
+const displayTag = computed(() => {
+  if (props.view === 'grid' && isMobile.value && props.tag.length > 8) {
+    return props.tag.substring(0, 8) + '...';
+  }
+  return props.tag;
 });
 </script>
 
 <template>
-  <router-link :to="`/games/${props.id}`" class="c-game-card" :style="{ backgroundImage: `url(${props.image})` }">
+  <router-link :to="`/games/${props.id}`" class="c-game-card" :class="`c-game-card--${props.view}`" :style="{ backgroundImage: `url(${props.image})` }">
     <div class="c-game-card__tag">
       <Zap class="c-game-card__icon" />
-      <p>{{ props.tag }}</p>
+      <p>{{ displayTag }}</p>
     </div>
     <div class="c-game-card__info">
       <p class="c-game-card__title">{{ props.title }}</p>
@@ -82,6 +104,14 @@ const props = defineProps({
   .c-game-card__title {
     font-weight: 600;
     margin: 0;
+  }
+}
+
+.c-game-card--grid {
+  .c-game-card__info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
   }
 }
 </style>
