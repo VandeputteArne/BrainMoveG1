@@ -169,7 +169,16 @@ class MQTTDeviceManager:
     async def _handle_battery(self, color: str, payload: str):
         try:
             percentage = int(payload)
+
+            oude_waarde = self._apparaten[color]["batterij"]
             self._apparaten[color]["batterij"] = percentage
+            
+            if self._sio and oude_waarde != percentage:
+                 await self._sio.emit("device_battery_update", {
+                    "kleur": color,
+                    "batterij": percentage
+                })
+
         except ValueError:
             pass
 
