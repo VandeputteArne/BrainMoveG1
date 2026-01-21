@@ -1,16 +1,19 @@
 import asyncio
 import logging
+import os
 from typing import Callable, Optional
 import aiomqtt
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-BROKER_HOST = "localhost"
-BROKER_PORT = 1883
+BROKER_HOST = os.getenv("MQTT_BROKER_HOST", "localhost")
+BROKER_PORT = int(os.getenv("MQTT_BROKER_PORT", 1883))
 TOPIC_PREFIX = "bm"
 
 COLORS = ["rood", "blauw", "geel", "groen"]
-
 
 class MQTTDeviceManager:
     def __init__(self, sio=None):
@@ -19,8 +22,27 @@ class MQTTDeviceManager:
         self._connected = False
         self._running = False
 
-        self._apparaten = {color: {"status": "offline", "batterij": None} for color in COLORS}
+        self._apparaten = {
+            color: {"status": "offline", "batterij": None, "verified": False} 
+            for color in COLORS
+        }
+        
         self._detectie_callback: Optional[Callable] = None
+
+        self._whitelist = {}
+        self._load_whitelist()
+
+    def _load_whitelist(self):
+        """Laadt MAC adressen uit .env en verwijdert : en - voor vergelijking."""
+        for color in COLORS:
+            env_var = f"APPARAAT_BM_{color.upper()}"
+            mac = os.getenv(env_var)
+            if mac:
+                clean_mac = mac.replace(":", "").replace("-", "").upper()
+                self._whitelist[color] = clean_mac
+                logger.info(f"Whitelist geladen voor {color}: {mac}")
+            else:
+                logger.warning(f"⚠️ Geen MAC adres gevonden in .env voor {env_var}!")
 
     @property
     def apparaten(self):
@@ -28,13 +50,14 @@ class MQTTDeviceManager:
 
     async def start(self):
         self._running = True
+        logger.info(f"Connecting to MQTT Broker at {BROKER_HOST}:{BROKER_PORT}...")
 
         while self._running:
             try:
                 async with aiomqtt.Client(BROKER_HOST, BROKER_PORT) as client:
                     self._client = client
                     self._connected = True
-                    logger.info("MQTT connected to broker")
+                    logger.info("✅ MQTT connected to broker")
 
                     await client.subscribe(f"{TOPIC_PREFIX}/+/detect")
                     await client.subscribe(f"{TOPIC_PREFIX}/+/battery")
@@ -44,8 +67,12 @@ class MQTTDeviceManager:
                         await self._handle_message(message)
 
             except aiomqtt.MqttError as e:
-                logger.error(f"MQTT error: {e}")
+                logger.error(f"❌ MQTT error: {e}")
                 self._connected = False
+                for dev in self._apparaten.values():
+                    dev["verified"] = False
+                    dev["status"] = "offline"
+                
                 if self._running:
                     await asyncio.sleep(2)
             except asyncio.CancelledError:
@@ -68,16 +95,58 @@ class MQTTDeviceManager:
         if color not in COLORS:
             return
 
+        if msg_type == "status":
+            await self._handle_status(color, payload)
+            return
+
+        if not self._apparaten[color]["verified"]:
+            return
+
         if msg_type == "detect":
             await self._handle_detection(color, payload)
         elif msg_type == "battery":
             await self._handle_battery(color, payload)
-        elif msg_type == "status":
-            await self._handle_status(color, payload)
+
+    async def _handle_status(self, color: str, payload: str):
+        """Verwerkt status updates en MAC verificatie."""
+        parts = payload.split("|")
+        new_status = parts[0]
+        
+        if new_status == "online":
+            if len(parts) < 2:
+                logger.warning(f"⚠️ Security: {color} probeert te verbinden zonder MAC!")
+                return
+            
+            inkomend_mac = parts[1].replace(":", "").replace("-", "").upper()
+            verwacht_mac = self._whitelist.get(color)
+
+            if verwacht_mac and inkomend_mac != verwacht_mac:
+                logger.error(f"⛔ Security Block: {color} MAC mismatch! {inkomend_mac} != {verwacht_mac}")
+                self._apparaten[color]["verified"] = False
+                return 
+            
+            self._apparaten[color]["verified"] = True
+            logger.info(f"✅ Device {color} geverifieerd (MAC: {inkomend_mac})")
+
+        elif new_status in ["offline", "sleeping"]:
+            self._apparaten[color]["verified"] = False
+
+        old_status = self._apparaten[color]["status"]
+        self._apparaten[color]["status"] = new_status
+
+        logger.info(f"Status update: {color} -> {new_status}")
+
+        if self._sio and old_status != new_status:
+            event = "device_connected" if new_status == "online" else "device_disconnected"
+            
+            await self._sio.emit(event, {
+                "kleur": color,
+                "status": new_status,
+                "batterij": self._apparaten[color]["batterij"]
+            })
 
     async def _handle_detection(self, color: str, payload: str):
-        logger.info(f"Detection: {color} = {payload} mm")
-        
+        logger.debug(f"Detection: {color} = {payload} mm")
         try:
             afstand = int(payload)
         except ValueError:
@@ -101,24 +170,8 @@ class MQTTDeviceManager:
         try:
             percentage = int(payload)
             self._apparaten[color]["batterij"] = percentage
-            logger.debug(f"Battery: {color} = {percentage}%")
         except ValueError:
             pass
-
-    async def _handle_status(self, color: str, payload: str):
-        old_status = self._apparaten[color]["status"]
-        new_status = payload
-        self._apparaten[color]["status"] = new_status
-
-        logger.info(f"Status: {color} = {new_status}")
-
-        if self._sio and old_status != new_status:
-            event = "device_connected" if new_status == "online" else "device_disconnected"
-            await self._sio.emit(event, {
-                "kleur": color,
-                "status": new_status,
-                "batterij": self._apparaten[color]["batterij"]
-            })
 
     async def _publish(self, topic: str, payload: str):
         if self._client and self._connected:
@@ -140,7 +193,6 @@ class MQTTDeviceManager:
 
     async def set_correct_kegel(self, color: str):
         await self.send_command(color.lower(), "correct")
-        logger.info(f"Set {color} as correct")
 
     async def reset_correct_kegel(self, color: str):
         await self.send_command(color.lower(), "incorrect")
@@ -153,9 +205,6 @@ class MQTTDeviceManager:
 
     def zet_detectie_callback(self, callback: Optional[Callable]):
         self._detectie_callback = callback
-
-    def verkrijg_alle_laatste_detecties(self):
-        return {}
 
     def verkrijg_apparaten_status(self) -> list:
         return [
