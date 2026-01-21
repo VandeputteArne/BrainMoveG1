@@ -191,26 +191,56 @@ async def memorygame(snelheid, aantal_rondes, kleuren):
         starttijd = time.time()
         status = "correct"
 
+        # for verwachte_kleur in geheugen_lijst:
+        #     detectie_event.clear()
+        #     detected_color.clear()
+
+        #     try:
+        #         # Wait for detection with generous timeout
+        #         await asyncio.wait_for(detectie_event.wait(), timeout=30.0)
+
+        #         detected_kleur = detected_color.get("kleur", "").lower()
+        #         if detected_kleur != verwachte_kleur.lower():
+        #             await sio.emit('fout_kleur', {'status': 'game over'})
+        #             status = "fout"
+        #             print(f"Wrong! Expected {verwachte_kleur}, got {detected_kleur}")
+        #             break
+        #         print(f"Correct: {detected_kleur}")
+
+        #     except asyncio.TimeoutError:
+        #         await sio.emit('fout_kleur', {'status': 'timeout'})
+        #         status = "fout"
+        #         print("Timeout waiting for cone touch")
+        #         break
+
         for verwachte_kleur in geheugen_lijst:
+            
             detectie_event.clear()
             detected_color.clear()
 
+            await device_manager.set_correct_kegel(verwachte_kleur)
+
             try:
-                # Wait for detection with generous timeout
-                await asyncio.wait_for(detectie_event.wait(), timeout=30.0)
+                await asyncio.wait_for(detectie_event.wait(), timeout=10.0)
+                
+                await device_manager.reset_correct_kegel(verwachte_kleur)
 
                 detected_kleur = detected_color.get("kleur", "").lower()
+                
                 if detected_kleur != verwachte_kleur.lower():
                     await sio.emit('fout_kleur', {'status': 'game over'})
                     status = "fout"
-                    print(f"Wrong! Expected {verwachte_kleur}, got {detected_kleur}")
+                    print(f"Fout! Verwacht: {verwachte_kleur}, Gekregen: {detected_kleur}")
                     break
+                
                 print(f"Correct: {detected_kleur}")
 
             except asyncio.TimeoutError:
+                await device_manager.reset_correct_kegel(verwachte_kleur)
+                
                 await sio.emit('fout_kleur', {'status': 'timeout'})
                 status = "fout"
-                print("Timeout waiting for cone touch")
+                print("Timeout: Te lang gewacht op aanraking")
                 break
 
         eindtijd = time.time()

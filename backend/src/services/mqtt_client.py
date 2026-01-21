@@ -76,17 +76,26 @@ class MQTTDeviceManager:
             await self._handle_status(color, payload)
 
     async def _handle_detection(self, color: str, payload: str):
-        logger.info(f"Detection: {color} = {payload}")
+        logger.info(f"Detection: {color} = {payload} mm")
+        
+        try:
+            afstand = int(payload)
+        except ValueError:
+            afstand = 0
 
         if self._detectie_callback:
             self._detectie_callback({
                 "apparaat_naam": f"BM-{color.capitalize()}",
                 "kleur": color,
-                "detectie_bool": payload == "1"
+                "detectie_bool": True,
+                "afstand": afstand
             })
 
         if self._sio:
-            await self._sio.emit("device_detection", {"kleur": color})
+            await self._sio.emit("device_detection", {
+                "kleur": color, 
+                "afstand": afstand
+            })
 
     async def _handle_battery(self, color: str, payload: str):
         try:
