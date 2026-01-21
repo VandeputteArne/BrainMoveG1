@@ -77,19 +77,16 @@ function formatDateTime(isoString) {
 
 watch([selectedGame, gebruikersnaam, selectedDatum], async () => {
   await fetchHistorie();
-  // Setup observer for new cards after data loads
   nextTick(() => {
     setupIntersectionObserver();
   });
 });
 
 function setupIntersectionObserver() {
-  // Clean up existing observer
   if (observer) {
     observer.disconnect();
   }
 
-  // Create new observer
   observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
@@ -101,11 +98,10 @@ function setupIntersectionObserver() {
     },
     {
       threshold: 0.1,
-      rootMargin: '0px 0px -50px 0px',
+      rootMargin: '0px',
     },
   );
 
-  // Observe all cards
   const cards = document.querySelectorAll('.c-historie__card');
   cards.forEach((card) => {
     observer.observe(card);
@@ -127,15 +123,22 @@ function closePopup() {
   showPopup.value = false;
 }
 
-onMounted(() => {
-  fetchHistorie();
+onMounted(async () => {
+  await fetchHistorie();
 
   window.addEventListener('scroll', handleScroll);
   handleScroll();
+
+  nextTick(() => {
+    setupIntersectionObserver();
+  });
 });
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll);
+  if (observer) {
+    observer.disconnect();
+  }
 });
 </script>
 
@@ -177,7 +180,9 @@ onUnmounted(() => {
             <p>{{ historieData.length }} Resultaten</p>
           </div>
           <div class="c-historie__resultaten">
-            <CardHistorie v-for="item in historieData" :key="item.id" :gebruiker="item.gebruiker" :datumtijd="item.datumtijd" :score="item.score" :eenheid="item.eenheid" :url="item.url" />
+            <div v-for="item in historieData" :key="item.id" class="c-historie__card">
+              <CardHistorie :gebruiker="item.gebruiker" :datumtijd="item.datumtijd" :score="item.score" :eenheid="item.eenheid" :url="item.url" />
+            </div>
             <p v-if="historieData.length === 0" class="c-historie__empty">Geen resultaten gevonden</p>
           </div>
         </div>
@@ -337,6 +342,26 @@ onUnmounted(() => {
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
+    }
+
+    .c-historie__card {
+      opacity: 0;
+      transform: translateX(-50px);
+      transition:
+        opacity 0.6s ease-out,
+        transform 0.6s ease-out;
+
+      &.is-visible {
+        opacity: 1;
+        transform: translateX(0);
+      }
+
+      /* Add stagger effect to sequential cards */
+      @for $i from 1 through 20 {
+        &:nth-child(#{$i}) {
+          transition-delay: calc(#{$i - 1} * 0.1s);
+        }
+      }
     }
   }
 }
