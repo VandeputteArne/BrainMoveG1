@@ -4,8 +4,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-// PAS DIT AAN PER APPARAAT ("rood", "blauw", "geel", "groen")
-#define DEVICE_COLOR "blauw" 
+#define DEVICE_COLOR "geel" 
 
 // WiFi Credentials
 const char* WIFI_SSID = "BrainMoveG1";
@@ -235,6 +234,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String message = "";
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
   
+  Serial.print("Bericht: "); Serial.println(message);
   Serial.print("Bericht: "); Serial.println(message);
   laatsteActiviteitTijd = millis();
 
