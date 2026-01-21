@@ -4,29 +4,30 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-#define DEVICE_COLOR "geel" 
+// PAS DIT AAN PER APPARAAT ("rood", "blauw", "geel", "groen")
+#define DEVICE_COLOR "blauw" 
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
 
 const char* MQTT_BROKER = "10.42.0.1";
 const int MQTT_PORT = 1883;
-const int MQTT_KEEPALIVE_DURATION = 5;
+const int MQTT_KEEPALIVE_DURATION = 5; 
 
-const int PIN_BATTERIJ_ADC_1 = 2; // D0
-const int PIN_KNOP = 3;           // D1
-const int PIN_BATTERIJ_ADC_2 = 4; // D2
-const int PIN_ZOEMER = 5;         // D3
+// ==================== PIN DEFINITIES ====================
+const int PIN_BATTERIJ_ADC_1 = 2;
+const int PIN_KNOP = 3;
+const int PIN_BATTERIJ_ADC_2 = 4;
+const int PIN_ZOEMER = 5;
 
-const int PIN_I2C_SDA = 6;        // D4 (SDA)
-const int PIN_I2C_SCL = 7;        // D5 (SCL)
+const int PIN_I2C_SDA = 6;
+const int PIN_I2C_SCL = 7;
 
-const int PIN_USB_VBUS = 21;      // D6 
+const int PIN_USB_VBUS = 21;
 
-// LEDS
-const int PIN_LED_ROOD = 8;       // D8
-const int PIN_LED_GROEN = 20;     // D7
-const int PIN_LED_BLAUW = 10;     // D10
+const int PIN_LED_ROOD = 8;
+const int PIN_LED_GROEN = 20;
+const int PIN_LED_BLAUW = 10;
 
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
@@ -40,6 +41,7 @@ const int BATTERIJ_NIVEAU_LAAG = 20;
 const int BATTERIJ_NIVEAU_MIDDEL = 50;
 const int LED_OPLADEN_KNIPPEREN_MS = 500;
 
+// Update elke 10 minuten
 const unsigned long LED_UPDATE_INTERVAL = 600000; 
 
 const bool RGB_GEMEENSCHAPPELIJKE_ANODE = false;
@@ -119,7 +121,6 @@ void loop() {
   }
 
   mqttClient.loop();
-
   verwerkKnopDruk();
 
   if (isPolling) {
@@ -129,7 +130,6 @@ void loop() {
   if (millis() - laatsteLedUpdateTijd >= LED_UPDATE_INTERVAL) {
     laatsteLedUpdateTijd = millis();
     laatsteBatterijPercentage = leesBatterijPercentage();
-    
     String payload = String(laatsteBatterijPercentage);
     mqttClient.publish(topic_battery.c_str(), payload.c_str(), false);
   }
@@ -143,28 +143,23 @@ void loop() {
 }
 
 void verbindGeforceerd() {
-  Serial.println("Verbinding verloren. Apparaat pauzeert...");
-  
-  // Zet alles uit
+  Serial.println("Verbinding verloren...");
   rgbLedUit();
   zoemerUit();
   isPolling = false; 
   
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.print("WiFi verbinden: ");
-    Serial.println(WIFI_SSID);
-    
+    Serial.print("WiFi: "); Serial.println(WIFI_SSID);
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);
     WiFi.setSleep(false);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     while (WiFi.status() != WL_CONNECTED) {
-      delay(500);
-      Serial.print(".");
+      delay(500); Serial.print(".");
       digitalWrite(PIN_LED_BLAUW, !digitalRead(PIN_LED_BLAUW));
     }
-    Serial.println("\nWiFi Hersteld.");
+    Serial.println(" WiFi OK.");
     digitalWrite(PIN_LED_BLAUW, LOW);
   }
 
@@ -172,45 +167,39 @@ void verbindGeforceerd() {
     if (WiFi.status() != WL_CONNECTED) return;
 
     String clientId = String("BM-") + DEVICE_COLOR + "-" + String(ESP.getEfuseMac(), HEX);
-    Serial.print("MQTT verbinden...");
     
+    // Connect met Last Will "offline"
     if (mqttClient.connect(clientId.c_str(), topic_status.c_str(), 1, true, "offline")) {
-      Serial.println("GELUKT!");
+      Serial.println("MQTT OK!");
       
       mqttClient.subscribe(topic_cmd.c_str());
       mqttClient.subscribe(topic_cmd_all.c_str());
       
-      String macAdres = WiFi.macAddress();
-      String statusPayload = "online|" + macAdres;
-      mqttClient.publish(topic_status.c_str(), statusPayload.c_str(), true);
+      // Gewoon "online" sturen (zonder MAC)
+      mqttClient.publish(topic_status.c_str(), "online", true);
 
+      // Direct batterij sturen
       laatsteBatterijPercentage = leesBatterijPercentage();
       String battPayload = String(laatsteBatterijPercentage);
       mqttClient.publish(topic_battery.c_str(), battPayload.c_str(), false);
       
       laatsteLedUpdateTijd = millis();
-      
       speelVerbindingGeluid(); 
       laatsteActiviteitTijd = millis(); 
       
     } else {
-      Serial.print("Mislukt, rc=");
-      Serial.print(mqttClient.state());
-      Serial.println(" Wacht 2 sec...");
+      Serial.print("MQTT Fail rc="); Serial.println(mqttClient.state());
       zetRgbKleur(50, 0, 0); delay(100); rgbLedUit();
       delay(1900); 
     }
   }
 }
 
+// ... Hieronder dezelfde functies als altijd (mqttCallback, initHardware, etc.) ...
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String message = "";
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
-  
-  Serial.print("Bericht: "); Serial.println(message);
-  Serial.print("Bericht: "); Serial.println(message);
   laatsteActiviteitTijd = millis();
-
   if (message == "start") isPolling = true;
   else if (message == "stop") isPolling = false;
   else if (message == "correct") isCorrectTarget = true;
@@ -223,21 +212,16 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void initHardware() {
   pinMode(PIN_KNOP, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_KNOP), knopISR, FALLING);
-
   ledcAttach(PIN_LED_ROOD, 5000, 8);
   ledcAttach(PIN_LED_GROEN, 5000, 8);
   ledcAttach(PIN_LED_BLAUW, 5000, 8);
   rgbLedUit();
-
   ledcAttach(PIN_ZOEMER, ZOEMER_FREQ_STANDAARD, ZOEMER_RESOLUTIE);
   ledcWrite(PIN_ZOEMER, 0);
-
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
-
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(400000);
-
   tofSensor.setTimeout(500);
   if (!tofSensor.init()) {
     Serial.println("FOUT: Geen sensor!");
@@ -253,10 +237,7 @@ void initHardware() {
 
 void verwerkKnopDruk() {
     if (!knopIngedrukt) return;
-    if (millis() - laatsteKnopDrukTijd < KNOP_DEBOUNCE_MS) {
-        knopIngedrukt = false;
-        return;
-    }
+    if (millis() - laatsteKnopDrukTijd < KNOP_DEBOUNCE_MS) { knopIngedrukt = false; return; }
     knopIngedrukt = false;
     laatsteKnopDrukTijd = millis();
     laatsteActiviteitTijd = millis();
@@ -264,22 +245,15 @@ void verwerkKnopDruk() {
 
 void verwerkToF() {
     if (!tofGeinitialiseerd) return;
-
     if (millis() - laatsteTofPollTijd >= TOF_POLL_INTERVAL_MS) {
         laatsteTofPollTijd = millis();
         uint16_t afstand = tofSensor.readRangeContinuousMillimeters();
         if (tofSensor.timeoutOccurred()) return; 
-
         bool geldigeDetectie = (afstand > TOF_DETECTIE_MIN_MM && afstand < TOF_DETECTIE_MAX_MM);
-        
         if (geldigeDetectie && (millis() - laatsteDetectieTijd >= TOF_DETECTIE_AFKOELING_MS)) {
-            Serial.print("Detectie: "); Serial.println(afstand);
-            if (isCorrectTarget) speelCorrectGeluid();
-            else speelIncorrectGeluid();
-
+            if (isCorrectTarget) speelCorrectGeluid(); else speelIncorrectGeluid();
             String payload = String(afstand);
             mqttClient.publish(topic_detect.c_str(), payload.c_str(), false);
-
             laatsteDetectieTijd = millis();
             laatsteActiviteitTijd = millis();
         }
@@ -303,25 +277,18 @@ uint8_t leesBatterijPercentage() {
     return (uint8_t)percentage;
 }
 
-bool isUsbVerbonden() {
-    return (analogRead(PIN_USB_VBUS) > USB_VBUS_DREMPEL);
-}
+bool isUsbVerbonden() { return (analogRead(PIN_USB_VBUS) > USB_VBUS_DREMPEL); }
 
 void zetRgbKleur(uint8_t r, uint8_t g, uint8_t b) {
     if (RGB_GEMEENSCHAPPELIJKE_ANODE) { r = 255 - r; g = 255 - g; b = 255 - b; }
-    ledcWrite(PIN_LED_ROOD, r);
-    ledcWrite(PIN_LED_GROEN, g);
-    ledcWrite(PIN_LED_BLAUW, b);
+    ledcWrite(PIN_LED_ROOD, r); ledcWrite(PIN_LED_GROEN, g); ledcWrite(PIN_LED_BLAUW, b);
 }
-
 void rgbLedUit() { zetRgbKleur(0, 0, 0); }
 
 void updateBatterijLed() {
     usbVerbonden = isUsbVerbonden();
-
     if (isPolling && !usbVerbonden && laatsteBatterijPercentage > BATTERIJ_NIVEAU_LAAG) {
-        if (isCorrectTarget) zetRgbKleur(0, 255, 0);
-        else zetRgbKleur(255, 0, 0);
+        if (isCorrectTarget) zetRgbKleur(0, 255, 0); else zetRgbKleur(255, 0, 0);
         return;
     }
     uint8_t r = 0, g = 0, b = 0;
@@ -335,19 +302,14 @@ void updateBatterijLed() {
             oplaadLedStatus = !oplaadLedStatus;
         }
         if (oplaadLedStatus) zetRgbKleur(r, g, b); else rgbLedUit();
-    } else {
-        zetRgbKleur(r, g, b);
-    }
+    } else { zetRgbKleur(r, g, b); }
 }
 
 void zoemerToon(uint32_t freq, uint32_t duur) {
     ledcChangeFrequency(PIN_ZOEMER, freq, ZOEMER_RESOLUTIE);
-    ledcWrite(PIN_ZOEMER, 127);
-    delay(duur);
-    zoemerUit();
+    ledcWrite(PIN_ZOEMER, 127); delay(duur); zoemerUit();
 }
 void zoemerUit() { ledcWrite(PIN_ZOEMER, 0); }
-
 void speelCorrectGeluid() { zoemerToon(1000, 100); delay(50); zoemerToon(1500, 100); delay(50); zoemerToon(2000, 150); }
 void speelIncorrectGeluid() { zoemerToon(400, 150); delay(50); zoemerToon(300, 150); delay(50); zoemerToon(200, 200); }
 void speelVerbindingGeluid() { zoemerToon(800, 100); delay(50); zoemerToon(1200, 150); }
@@ -358,8 +320,7 @@ void gaaDiepeSlaap() {
         mqttClient.publish(topic_status.c_str(), "sleeping", true);
         mqttClient.disconnect();
     }
-    delay(100);
-    zoemerUit(); rgbLedUit();
+    delay(100); zoemerUit(); rgbLedUit();
     if (tofGeinitialiseerd) tofSensor.stopContinuous();
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
     esp_deep_sleep_start();
