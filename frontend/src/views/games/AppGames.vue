@@ -94,7 +94,8 @@ onMounted(async () => {
 }
 
 .c-games__view-toggle:hover {
-  background-color: var(--color-primary-light, rgba(0, 0, 0, 0.05));
+  background-color: var(--blue-100, rgba(0, 0, 0, 0.05));
+  color: var(--color-white);
 }
 
 .c-games__view-toggle:active {
