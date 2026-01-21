@@ -65,6 +65,9 @@ const displayTag = computed(() => {
   text-decoration: none;
   color: var(--color-white);
   padding: 0.75rem;
+  transition:
+    transform 0.3s ease,
+    opacity 0.3s ease;
 
   .c-game-card__tag {
     display: flex;
@@ -74,6 +77,7 @@ const displayTag = computed(() => {
     width: fit-content;
     padding: 0.125rem 0.5rem;
     border-radius: var(--radius-40);
+    transition: all 0.3s ease;
   }
 
   .c-game-card__icon {
@@ -89,6 +93,7 @@ const displayTag = computed(() => {
     background-color: var(--color-white);
     padding: 0.75rem;
     border-radius: var(--radius-15);
+    transition: all 0.3s ease;
   }
 
   .c-game-card__best {
