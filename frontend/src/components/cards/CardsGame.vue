@@ -22,7 +22,7 @@ const props = defineProps({
       <p class="c-game-card__title">{{ props.title }}</p>
       <div class="c-game-card__best">
         <Crown class="c-game-card__icon c-game-card__icon--yellow" />
-        <p class="small">{{ props.bestTime }}{{ props.unit }}</p>
+        <p class="small">{{ props.bestTime }} {{ props.unit }}</p>
       </div>
     </div>
   </router-link>

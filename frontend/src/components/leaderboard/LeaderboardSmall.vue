@@ -9,6 +9,7 @@ const props = defineProps({
   full: { type: Boolean, default: false },
   borderDark: { type: Boolean, default: false },
   total: { type: Number, default: 0 },
+  unit: { type: String },
 });
 
 const medalClass = computed(() => {
@@ -25,6 +26,11 @@ const borderClass = computed(() => {
 });
 
 const showTrophy = computed(() => props.count <= 3);
+
+const labelText = computed(() => {
+  if (props.unit === 'kleuren') return 'Max kleuren';
+  return 'Gem tijd';
+});
 </script>
 
 <template>
@@ -40,10 +46,10 @@ const showTrophy = computed(() => props.count <= 3);
         <p class="c-leaderboard__name">{{ props.name }}</p>
       </div>
       <div class="c-leaderboard__right">
-        <p class="c-leaderboard__small">Gem tijd</p>
+        <p class="c-leaderboard__small">{{ labelText }}</p>
         <div class="c-leaderboard__time">
           <h3>{{ props.time }}</h3>
-          <span class="small">s</span>
+          <span class="small"> {{ props.unit }}</span>
         </div>
       </div>
     </div>
@@ -136,8 +142,6 @@ const showTrophy = computed(() => props.count <= 3);
   .c-leaderboard__small {
     font-size: 0.75rem;
     color: var(--gray-60);
-  }
-  .c-leaderboard__rank--under-3 {
   }
 
   .c-leaderboard__rank--full {

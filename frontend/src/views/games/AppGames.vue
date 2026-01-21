@@ -40,6 +40,10 @@ onMounted(async () => {
 
 <style scoped>
 .c-games {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+
   @media (width >= 768px) {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
