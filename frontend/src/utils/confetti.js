@@ -93,12 +93,10 @@ export const playCelebrationSound = () => {
   const audio = new Audio('/images/sounds/1gift-confetti-447240.mp3');
   audio.volume = 0.5;
 
-  // Probeer af te spelen, ook bij refresh
   const playPromise = audio.play();
 
   if (playPromise !== undefined) {
     playPromise.catch(() => {
-      // Als autoplay geblokkeerd is, speel dan af bij eerste interactie
       const playOnInteraction = () => {
         const newAudio = new Audio('/images/sounds/1gift-confetti-447240.mp3');
         newAudio.volume = 0.5;

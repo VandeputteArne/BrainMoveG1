@@ -28,7 +28,7 @@ const borderClass = computed(() => {
 const showTrophy = computed(() => props.count <= 3);
 
 const labelText = computed(() => {
-  if (props.unit === 'kleuren') return 'Max kleuren';
+  if (props.unit === 'kleuren') return 'Aantal kleuren';
   return 'Gem tijd';
 });
 </script>
