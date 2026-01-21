@@ -26,12 +26,6 @@ const showGridIcon = computed(() => {
 onMounted(async () => {
   window.addEventListener('resize', updateIsMobile);
 
-  const cachedGames = sessionStorage.getItem('gamesData');
-  if (cachedGames) {
-    games.value = JSON.parse(cachedGames);
-    return;
-  }
-
   try {
     const res = await fetch(getApiUrl('games/overview'));
     const data = await res.json();
@@ -44,8 +38,6 @@ onMounted(async () => {
       unit: game.eenheid,
       image: `images/cards/${game.game_naam.toLowerCase().replace(/\s+/g, '')}.png`,
     }));
-
-    sessionStorage.setItem('gamesData', JSON.stringify(games.value));
   } catch (error) {
     console.error('Failed to fetch games:', error);
   }
