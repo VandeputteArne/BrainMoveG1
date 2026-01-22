@@ -44,16 +44,17 @@ export function useGameCountdown(options = {}) {
             router.push(`/games/${gameId}`);
             return;
           }
-          if (data.status === 'missing_settings') {
-            console.warn('Game settings are missing, redirecting to detail');
-            showCountdown.value = false;
-            router.push(`/games/${gameId}`);
-            return;
-          }
         } else if (res.status === 409) {
           // 409 Conflict - game already running
           const data = await res.json();
           console.warn('Game conflict (409):', data);
+          showCountdown.value = false;
+          router.push(`/games/${gameId}`);
+          return;
+        } else if (res.status === 400) {
+          // 400 Bad Request - missing settings
+          const data = await res.json();
+          console.warn('Missing game settings (400):', data);
           showCountdown.value = false;
           router.push(`/games/${gameId}`);
           return;
