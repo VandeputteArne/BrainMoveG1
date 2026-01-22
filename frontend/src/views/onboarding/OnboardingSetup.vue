@@ -19,8 +19,6 @@ const allPotsConnected = computed(() => {
   return isDeviceConnected('rood') && isDeviceConnected('blauw') && isDeviceConnected('groen') && isDeviceConnected('geel');
 });
 
-const buttonProgress = computed(() => (allPotsConnected.value ? 100 : 50));
-
 onMounted(() => {
   fetchDeviceStatus();
   requestAnimationFrame(() => {
@@ -51,7 +49,7 @@ onMounted(() => {
           <OnboardingProgressBlock :active="true" />
           <OnboardingProgressBlock :active="false" />
         </div>
-        <ButtonsNext :progress="buttonProgress" :disabled="!allPotsConnected" to="/warning" />
+        <ButtonsNext :progress="50" :disabled="!allPotsConnected" to="/warning" />
       </div>
     </div>
   </div>
