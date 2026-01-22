@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue';
 import { History, ChevronRight } from 'lucide-vue-next';
 
 const props = defineProps({
@@ -23,6 +24,11 @@ const props = defineProps({
     required: true,
   },
 });
+
+const labelText = computed(() => {
+  if (props.eenheid === 'kleuren') return 'Aantal kleuren';
+  return 'Gem tijd';
+});
 </script>
 
 <template>
@@ -36,8 +42,8 @@ const props = defineProps({
     </div>
     <div class="c-card-historie__end">
       <div class="c-card-historie__score">
-        <p class="small c-card-historie__gray">Gem Tijd</p>
-        <h3>{{ props.score }}{{ props.eenheid }}</h3>
+        <p class="small c-card-historie__gray">{{ labelText }}</p>
+        <h3>{{ props.score }} {{ props.eenheid }}</h3>
       </div>
       <ChevronRight class="c-card-historie__icon" />
     </div>

@@ -31,10 +31,10 @@ const emit = defineEmits(['close']);
 
 function getColorName(kleur) {
   const colors = {
-    rood: 'rode',
-    blauw: 'blauwe',
-    geel: 'gele',
-    groen: 'groene',
+    rood: 'Rood',
+    blauw: 'Blauw',
+    geel: 'Geel',
+    groen: 'Groen',
   };
   return colors[kleur] || kleur || '';
 }
