@@ -259,6 +259,7 @@ async function startGame() {
     }
   } catch (e) {
     // netwerk/backend niet beschikbaar -> fallback
+    console.error('Network error:', e);
   }
 
   try {

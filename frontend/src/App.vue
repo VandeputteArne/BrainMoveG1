@@ -1,63 +1,22 @@
 <script setup>
-import { computed, watch, onMounted, ref } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import AppTopbar from './components/AppTopbar.vue';
 import AppNav from './components/AppNavbar.vue';
 import { useDeviceStatus } from './composables/useDeviceStatus';
+import { useDeviceAlerts } from './composables/useDeviceAlerts';
 import AppPopup from './components/AppPopup.vue';
 
+const route = useRoute();
 const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus, connectedDevices, disconnectedDevices } = useDeviceStatus();
 
-const showPopup = ref(false);
-const popupDevices = ref([]);
-const popupType = ref('low');
-const LOW_BATTERY_THRESHOLD = 10;
+const isInGameRoute = () => {
+  const name = route?.name;
+  return name === 'game-play' || name === 'game-memory-play';
+};
 
-function checkDeviceAlerts() {
-  const inGame = isInGameRoute(route);
-  if (inGame) return;
+const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameRoute);
 
-  const online = connectedDevices.value || [];
-  const offline = disconnectedDevices.value || [];
-
-  const offlineDevices = offline.filter((d) => d?.kleur);
-  if (offlineDevices.length > 0) {
-    popupDevices.value = offlineDevices;
-    popupType.value = 'offline';
-    showPopup.value = true;
-    return;
-  }
-
-  const lowBatteryDevices = online.filter((d) => {
-    const battery = Number(d?.batterij ?? 100);
-    return battery <= LOW_BATTERY_THRESHOLD && battery > 0;
-  });
-
-  if (lowBatteryDevices.length > 0) {
-    popupDevices.value = lowBatteryDevices;
-    popupType.value = 'low';
-    showPopup.value = true;
-    return;
-  }
-
-  if (showPopup.value && offlineDevices.length === 0 && lowBatteryDevices.length === 0) {
-    showPopup.value = false;
-  }
-}
-
-function handlePopupClose() {
-  showPopup.value = false;
-}
-
-watch(
-  [connectedDevices, disconnectedDevices],
-  () => {
-    checkDeviceAlerts();
-  },
-  { deep: true },
-);
-
-const route = useRoute();
 const showTopbar = computed(() => !!route.meta.showTopbar);
 const showNav = computed(() => !!route.meta.showNav);
 const showBack = computed(() => !!route.meta.showBack);
@@ -65,13 +24,8 @@ const fullScreen = computed(() => !!route.meta.fullScreen);
 const paddingbottom = computed(() => !!route.meta.paddingbottom);
 const paddingtop = computed(() => !!route.meta.paddingtop);
 
-function isInGameRoute(r) {
-  const name = r?.name;
-  return name === 'game-play' || name === 'game-memory-play';
-}
-
 onMounted(() => {
-  if (isInGameRoute(route)) {
+  if (isInGameRoute()) {
     pauseMonitoring();
   } else {
     resumeMonitoring();

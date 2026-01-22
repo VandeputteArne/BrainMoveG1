@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue';
+import { TriangleAlert } from 'lucide-vue-next';
 
 const props = defineProps({
   show: {
@@ -80,8 +81,8 @@ function handleClose() {
     <div v-if="show" class="c-popup-overlay" @click="handleClose">
       <div class="c-popup" @click.stop>
         <div class="c-popup__header">
-          <div class="c-popup__icon">⚠️</div>
-          <h2 class="c-popup__title">{{ title }}</h2>
+          <div class="c-popup__icon"><TriangleAlert /></div>
+          <h2>{{ title }}</h2>
         </div>
 
         <div class="c-popup__content">
@@ -95,8 +96,7 @@ function handleClose() {
             </div>
           </div>
 
-          <p class="c-popup__message">{{ message }}</p>
-          <p class="c-popup__submessage">{{ submessage }}</p>
+          <p>{{ submessage }}</p>
         </div>
 
         <button class="c-popup__button" @click="handleClose">Begrepen</button>
@@ -120,9 +120,7 @@ function handleClose() {
 .c-popup {
   background: white;
   border-radius: 1.5rem;
-  max-width: 90%;
-  width: 100%;
-  max-width: 28rem;
+  max-width: 25rem;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
@@ -192,7 +190,7 @@ function handleClose() {
 }
 
 .c-popup__image-small {
-  width: 6rem;
+  width: 4rem;
   height: auto;
   object-fit: contain;
 }
