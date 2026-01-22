@@ -2,14 +2,13 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { connectSocket, disconnectSocket } from '../services/socket.js';
 import { getApiUrl } from '../config/api.js';
 
-// Shared state across all components
 const allDevicesConnected = ref(false);
 const connectedDevices = ref([]);
 const disconnectedDevices = ref([]);
 let socket = null;
 let listenerCount = 0;
+const monitoringPaused = ref(false);
 
-// Load initial state from sessionStorage
 function loadFromSessionStorage() {
   try {
     const stored = sessionStorage.getItem('device_status');
@@ -24,7 +23,6 @@ function loadFromSessionStorage() {
   }
 }
 
-// Save current state to sessionStorage
 function saveToSessionStorage() {
   try {
     const data = {
@@ -33,6 +31,11 @@ function saveToSessionStorage() {
       disconnectedDevices: disconnectedDevices.value,
     };
     sessionStorage.setItem('device_status', JSON.stringify(data));
+    try {
+      window.dispatchEvent(new CustomEvent('device_status_changed', { detail: data }));
+    } catch (e) {
+      // ignore
+    }
   } catch (error) {
     console.error('[useDeviceStatus] Failed to save to sessionStorage:', error);
   }
@@ -40,6 +43,22 @@ function saveToSessionStorage() {
 
 export function useDeviceStatus() {
   const isActive = ref(false);
+
+  function normalizeDevice(d) {
+    if (!d || typeof d !== 'object') return d;
+    const copy = { ...d };
+    const nested = copy.status && (copy.status.batterij ?? copy.status.battery);
+    copy.batterij = copy.batterij ?? copy.battery ?? nested ?? 0;
+    return copy;
+  }
+
+  function pauseMonitoring() {
+    monitoringPaused.value = true;
+  }
+
+  function resumeMonitoring() {
+    monitoringPaused.value = false;
+  }
 
   async function fetchDeviceStatus() {
     try {
@@ -49,17 +68,14 @@ export function useDeviceStatus() {
 
       console.log('[useDeviceStatus] fetchDeviceStatus:', data);
 
-      // Update connected and disconnected devices
       if (data?.apparaten && Array.isArray(data.apparaten)) {
         const online = [];
         const offline = [];
 
         data.apparaten.forEach((device) => {
-          if (device.status === 'online') {
-            online.push(device);
-          } else {
-            offline.push(device);
-          }
+          const dev = normalizeDevice(device);
+          if (dev.status === 'online') online.push(dev);
+          else offline.push(dev);
         });
 
         connectedDevices.value = online;
@@ -79,55 +95,43 @@ export function useDeviceStatus() {
       loadFromSessionStorage();
     }
 
-    // Listen for all devices connected
     socket.on('all_devices_connected', (data) => {
+      if (monitoringPaused.value) return;
       console.log('[useDeviceStatus] all_devices_connected:', data);
       allDevicesConnected.value = true;
       if (data?.apparaten) {
-        connectedDevices.value = data.apparaten;
+        connectedDevices.value = data.apparaten.map(normalizeDevice);
         disconnectedDevices.value = [];
       }
       saveToSessionStorage();
     });
 
-    // Listen for device connected
     socket.on('device_connected', (data) => {
+      if (monitoringPaused.value) return;
       console.log('[useDeviceStatus] device_connected:', data);
-
-      // Find if device already exists by kleur
-      const existingIndex = connectedDevices.value.findIndex((d) => d.kleur === data.kleur);
-
+      const dev = normalizeDevice(data);
+      const existingIndex = connectedDevices.value.findIndex((d) => d.kleur === dev.kleur);
       if (existingIndex >= 0) {
-        // Update existing device
-        connectedDevices.value[existingIndex] = { ...connectedDevices.value[existingIndex], ...data };
+        connectedDevices.value[existingIndex] = { ...connectedDevices.value[existingIndex], ...dev };
       } else {
-        // Add new device
-        connectedDevices.value = [...connectedDevices.value, data];
+        connectedDevices.value = [...connectedDevices.value, dev];
       }
-
-      // Remove from disconnected by kleur
-      disconnectedDevices.value = disconnectedDevices.value.filter((d) => d.kleur !== data.kleur);
-
+      disconnectedDevices.value = disconnectedDevices.value.filter((d) => d.kleur !== dev.kleur);
       saveToSessionStorage();
     });
 
-    // Listen for device disconnected
     socket.on('device_disconnected', (data) => {
+      if (monitoringPaused.value) return;
       console.log('[useDeviceStatus] device_disconnected:', data);
       allDevicesConnected.value = false;
-
-      // Remove from connected by kleur
-      connectedDevices.value = connectedDevices.value.filter((d) => d.kleur !== data.kleur);
-
-      // Add to disconnected if not already there by kleur
-      const existingIndex = disconnectedDevices.value.findIndex((d) => d.kleur === data.kleur);
-
+      const dev = normalizeDevice(data);
+      connectedDevices.value = connectedDevices.value.filter((d) => d.kleur !== dev.kleur);
+      const existingIndex = disconnectedDevices.value.findIndex((d) => d.kleur === dev.kleur);
       if (existingIndex >= 0) {
-        disconnectedDevices.value[existingIndex] = { ...disconnectedDevices.value[existingIndex], ...data };
+        disconnectedDevices.value[existingIndex] = { ...disconnectedDevices.value[existingIndex], ...dev };
       } else {
-        disconnectedDevices.value = [...disconnectedDevices.value, data];
+        disconnectedDevices.value = [...disconnectedDevices.value, dev];
       }
-
       saveToSessionStorage();
     });
 
@@ -140,7 +144,6 @@ export function useDeviceStatus() {
 
     listenerCount--;
 
-    // Only remove listeners and disconnect when no components are using it
     if (listenerCount === 0) {
       socket.off('all_devices_connected');
       socket.off('device_connected');
@@ -165,5 +168,7 @@ export function useDeviceStatus() {
     disconnectedDevices,
     isActive,
     fetchDeviceStatus,
+    pauseMonitoring,
+    resumeMonitoring,
   };
 }

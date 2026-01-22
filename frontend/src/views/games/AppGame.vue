@@ -27,7 +27,6 @@ const formattedTime = computed(() => {
 
 function startTimer() {
   if (timerInterval) return;
-  // ensure elapsedSeconds is 0 at start
   elapsedSeconds.value = 0;
   timerInterval = setInterval(() => {
     elapsedSeconds.value += 1;
@@ -148,29 +147,31 @@ function goBack() {
 </script>
 
 <template>
-  <div v-if="showCountdown" class="c-countdown" aria-hidden="true">
-    <div class="c-countdown__number">{{ countdown }}</div>
-    <p class="c-countdown__text">Maak je klaar...</p>
-  </div>
-
-  <div v-else class="c-game">
-    <div class="c-game__top">
-      <button class="c-game__close" type="button" @click="goBack" aria-label="Sluit het spel">
-        <span class="c-game__span"><OctagonX class="c-game__close-icon" /></span> stop
-      </button>
-      <p class="c-game__timer">
-        <span class="c-game__span"><Timer class="c-game__timer-icon" /></span>{{ formattedTime }}
-      </p>
+  <div class="o-gamecontainer">
+    <div v-if="showCountdown" class="c-countdown" aria-hidden="true">
+      <div class="c-countdown__number">{{ countdown }}</div>
+      <p class="c-countdown__text">Maak je klaar...</p>
     </div>
 
-    <div class="c-game__bot">
-      <div class="c-game__background"></div>
-      <div class="c-game__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
+    <div v-else class="c-game">
+      <div class="c-game__top">
+        <button class="c-game__close" type="button" @click="goBack" aria-label="Sluit het spel">
+          <span class="c-game__span"><OctagonX class="c-game__close-icon" /></span> stop
+        </button>
+        <p class="c-game__timer">
+          <span class="c-game__span"><Timer class="c-game__timer-icon" /></span>{{ formattedTime }}
+        </p>
+      </div>
 
-      <div class="c-game__round">
-        <h3>Ronde {{ currentRound }} / {{ totalRounds }}</h3>
-        <div class="c-game__progressbar">
-          <div class="c-game__progressbar-fill" :style="{ width: (currentRound / totalRounds) * 100 + '%' }"></div>
+      <div class="c-game__bot">
+        <div class="c-game__background"></div>
+        <div class="c-game__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
+
+        <div class="c-game__round">
+          <h3>Ronde {{ currentRound }} / {{ totalRounds }}</h3>
+          <div class="c-game__progressbar">
+            <div class="c-game__progressbar-fill" :style="{ width: (currentRound / totalRounds) * 100 + '%' }"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -178,6 +179,13 @@ function goBack() {
 </template>
 
 <style scoped>
+.c-gamecontainer {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
 .c-countdown {
   position: fixed;
   display: flex;
@@ -209,8 +217,9 @@ function goBack() {
 .c-game {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
+  overflow: hidden;
 
   .c-game__top {
     display: flex;
@@ -274,7 +283,9 @@ function goBack() {
     inset: 0;
     width: 100%;
     height: 100%;
-    transition: border-radius 0.2s ease-out, transform 0.2s ease-out;
+    transition:
+      border-radius 0.2s ease-out,
+      transform 0.2s ease-out;
     border-radius: 0;
     z-index: 1;
   }

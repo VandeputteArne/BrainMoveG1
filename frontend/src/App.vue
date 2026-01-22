@@ -1,19 +1,82 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import AppTopbar from './components/AppTopbar.vue';
 import AppNav from './components/AppNavbar.vue';
+import { useDeviceStatus } from './composables/useDeviceStatus';
+import { useDeviceAlerts } from './composables/useDeviceAlerts';
+import AppPopup from './components/AppPopup.vue';
 
 const route = useRoute();
+const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus, connectedDevices, disconnectedDevices } = useDeviceStatus();
+
+const isInGameRoute = () => {
+  const name = route?.name;
+  return name === 'game-play' || name === 'game-memory-play';
+};
+
+const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameRoute);
+import { ref } from 'vue';
+const popupCustomTitle = ref('');
+const popupCustomMessage = ref('');
+
+function handleGlobalClose() {
+  if (popupCustomTitle.value || popupCustomMessage.value) {
+    popupCustomTitle.value = '';
+    popupCustomMessage.value = '';
+    showPopup.value = false;
+    return;
+  }
+  handlePopupClose();
+}
+
 const showTopbar = computed(() => !!route.meta.showTopbar);
 const showNav = computed(() => !!route.meta.showNav);
 const showBack = computed(() => !!route.meta.showBack);
 const fullScreen = computed(() => !!route.meta.fullScreen);
 const paddingbottom = computed(() => !!route.meta.paddingbottom);
 const paddingtop = computed(() => !!route.meta.paddingtop);
+
+onMounted(() => {
+  if (isInGameRoute()) {
+    pauseMonitoring();
+  } else {
+    resumeMonitoring();
+    fetchDeviceStatus();
+    checkDeviceAlerts();
+  }
+
+  // Listen for global popup events (e.g. game start errors)
+  window.addEventListener('show_global_popup', (ev) => {
+    const detail = ev?.detail || {};
+    popupCustomTitle.value = detail.title || '';
+    popupCustomMessage.value = detail.message || '';
+    // show the popup using existing AppPopup control
+    popupDevices.value = [];
+    popupType.value = 'low';
+    showPopup.value = true;
+  });
+});
+
+watch(
+  () => route.name,
+  (newName) => {
+    if (newName === 'game-play' || newName === 'game-memory-play') {
+      pauseMonitoring();
+      popupCustomTitle.value = '';
+      popupCustomMessage.value = '';
+      showPopup.value = false;
+    } else {
+      resumeMonitoring();
+      fetchDeviceStatus();
+      checkDeviceAlerts();
+    }
+  },
+);
 </script>
 
 <template>
+  <AppPopup :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
     <router-view v-slot="{ Component, route }">
