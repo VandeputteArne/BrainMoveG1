@@ -26,7 +26,7 @@ const props = defineProps({
     <img :src="`/images/potjes/${props.kleur}.png`" :alt="`Potje ${props.kleur}`" class="c-potje__image" />
     <div class="c-potje__header">
       <p class="c-potje__label">{{ props.label }}</p>
-      <div class="c-potje__batterij" v-if="props.batterij">
+      <div class="c-potje__batterij" v-if="props.status && props.batterij !== undefined && props.batterij !== null">
         <p class="c-potje__label">{{ props.batterij }}%</p>
         <div class="c-potje__batterijen">
           <BatteryFull class="c-potje__batterij-icon" v-if="props.batterij > 66" size="16" />

@@ -83,18 +83,6 @@ class TrainingVoorHistorie(BaseModel):
     waarde: float
     eenheid:str
 
-class RondeWaardenVoorDetails(BaseModel):
-    game_id: int
-    gebruikersnaam: str
-    gemmidelde_waarde: float
-    beste_waarde: float
-    ranking: int
-    exactheid: float
-    lijst_voor_grafiek: list[CorrecteRondeWaarde]
-    aantal_correct: int
-    aantal_fout: int
-    aantal_telaat: int
-
 class MoeilijkheidVoorLeaderboard(BaseModel):
     moeilijkheid_id: int
     moeilijkheid: str
@@ -106,10 +94,24 @@ class StatistiekenVoorMemoryGame(BaseModel):
     aantal_kleuren: int
     gemiddelde_waarde: float
     exactheid: float
-    correcte_rondewaarden: list[CorrecteRondeWaarde]
+    lijst_voor_grafiek: list[CorrecteRondeWaarde]
     aantal_correct: int
     aantal_fout: int
     aantal_rondes_niet_gespeeld: int
+
+class StatistiekenVoorColorSprint(BaseModel):
+    game_id: int
+    gebruikersnaam: str
+    gemiddelde_waarde: float
+    beste_waarde: float
+    ranking: int
+    exactheid: float
+    lijst_voor_grafiek: list[CorrecteRondeWaarde]
+    aantal_correct: int
+    aantal_fout: int
+    aantal_telaat: int
+    
+
 
 
 

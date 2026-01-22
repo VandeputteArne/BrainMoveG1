@@ -1,4 +1,5 @@
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 /**
  * Composable for game countdown (3, 2, 1, GO!)
@@ -9,6 +10,7 @@ import { ref } from 'vue';
  */
 export function useGameCountdown(options = {}) {
   const { gameId = null, onComplete = null } = options;
+  const router = useRouter();
 
   const countdown = ref(3);
   const showCountdown = ref(true);
@@ -30,7 +32,38 @@ export function useGameCountdown(options = {}) {
     // Signal backend when showing GO! (if gameId provided)
     if (gameId) {
       try {
-        await fetch(`http://10.42.0.1:8000/games/${gameId}/play`, { method: 'GET' });
+        const res = await fetch(`http://10.42.0.1:8000/games/${gameId}/play`, { method: 'GET' });
+
+        if (res.ok) {
+          const data = await res.json();
+          console.log('Game start response:', data);
+
+          if (data.status === 'already_running') {
+            console.warn('Game is already running, redirecting to detail');
+            showCountdown.value = false;
+            router.push(`/games/${gameId}`);
+            return;
+          }
+        } else if (res.status === 409) {
+          // 409 Conflict - game already running
+          const data = await res.json();
+          console.warn('Game conflict (409):', data);
+          // notify UI and redirect
+          window.dispatchEvent(new CustomEvent('show_global_popup', { detail: { title: 'Game niet gestart', message: data?.message || 'Er is al een game actief.' } }));
+          showCountdown.value = false;
+          router.push(`/games/${gameId}`);
+          return;
+        } else if (res.status === 400) {
+          // 400 Bad Request - missing settings
+          const data = await res.json();
+          console.warn('Missing game settings (400):', data);
+          window.dispatchEvent(new CustomEvent('show_global_popup', { detail: { title: 'Instellingen missen', message: data?.message || 'Controleer de spelinstellingen.' } }));
+          showCountdown.value = false;
+          router.push(`/games/${gameId}`);
+          return;
+        } else {
+          console.warn('Game start failed with status:', res.status);
+        }
       } catch (e) {
         console.warn('Failed to signal game start to backend:', e);
       }

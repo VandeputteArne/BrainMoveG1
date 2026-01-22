@@ -181,8 +181,13 @@ class DataRepository:
     
     @staticmethod
     def get_max_kleuren_for_game(game_id: int) -> int:
-        """Haal het hoogste aantal kleuren op voor een game (voor Memory)"""
-        sql_query = "SELECT MAX(AantalKleuren) as max_kleuren FROM Trainingen WHERE GameId = ?"
+        """Haal het hoogste aantal correcte rondes op voor een game (voor Memory)"""
+        sql_query = """
+        SELECT MAX(rv.RondeNummer) as max_kleuren
+        FROM RondeWaarden rv
+        JOIN Trainingen t ON rv.TrainingsId = t.TrainingsId
+        WHERE t.GameId = ? AND LOWER(rv.Uitkomst) = 'correct'
+        """
         row = Database.get_one_row(sql_query, (game_id,))
         return row.get('max_kleuren', 0) if row and row.get('max_kleuren') is not None else 0
     
@@ -439,6 +444,7 @@ class DataRepository:
                 LEFT JOIN (
                     SELECT TrainingsId, MAX(RondeNummer) as max_ronde
                     FROM RondeWaarden
+                    WHERE LOWER(Uitkomst) = 'correct'
                     GROUP BY TrainingsId
                 ) rondes_per_training ON t.TrainingsId = rondes_per_training.TrainingsId
                 LEFT JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId

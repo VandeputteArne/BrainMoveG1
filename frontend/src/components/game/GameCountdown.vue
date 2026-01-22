@@ -1,4 +1,7 @@
 <script setup>
+import { watch } from 'vue';
+import { playFlute, isAudioEnabled } from '../../services/sound.js';
+
 const props = defineProps({
   countdown: {
     type: [String, Number],
@@ -9,12 +12,33 @@ const props = defineProps({
     default: '',
   },
 });
+
+watch(
+  () => props.countdown,
+  (val) => {
+    if (!val) return;
+    try {
+      if (!isAudioEnabled()) return;
+
+      if (String(val).toUpperCase().includes('GO')) {
+        playFlute(0.45, 523.25);
+      } else {
+        const n = Number(val);
+        const freq = n === 3 ? 261.63 : n === 2 ? 329.63 : 392.0;
+        playFlute(0.14, freq);
+      }
+    } catch (e) {
+      // ignore audio playback errors
+    }
+  },
+);
 </script>
 
 <template>
   <div class="c-game-countdown">
     <div class="c-game-countdown__number">{{ countdown }}</div>
     <p v-if="text" class="c-game-countdown__text">{{ text }}</p>
+    <!-- audio is handled globally; no button here -->
   </div>
 </template>
 
@@ -45,6 +69,17 @@ const props = defineProps({
   color: var(--color-white);
   font-size: 1.5rem;
   user-select: none;
+}
+
+.c-game-countdown__enable {
+  margin-top: 1.25rem;
+  background: transparent;
+  color: var(--color-white);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 @keyframes pop {
