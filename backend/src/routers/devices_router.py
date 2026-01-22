@@ -1,6 +1,11 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Body
+from pydantic import BaseModel
+import os
 
 router = APIRouter(prefix="/devices", tags=["Apparaten"])
+
+class UitschakelenRequest(BaseModel):
+    inputGebruiker: str
 
 # Deze variabele wordt geïnjecteerd vanuit main.py
 device_manager = None
@@ -18,7 +23,12 @@ async def get_device_status():
         "totaal_verwacht": 4
     }
 
-@router.get("/uitschakelen", summary="Schakel alle apparaten uit")
-async def uitschakelen_apparaten():
+@router.post("/uitschakelen", summary="Schakel alle apparaten uit")
+async def uitschakelen_apparaten(request: UitschakelenRequest):
+    wachtwoord = os.getenv("PI_PASSWORD")
+    if(request.inputGebruiker != wachtwoord):
+        return {"status": "Foutief wachtwoord, apparaten niet uitgeschakeld"}
+    
+    await device_manager.stop_alle()
     print("Uitschakelen alle apparaten via endpoint")
     return {"status": "Alle apparaten zijn uitgeschakeld"}

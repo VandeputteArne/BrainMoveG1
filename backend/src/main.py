@@ -109,6 +109,7 @@ async def stop_game():
     await device_manager.stop_alle()
     return result
 
+
 @app.get("/")
 async def read_root():
     return {"BrainMoveG1": "Backend is running"}
