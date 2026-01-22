@@ -44,10 +44,8 @@ function applyData(data) {
     username.value = data.gebruikersnaam;
   }
 
-  // Check if this is memory game (game_id: 2)
   const isMemoryGame = data.game_id === 2;
 
-  // Update stats - support both old (correcte_rondewaarden) and new (lijst_voor_grafiek) API
   stats.value = [
     { waarde: data.gemmidelde_waarde ?? data.gemiddelde_waarde ?? 0, label: 'Gemiddelde' },
     { waarde: isMemoryGame ? (data.aantal_kleuren ?? 0) : (data.beste_waarde ?? 0), label: isMemoryGame ? 'Onthouden' : 'Beste' },
@@ -55,14 +53,12 @@ function applyData(data) {
     { waarde: data.exactheid ?? 0, label: 'Exactheid' },
   ];
 
-  // Update counts
   counts.value = [
     { type: 'correct', label: 'Correct', value: data.aantal_correct ?? 0 },
     { type: 'telaat', label: isMemoryGame ? 'Ongespeeld' : 'Te laat', value: isMemoryGame ? (data.aantal_rondes_niet_gespeeld ?? 0) : (data.aantal_telaat ?? 0) },
     { type: 'fout', label: 'Fout', value: data.aantal_fout ?? 0 },
   ];
 
-  // Update rounds - support both old and new field names
   const rondeData = data.lijst_voor_grafiek ?? data.correcte_rondewaarden;
   if (Array.isArray(rondeData)) {
     rounds.value = rondeData.map((r) => ({
@@ -101,9 +97,8 @@ async function loadResults() {
       console.error('Failed to fetch training result:', err);
     }
   } else {
-    // Fetch latest round values from API (after game completion)
     try {
-      const response = await fetch(getApiUrl('laatste_rondewaarden'));
+      const response = await fetch(getApiUrl('trainingen/laatste_rondewaarden'));
 
       if (response.ok) {
         const data = await response.json();

@@ -162,6 +162,19 @@ p {
     width: 1.5rem;
     height: 1.5rem;
   }
+
+  &:hover {
+    background: var(--blue-90);
+  }
+}
+
+.c-button--disabled {
+  background: var(--gray-40);
+  cursor: not-allowed;
+
+  &:hover {
+    background: var(--gray-40);
+  }
 }
 
 .o-container-desktop {

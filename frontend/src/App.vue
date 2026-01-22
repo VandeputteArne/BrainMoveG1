@@ -1,8 +1,11 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, watch, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import AppTopbar from './components/AppTopbar.vue';
 import AppNav from './components/AppNavbar.vue';
+import { useDeviceStatus } from './composables/useDeviceStatus';
+
+const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus } = useDeviceStatus();
 
 const route = useRoute();
 const showTopbar = computed(() => !!route.meta.showTopbar);
@@ -11,6 +14,31 @@ const showBack = computed(() => !!route.meta.showBack);
 const fullScreen = computed(() => !!route.meta.fullScreen);
 const paddingbottom = computed(() => !!route.meta.paddingbottom);
 const paddingtop = computed(() => !!route.meta.paddingtop);
+
+function isInGameRoute(r) {
+  const name = r?.name;
+  return name === 'game-play' || name === 'game-memory-play';
+}
+
+onMounted(() => {
+  if (isInGameRoute(route)) {
+    pauseMonitoring();
+  } else {
+    resumeMonitoring();
+    fetchDeviceStatus();
+  }
+});
+
+watch(
+  () => route.name,
+  (newName) => {
+    if (newName === 'game-play' || newName === 'game-memory-play') pauseMonitoring();
+    else {
+      resumeMonitoring();
+      fetchDeviceStatus();
+    }
+  },
+);
 </script>
 
 <template>

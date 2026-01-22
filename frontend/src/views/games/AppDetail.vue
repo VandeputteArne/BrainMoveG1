@@ -7,8 +7,9 @@ import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue'
 
 import { Play } from 'lucide-vue-next';
 
-import { ref, onMounted, computed, nextTick, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useDeviceStatus } from '../../composables/useDeviceStatus';
 import { getApiUrl } from '../../config/api.js';
 import { enableAudio } from '../../services/sound.js';
 
@@ -45,7 +46,37 @@ const smallLeaderboardData = ref([]);
 
 const selectedColor = ref([]);
 const backendColors = ref(['blauw', 'rood', 'groen', 'geel']);
+const availableColors = ref([]);
 const excludedColor = ref('');
+
+const { connectedDevices, disconnectedDevices } = useDeviceStatus();
+
+function updateAvailableFromRefs() {
+  try {
+    const online = (connectedDevices.value || []).filter((d) => d && (d.status === 'online' || d.status === true));
+    const set = new Set(online.map((d) => (d && d.kleur ? d.kleur : null)).filter(Boolean));
+    availableColors.value = Array.from(set);
+  } catch (e) {
+    availableColors.value = [];
+  }
+}
+
+watch(
+  [connectedDevices, disconnectedDevices],
+  () => {
+    updateAvailableFromRefs();
+  },
+  { immediate: true, deep: true },
+);
+
+watch(
+  availableColors,
+  (avail) => {
+    if (!Array.isArray(avail)) return;
+    selectedColor.value = (selectedColor.value || []).filter((c) => avail.includes(c));
+  },
+  { immediate: true },
+);
 
 const gameName = ref('');
 const gameDescription = ref('');
@@ -59,7 +90,7 @@ onMounted(async () => {
     loadGameData(data);
   } else {
     try {
-      const res = await fetch(getApiUrl(`games/${gameId.value}/details`));
+      const res = await fetch(getApiUrl(`games/details/${gameId.value}`));
       const data = await res.json();
 
       const { leaderboard, ...gameSettings } = data;
@@ -111,9 +142,58 @@ function loadGameData(data) {
   selectedRounds.value = roundsOptions.value.length > 0 ? roundsOptions.value[0].id : '';
 
   if (Array.isArray(backendColors.value) && backendColors.value.length && selectedColor.value.length === 0) {
-    selectedColor.value = backendColors.value.filter((id) => id !== excludedColor.value);
+    const init = availableColors.value.length ? backendColors.value.filter((id) => availableColors.value.includes(id) && id !== excludedColor.value) : backendColors.value.filter((id) => id !== excludedColor.value);
+    selectedColor.value = init;
   }
 }
+
+function updateAvailableColorsFromSession(parsed) {
+  try {
+    const connected = Array.isArray(parsed.connectedDevices) ? parsed.connectedDevices : [];
+    let online = connected.filter((d) => d && (d.status === 'online' || d.status === true));
+    if (online.length === 0 && Array.isArray(parsed.apparaten)) {
+      online = parsed.apparaten.filter((d) => d && d.status === 'online');
+    }
+    const set = new Set(online.map((d) => (d && d.kleur ? d.kleur : null)).filter(Boolean));
+    availableColors.value = Array.from(set);
+  } catch (e) {
+    availableColors.value = [];
+  }
+}
+
+function readAvailableColors() {
+  try {
+    const raw = sessionStorage.getItem('device_status');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      updateAvailableColorsFromSession(parsed);
+    } else {
+      availableColors.value = [];
+    }
+  } catch (e) {
+    availableColors.value = [];
+  }
+}
+
+function onDeviceStatusChanged(e) {
+  if (e?.detail) updateAvailableColorsFromSession(e.detail);
+  else readAvailableColors();
+}
+
+onMounted(() => {
+  readAvailableColors();
+  window.addEventListener('device_status_changed', onDeviceStatusChanged);
+  window.addEventListener('storage', (ev) => {
+    if (ev.key === 'device_status') readAvailableColors();
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('device_status_changed', onDeviceStatusChanged);
+  window.removeEventListener('storage', (ev) => {
+    if (ev.key === 'device_status') readAvailableColors();
+  });
+});
 
 watch(selectedColor, (v) => {
   if (Array.isArray(v) && v.length >= 2) kleurenError.value = false;
@@ -214,14 +294,19 @@ async function startGame() {
           <p>Kleuren</p>
           <div class="c-game-detail__color-col">
             <div class="c-game-detail__color-row">
-              <FiltersColor v-for="id in backendColors" :key="id" :id="id" v-model="selectedColor" name="colors" />
+              <template v-if="availableColors.length">
+                <FiltersColor v-for="id in backendColors.filter((c) => availableColors.includes(c))" :key="id" :id="id" v-model="selectedColor" name="colors" />
+              </template>
+              <template v-else>
+                <p>Geen potjes aan.</p>
+              </template>
             </div>
             <p v-if="kleurenError" class="error">Selecteer minstens 2 kleuren</p>
           </div>
         </div>
       </div>
 
-      <button class="c-button" type="button" @click="startGame" aria-label="Start het spel">
+      <button :class="'c-button' + (availableColors.length < 2 ? ' c-button--disabled' : '')" type="button" @click="startGame" aria-label="Start het spel" :disabled="availableColors.length < 2">
         <span class="c-button__icon" aria-hidden="true"><component :is="Play" /></span>
         <h3>Start het spel</h3>
       </button>
