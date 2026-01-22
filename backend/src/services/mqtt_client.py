@@ -173,7 +173,7 @@ class MQTTDeviceManager:
             {
                 "kleur": color,
                 "status": data["status"],
-                "batterij": 67
+                "batterij": data["batterij"]
             }
             for color, data in self._apparaten.items()
         ]
