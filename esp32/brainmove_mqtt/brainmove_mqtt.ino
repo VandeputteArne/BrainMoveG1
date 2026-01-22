@@ -33,9 +33,11 @@ const float BATTERIJ_SPANNINGSDELER = 2.0f;
 
 // Update elke 10 minuten
 const unsigned long BATTERIJ_UPDATE_INTERVAL = 600000;
+const uint8_t BATTERIJ_KRITIEK_PERCENTAGE = 5;
 
-const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (15UL * 60UL * 1000UL); // 15 min
+const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (10UL * 60UL * 1000UL); // 10 min
 const unsigned long KNOP_DEBOUNCE_MS = 150;
+const unsigned long VERBINDING_PIEP_INTERVAL_MS = 10000; // Piep elke 10 sec tijdens verbinden
 
 const int ZOEMER_KANAAL = 0;
 const int ZOEMER_RESOLUTIE = 8;
@@ -69,9 +71,12 @@ void speelCorrectGeluid();
 void speelIncorrectGeluid();
 void speelVerbindingGeluid();
 void speelOntwaakGeluid();
+void speelVerbindingZoekGeluid();
+void speelBatterijLeegGeluid();
 void zoemerToon(uint32_t freq, uint32_t duur);
 void zoemerUit();
 void gaaDiepeSlaap();
+void controleerKritiekeBatterij();
 
 void setup() {
   Serial.begin(115200);
@@ -92,6 +97,11 @@ void setup() {
   mqttClient.setKeepAlive(MQTT_KEEPALIVE_DURATION);
   
   laatsteActiviteitTijd = millis();
+
+    // Serial write battery % on boot
+    uint8_t batterijPercentageBoot = leesBatterijPercentage();
+    Serial.print("Battery % on boot: ");
+    Serial.println(batterijPercentageBoot);
 }
 
 void loop() {
@@ -111,6 +121,17 @@ void loop() {
     uint8_t batterijPercentage = leesBatterijPercentage();
     String payload = String(batterijPercentage);
     mqttClient.publish(topic_battery.c_str(), payload.c_str(), false);
+
+      // Serial write battery % every time it is sent
+      Serial.print("Battery % sent: ");
+      Serial.println(batterijPercentage);
+
+    // Controleer op kritiek batterijniveau
+    if (batterijPercentage <= BATTERIJ_KRITIEK_PERCENTAGE) {
+      Serial.println("Kritieke batterij - ga slapen...");
+      speelBatterijLeegGeluid();
+      gaaDiepeSlaap();
+    }
   }
 
   if (millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
@@ -121,6 +142,15 @@ void loop() {
 }
 
 void verbindGeforceerd() {
+  static unsigned long verbindingStartTijd = 0;
+  static unsigned long laatstePiepTijd = 0;
+
+  // Start timer bij eerste verbindingspoging
+  if (verbindingStartTijd == 0) {
+    verbindingStartTijd = millis();
+    laatstePiepTijd = 0;
+  }
+
   Serial.println("Verbinding verloren...");
   zoemerUit();
   isPolling = false;
@@ -133,12 +163,29 @@ void verbindGeforceerd() {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     while (WiFi.status() != WL_CONNECTED) {
+      if (millis() - verbindingStartTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
+        Serial.println("\nWiFi timeout - ga slapen...");
+        gaaDiepeSlaap();
+      }
+      if (millis() - laatstePiepTijd >= VERBINDING_PIEP_INTERVAL_MS) {
+        speelVerbindingZoekGeluid();
+        laatstePiepTijd = millis();
+      }
       delay(500); Serial.print(".");
     }
     Serial.println(" WiFi OK.");
   }
 
   while (!mqttClient.connected()) {
+    if (millis() - verbindingStartTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
+      Serial.println("MQTT timeout - ga slapen...");
+      gaaDiepeSlaap();
+    }
+    if (millis() - laatstePiepTijd >= VERBINDING_PIEP_INTERVAL_MS) {
+      speelVerbindingZoekGeluid();
+      laatstePiepTijd = millis();
+    }
+
     if (WiFi.status() != WL_CONNECTED) return;
 
     String clientId = String("BM-") + DEVICE_COLOR + "-" + String(ESP.getEfuseMac(), HEX);
@@ -158,9 +205,16 @@ void verbindGeforceerd() {
       String battPayload = String(batterijPercentage);
       mqttClient.publish(topic_battery.c_str(), battPayload.c_str(), false);
 
+        // Serial write battery % when sent on reconnect
+        Serial.print("Battery % sent: ");
+        Serial.println(batterijPercentage);
+
       laatsteBatterijUpdateTijd = millis();
       speelVerbindingGeluid();
       laatsteActiviteitTijd = millis();
+
+      // Reset verbinding timer na succesvolle verbinding
+      verbindingStartTijd = 0;
 
     } else {
       Serial.print("MQTT Fail rc="); Serial.println(mqttClient.state());
@@ -209,6 +263,14 @@ void verwerkKnopDruk() {
     knopIngedrukt = false;
     laatsteKnopDrukTijd = millis();
     laatsteActiviteitTijd = millis();
+
+    Serial.println("Knop ingedrukt - herstart ESP...");
+    if (mqttClient.connected()) {
+        mqttClient.publish(topic_status.c_str(), "restarting", true);
+        mqttClient.disconnect();
+    }
+    delay(100);
+    ESP.restart();
 }
 
 void verwerkToF() {
@@ -285,6 +347,8 @@ void speelCorrectGeluid() { zoemerToon(1000, 100); delay(50); zoemerToon(1500, 1
 void speelIncorrectGeluid() { zoemerToon(400, 150); delay(50); zoemerToon(300, 150); delay(50); zoemerToon(200, 200); }
 void speelVerbindingGeluid() { zoemerToon(800, 100); delay(50); zoemerToon(1200, 150); }
 void speelOntwaakGeluid() { zoemerToon(500, 100); delay(30); zoemerToon(800, 100); delay(30); zoemerToon(1200, 120); }
+void speelVerbindingZoekGeluid() { zoemerToon(600, 80); }
+void speelBatterijLeegGeluid() { zoemerToon(300, 200); delay(100); zoemerToon(200, 300); }
 
 void gaaDiepeSlaap() {
     if (mqttClient.connected()) {
@@ -295,4 +359,13 @@ void gaaDiepeSlaap() {
     if (tofGeinitialiseerd) tofSensor.stopContinuous();
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
     esp_deep_sleep_start();
+}
+
+void controleerKritiekeBatterij() {
+    uint8_t batterij = leesBatterijPercentage();
+    if (batterij <= BATTERIJ_KRITIEK_PERCENTAGE) {
+        Serial.println("Kritieke batterij - ga slapen...");
+        speelBatterijLeegGeluid();
+        gaaDiepeSlaap();
+    }
 }
