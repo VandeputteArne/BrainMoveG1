@@ -128,15 +128,28 @@ async function performTurnOff(password) {
       body: JSON.stringify({ inputGebruiker: password }),
     });
 
+    let json = null;
+    try {
+      json = await res.json();
+    } catch (e) {
+      // non-JSON response
+    }
+
     if (!res.ok) {
       let msg = res.statusText || 'Fout bij uitschakelen';
-      try {
-        const j = await res.json();
-        if (j && j.message) msg = j.message;
-      } catch (e) {}
+      if (json && (json.message || json.status)) msg = json.message || json.status;
       confirmError.value = msg;
       console.error('Failed to turn off devices:', msg);
       return false;
+    }
+
+    if (json && json.status && typeof json.status === 'string') {
+      const statusText = json.status || '';
+      if (statusText.toLowerCase().includes('fout') || statusText.toLowerCase().includes('niet uitgeschakeld')) {
+        confirmError.value = statusText;
+        console.warn('Turn off rejected by backend:', statusText);
+        return false;
+      }
     }
 
     showConfirmModal.value = false;
@@ -218,43 +231,5 @@ async function confirmAndTurnOff() {
   margin-top: 1rem;
   max-width: 400px;
   align-self: center;
-}
-
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-.modal-box {
-  background: var(--surface, #fff);
-  padding: 1.25rem;
-  border-radius: 8px;
-  width: 100%;
-  max-width: 28rem;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-}
-.modal-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  margin-top: 0.75rem;
-  margin-bottom: 0.5rem;
-  border: 1px solid var(--muted, #ddd);
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-.modal-error {
-  color: var(--danger, #b71c1c);
-  margin: 0.25rem 0 0.75rem 0;
-}
-.modal-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
 }
 </style>
