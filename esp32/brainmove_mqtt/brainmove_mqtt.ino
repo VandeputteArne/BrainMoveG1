@@ -5,7 +5,7 @@
 #include <VL53L0X.h>
 
 // PAS DIT AAN PER APPARAAT ("rood", "blauw", "geel", "groen")
-#define DEVICE_COLOR "blauw" 
+#define DEVICE_COLOR "groen" 
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
@@ -15,19 +15,12 @@ const int MQTT_PORT = 1883;
 const int MQTT_KEEPALIVE_DURATION = 5; 
 
 // ==================== PIN DEFINITIES ====================
-const int PIN_BATTERIJ_ADC_1 = 2;
+const int PIN_BATTERIJ_ADC = 2;
 const int PIN_KNOP = 3;
-const int PIN_BATTERIJ_ADC_2 = 4;
 const int PIN_ZOEMER = 5;
 
 const int PIN_I2C_SDA = 6;
 const int PIN_I2C_SCL = 7;
-
-const int PIN_USB_VBUS = 21;
-
-const int PIN_LED_ROOD = 8;
-const int PIN_LED_GROEN = 20;
-const int PIN_LED_BLAUW = 10;
 
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
@@ -37,18 +30,12 @@ const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
 const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
 const float BATTERIJ_SPANNINGSDELER = 2.0f;
-const int BATTERIJ_NIVEAU_LAAG = 20;
-const int BATTERIJ_NIVEAU_MIDDEL = 50;
-const int LED_OPLADEN_KNIPPEREN_MS = 500;
 
 // Update elke 10 minuten
-const unsigned long LED_UPDATE_INTERVAL = 600000; 
+const unsigned long BATTERIJ_UPDATE_INTERVAL = 600000;
 
-const bool RGB_GEMEENSCHAPPELIJKE_ANODE = false;
-
-const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (30UL * 60UL * 1000UL); // 30 min
+const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (15UL * 60UL * 1000UL); // 15 min
 const unsigned long KNOP_DEBOUNCE_MS = 150;
-const uint16_t USB_VBUS_DREMPEL = 2000;
 
 const int ZOEMER_KANAAL = 0;
 const int ZOEMER_RESOLUTIE = 8;
@@ -63,29 +50,21 @@ String topic_detect, topic_battery, topic_status, topic_cmd, topic_cmd_all;
 bool isPolling = false;
 bool isCorrectTarget = false;
 bool tofGeinitialiseerd = false;
-bool usbVerbonden = false;
-bool oplaadLedStatus = false;
 volatile bool knopIngedrukt = false;
 
 unsigned long laatsteTofPollTijd = 0;
 unsigned long laatsteDetectieTijd = 0;
 unsigned long laatsteActiviteitTijd = 0;
-unsigned long laatsteLedUpdateTijd = 0;
-unsigned long laatsteOplaadKnipperTijd = 0;
+unsigned long laatsteBatterijUpdateTijd = 0;
 unsigned long laatsteKnopDrukTijd = 0;
-uint8_t laatsteBatterijPercentage = 0;
 
 void IRAM_ATTR knopISR() { knopIngedrukt = true; }
-void verbindGeforceerd(); 
+void verbindGeforceerd();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void initHardware();
 void verwerkKnopDruk();
 void verwerkToF();
-void updateBatterijLed();
 uint8_t leesBatterijPercentage();
-bool isUsbVerbonden();
-void zetRgbKleur(uint8_t r, uint8_t g, uint8_t b);
-void rgbLedUit();
 void speelCorrectGeluid();
 void speelIncorrectGeluid();
 void speelVerbindingGeluid();
@@ -127,13 +106,12 @@ void loop() {
     verwerkToF();
   }
 
-  if (millis() - laatsteLedUpdateTijd >= LED_UPDATE_INTERVAL) {
-    laatsteLedUpdateTijd = millis();
-    laatsteBatterijPercentage = leesBatterijPercentage();
-    String payload = String(laatsteBatterijPercentage);
+  if (millis() - laatsteBatterijUpdateTijd >= BATTERIJ_UPDATE_INTERVAL) {
+    laatsteBatterijUpdateTijd = millis();
+    uint8_t batterijPercentage = leesBatterijPercentage();
+    String payload = String(batterijPercentage);
     mqttClient.publish(topic_battery.c_str(), payload.c_str(), false);
   }
-  updateBatterijLed();
 
   if (millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
     gaaDiepeSlaap();
@@ -144,10 +122,9 @@ void loop() {
 
 void verbindGeforceerd() {
   Serial.println("Verbinding verloren...");
-  rgbLedUit();
   zoemerUit();
-  isPolling = false; 
-  
+  isPolling = false;
+
   if (WiFi.status() != WL_CONNECTED) {
     Serial.print("WiFi: "); Serial.println(WIFI_SSID);
     WiFi.disconnect();
@@ -157,40 +134,37 @@ void verbindGeforceerd() {
 
     while (WiFi.status() != WL_CONNECTED) {
       delay(500); Serial.print(".");
-      digitalWrite(PIN_LED_BLAUW, !digitalRead(PIN_LED_BLAUW));
     }
     Serial.println(" WiFi OK.");
-    digitalWrite(PIN_LED_BLAUW, LOW);
   }
 
   while (!mqttClient.connected()) {
     if (WiFi.status() != WL_CONNECTED) return;
 
     String clientId = String("BM-") + DEVICE_COLOR + "-" + String(ESP.getEfuseMac(), HEX);
-    
+
     // Connect met Last Will "offline"
     if (mqttClient.connect(clientId.c_str(), topic_status.c_str(), 1, true, "offline")) {
       Serial.println("MQTT OK!");
-      
+
       mqttClient.subscribe(topic_cmd.c_str());
       mqttClient.subscribe(topic_cmd_all.c_str());
-      
+
       // Gewoon "online" sturen (zonder MAC)
       mqttClient.publish(topic_status.c_str(), "online", true);
 
       // Direct batterij sturen
-      laatsteBatterijPercentage = leesBatterijPercentage();
-      String battPayload = String(laatsteBatterijPercentage);
+      uint8_t batterijPercentage = leesBatterijPercentage();
+      String battPayload = String(batterijPercentage);
       mqttClient.publish(topic_battery.c_str(), battPayload.c_str(), false);
-      
-      laatsteLedUpdateTijd = millis();
-      speelVerbindingGeluid(); 
-      laatsteActiviteitTijd = millis(); 
-      
+
+      laatsteBatterijUpdateTijd = millis();
+      speelVerbindingGeluid();
+      laatsteActiviteitTijd = millis();
+
     } else {
       Serial.print("MQTT Fail rc="); Serial.println(mqttClient.state());
-      zetRgbKleur(50, 0, 0); delay(100); rgbLedUit();
-      delay(1900); 
+      delay(2000);
     }
   }
 }
@@ -212,10 +186,6 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void initHardware() {
   pinMode(PIN_KNOP, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(PIN_KNOP), knopISR, FALLING);
-  ledcAttach(PIN_LED_ROOD, 5000, 8);
-  ledcAttach(PIN_LED_GROEN, 5000, 8);
-  ledcAttach(PIN_LED_BLAUW, 5000, 8);
-  rgbLedUit();
   ledcAttach(PIN_ZOEMER, ZOEMER_FREQ_STANDAARD, ZOEMER_RESOLUTIE);
   ledcWrite(PIN_ZOEMER, 0);
   analogReadResolution(12);
@@ -226,12 +196,10 @@ void initHardware() {
   if (!tofSensor.init()) {
     Serial.println("FOUT: Geen sensor!");
     tofGeinitialiseerd = false;
-    for(int i=0; i<3; i++) { zetRgbKleur(255,0,0); delay(100); rgbLedUit(); delay(100); }
   } else {
     tofSensor.setMeasurementTimingBudget(33000);
     tofSensor.startContinuous();
     tofGeinitialiseerd = true;
-    zetRgbKleur(0, 255, 0); delay(300); rgbLedUit();
   }
 }
 
@@ -260,49 +228,52 @@ void verwerkToF() {
     }
 }
 
-float leesBatterijSpanningVanPin(int pin) {
-    int adcWaarde = analogRead(pin);
-    float spanning = (adcWaarde / 4095.0f) * 3.3f;
-    spanning *= BATTERIJ_SPANNINGSDELER;
-    return spanning;
-}
-
 uint8_t leesBatterijPercentage() {
-    float v1 = leesBatterijSpanningVanPin(PIN_BATTERIJ_ADC_1);
-    float v2 = leesBatterijSpanningVanPin(PIN_BATTERIJ_ADC_2);
-    float spanning = (v1 + v2) / 2.0f; 
-    float percentage = (spanning - BATTERIJ_LEEG_SPANNING) / (BATTERIJ_VOL_SPANNING - BATTERIJ_LEEG_SPANNING) * 100.0f;
-    if (percentage > 100.0f) percentage = 100.0f;
-    if (percentage < 0.0f) percentage = 0.0f;
-    return (uint8_t)percentage;
-}
-
-bool isUsbVerbonden() { return (analogRead(PIN_USB_VBUS) > USB_VBUS_DREMPEL); }
-
-void zetRgbKleur(uint8_t r, uint8_t g, uint8_t b) {
-    if (RGB_GEMEENSCHAPPELIJKE_ANODE) { r = 255 - r; g = 255 - g; b = 255 - b; }
-    ledcWrite(PIN_LED_ROOD, r); ledcWrite(PIN_LED_GROEN, g); ledcWrite(PIN_LED_BLAUW, b);
-}
-void rgbLedUit() { zetRgbKleur(0, 0, 0); }
-
-void updateBatterijLed() {
-    usbVerbonden = isUsbVerbonden();
-    if (isPolling && !usbVerbonden && laatsteBatterijPercentage > BATTERIJ_NIVEAU_LAAG) {
-        if (isCorrectTarget) zetRgbKleur(0, 255, 0); else zetRgbKleur(255, 0, 0);
-        return;
+    // Gemiddelde van meerdere metingen voor stabielere waarde
+    long totaal = 0;
+    for (int i = 0; i < 16; i++) {
+        totaal += analogRead(PIN_BATTERIJ_ADC);
+        delayMicroseconds(500);
     }
-    uint8_t r = 0, g = 0, b = 0;
-    if (laatsteBatterijPercentage < BATTERIJ_NIVEAU_LAAG) { r = 255; } 
-    else if (laatsteBatterijPercentage < BATTERIJ_NIVEAU_MIDDEL) { r = 255; g = 128; } 
-    else { g = 255; }
+    int adcWaarde = totaal / 16;
 
-    if (usbVerbonden) {
-        if (millis() - laatsteOplaadKnipperTijd >= LED_OPLADEN_KNIPPEREN_MS) {
-            laatsteOplaadKnipperTijd = millis();
-            oplaadLedStatus = !oplaadLedStatus;
+    // Bereken spanning (ADC 12-bit, 3.3V ref, spanningsdeler 1:2)
+    float spanning = (adcWaarde / 4095.0f) * 3.3f * BATTERIJ_SPANNINGSDELER;
+
+    // LiPo ontlaadcurve lookup table (spanning -> percentage)
+    // LiPo ontlaadt niet lineair: snel van 4.2->3.9V, stabiel rond 3.7V, snel onder 3.5V
+    const float lipoTabel[][2] = {
+        {4.20f, 100.0f},
+        {4.10f,  90.0f},
+        {4.00f,  80.0f},
+        {3.90f,  70.0f},
+        {3.80f,  55.0f},
+        {3.70f,  40.0f},
+        {3.60f,  25.0f},
+        {3.50f,  15.0f},
+        {3.40f,   8.0f},
+        {3.30f,   4.0f},
+        {3.00f,   0.0f}
+    };
+    const int tabelGrootte = sizeof(lipoTabel) / sizeof(lipoTabel[0]);
+
+    // Boven maximum
+    if (spanning >= lipoTabel[0][0]) return 100;
+    // Onder minimum
+    if (spanning <= lipoTabel[tabelGrootte - 1][0]) return 0;
+
+    // Lineaire interpolatie tussen tabel punten
+    for (int i = 0; i < tabelGrootte - 1; i++) {
+        if (spanning >= lipoTabel[i + 1][0]) {
+            float spanHoog = lipoTabel[i][0];
+            float spanLaag = lipoTabel[i + 1][0];
+            float percHoog = lipoTabel[i][1];
+            float percLaag = lipoTabel[i + 1][1];
+            float percentage = percLaag + (spanning - spanLaag) / (spanHoog - spanLaag) * (percHoog - percLaag);
+            return (uint8_t)percentage;
         }
-        if (oplaadLedStatus) zetRgbKleur(r, g, b); else rgbLedUit();
-    } else { zetRgbKleur(r, g, b); }
+    }
+    return 0;
 }
 
 void zoemerToon(uint32_t freq, uint32_t duur) {
@@ -320,7 +291,7 @@ void gaaDiepeSlaap() {
         mqttClient.publish(topic_status.c_str(), "sleeping", true);
         mqttClient.disconnect();
     }
-    delay(100); zoemerUit(); rgbLedUit();
+    delay(100); zoemerUit();
     if (tofGeinitialiseerd) tofSensor.stopContinuous();
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
     esp_deep_sleep_start();

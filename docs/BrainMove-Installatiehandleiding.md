@@ -1,7 +1,7 @@
 # BrainMoveAJM: Installatiegids
 
 > **Snelle Start:** Wil je alle stappen overslaan? Vraag een kant-en-klare SD-kaart image aan!
-> Neem contact op via **[TODO: email/contact]** om de vooraf geconfigureerde RPi image te ontvangen.
+> Neem contact op via michiel.gekiere@student.howest.be om de vooraf geconfigureerde RPi image te ontvangen.
 > Je hoeft dan alleen de image te flashen en de ESP32's te programmeren (Fase 10).
 
 ---
