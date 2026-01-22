@@ -16,6 +16,19 @@ const isInGameRoute = () => {
 };
 
 const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameRoute);
+import { ref } from 'vue';
+const popupCustomTitle = ref('');
+const popupCustomMessage = ref('');
+
+function handleGlobalClose() {
+  if (popupCustomTitle.value || popupCustomMessage.value) {
+    popupCustomTitle.value = '';
+    popupCustomMessage.value = '';
+    showPopup.value = false;
+    return;
+  }
+  handlePopupClose();
+}
 
 const showTopbar = computed(() => !!route.meta.showTopbar);
 const showNav = computed(() => !!route.meta.showNav);
@@ -32,6 +45,17 @@ onMounted(() => {
     fetchDeviceStatus();
     checkDeviceAlerts();
   }
+
+  // Listen for global popup events (e.g. game start errors)
+  window.addEventListener('show_global_popup', (ev) => {
+    const detail = ev?.detail || {};
+    popupCustomTitle.value = detail.title || '';
+    popupCustomMessage.value = detail.message || '';
+    // show the popup using existing AppPopup control
+    popupDevices.value = [];
+    popupType.value = 'low';
+    showPopup.value = true;
+  });
 });
 
 watch(
@@ -39,6 +63,8 @@ watch(
   (newName) => {
     if (newName === 'game-play' || newName === 'game-memory-play') {
       pauseMonitoring();
+      popupCustomTitle.value = '';
+      popupCustomMessage.value = '';
       showPopup.value = false;
     } else {
       resumeMonitoring();
@@ -50,7 +76,7 @@ watch(
 </script>
 
 <template>
-  <AppPopup :show="showPopup" :devices="popupDevices" :type="popupType" @close="handlePopupClose" />
+  <AppPopup :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
     <router-view v-slot="{ Component, route }">

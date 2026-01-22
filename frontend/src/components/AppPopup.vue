@@ -16,6 +16,15 @@ const props = defineProps({
     default: 'low',
     validator: (v) => ['low', 'offline'].includes(v),
   },
+  // Optional custom title/message for generic popups
+  customTitle: {
+    type: String,
+    default: '',
+  },
+  customMessage: {
+    type: String,
+    default: '',
+  },
 });
 
 const emit = defineEmits(['close']);
@@ -39,6 +48,7 @@ const deviceList = computed(() => {
 });
 
 const title = computed(() => {
+  if (props.customTitle) return props.customTitle;
   const count = props.devices.length;
   if (count > 1) {
     return props.type === 'offline' ? 'Potjes offline' : 'Potjes bijna leeg';
@@ -47,6 +57,7 @@ const title = computed(() => {
 });
 
 const message = computed(() => {
+  if (props.customMessage) return props.customMessage;
   const count = props.devices.length;
   if (count === 0) return '';
 
@@ -71,6 +82,8 @@ const submessage = computed(() => {
   return 'Laad de batterijen op om de training goed te laten werken.';
 });
 
+const hasCustom = computed(() => !!(props.customTitle || props.customMessage));
+
 function handleClose() {
   emit('close');
 }
@@ -86,17 +99,26 @@ function handleClose() {
         </div>
 
         <div class="c-popup__content">
-          <div v-if="deviceList.length === 1" class="c-popup__single-device">
-            <img :src="deviceList[0].image" :alt="`${deviceList[0].colorName} potje`" class="c-popup__image" />
-          </div>
-          <div v-else-if="deviceList.length > 1" class="c-popup__devices-grid">
-            <div v-for="device in deviceList" :key="device.kleur" class="c-popup__device-item">
-              <img :src="device.image" :alt="`${device.colorName} potje`" class="c-popup__image-small" />
-              <span class="c-popup__device-label">{{ device.colorName }}</span>
-            </div>
-          </div>
+          <!-- If a custom message is provided, show it plainly -->
+          <template v-if="hasCustom">
+            <p class="c-popup__message">{{ title }}</p>
+            <p class="c-popup__submessage">{{ message }}</p>
+          </template>
 
-          <p>{{ submessage }}</p>
+          <!-- Otherwise show device(s) view -->
+          <template v-else>
+            <div v-if="deviceList.length === 1" class="c-popup__single-device">
+              <img :src="deviceList[0].image" :alt="`${deviceList[0].colorName} potje`" class="c-popup__image" />
+            </div>
+            <div v-else-if="deviceList.length > 1" class="c-popup__devices-grid">
+              <div v-for="device in deviceList" :key="device.kleur" class="c-popup__device-item">
+                <img :src="device.image" :alt="`${device.colorName} potje`" class="c-popup__image-small" />
+                <span class="c-popup__device-label">{{ device.colorName }}</span>
+              </div>
+            </div>
+
+            <p class="c-popup__submessage">{{ submessage }}</p>
+          </template>
         </div>
 
         <button class="c-popup__button" @click="handleClose">Begrepen</button>

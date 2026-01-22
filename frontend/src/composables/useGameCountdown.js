@@ -48,6 +48,8 @@ export function useGameCountdown(options = {}) {
           // 409 Conflict - game already running
           const data = await res.json();
           console.warn('Game conflict (409):', data);
+          // notify UI and redirect
+          window.dispatchEvent(new CustomEvent('show_global_popup', { detail: { title: 'Game niet gestart', message: data?.message || 'Er is al een game actief.' } }));
           showCountdown.value = false;
           router.push(`/games/${gameId}`);
           return;
@@ -55,6 +57,7 @@ export function useGameCountdown(options = {}) {
           // 400 Bad Request - missing settings
           const data = await res.json();
           console.warn('Missing game settings (400):', data);
+          window.dispatchEvent(new CustomEvent('show_global_popup', { detail: { title: 'Instellingen missen', message: data?.message || 'Controleer de spelinstellingen.' } }));
           showCountdown.value = false;
           router.push(`/games/${gameId}`);
           return;
