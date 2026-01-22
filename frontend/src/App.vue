@@ -1,11 +1,61 @@
 <script setup>
-import { computed, watch, onMounted } from 'vue';
+import { computed, watch, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import AppTopbar from './components/AppTopbar.vue';
 import AppNav from './components/AppNavbar.vue';
 import { useDeviceStatus } from './composables/useDeviceStatus';
+import AppPopup from './components/AppPopup.vue';
 
-const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus } = useDeviceStatus();
+const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus, connectedDevices, disconnectedDevices } = useDeviceStatus();
+
+const showPopup = ref(false);
+const popupDevices = ref([]);
+const popupType = ref('low');
+const LOW_BATTERY_THRESHOLD = 10;
+
+function checkDeviceAlerts() {
+  const inGame = isInGameRoute(route);
+  if (inGame) return;
+
+  const online = connectedDevices.value || [];
+  const offline = disconnectedDevices.value || [];
+
+  const offlineDevices = offline.filter((d) => d?.kleur);
+  if (offlineDevices.length > 0) {
+    popupDevices.value = offlineDevices;
+    popupType.value = 'offline';
+    showPopup.value = true;
+    return;
+  }
+
+  const lowBatteryDevices = online.filter((d) => {
+    const battery = Number(d?.batterij ?? 100);
+    return battery <= LOW_BATTERY_THRESHOLD && battery > 0;
+  });
+
+  if (lowBatteryDevices.length > 0) {
+    popupDevices.value = lowBatteryDevices;
+    popupType.value = 'low';
+    showPopup.value = true;
+    return;
+  }
+
+  if (showPopup.value && offlineDevices.length === 0 && lowBatteryDevices.length === 0) {
+    showPopup.value = false;
+  }
+}
+
+function handlePopupClose() {
+  showPopup.value = false;
+}
+
+watch(
+  [connectedDevices, disconnectedDevices],
+  () => {
+    checkDeviceAlerts();
+  },
+  { deep: true },
+);
 
 const route = useRoute();
 const showTopbar = computed(() => !!route.meta.showTopbar);
@@ -26,22 +76,27 @@ onMounted(() => {
   } else {
     resumeMonitoring();
     fetchDeviceStatus();
+    checkDeviceAlerts();
   }
 });
 
 watch(
   () => route.name,
   (newName) => {
-    if (newName === 'game-play' || newName === 'game-memory-play') pauseMonitoring();
-    else {
+    if (newName === 'game-play' || newName === 'game-memory-play') {
+      pauseMonitoring();
+      showPopup.value = false;
+    } else {
       resumeMonitoring();
       fetchDeviceStatus();
+      checkDeviceAlerts();
     }
   },
 );
 </script>
 
 <template>
+  <AppPopup :show="showPopup" :devices="popupDevices" :type="popupType" @close="handlePopupClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
     <router-view v-slot="{ Component, route }">
