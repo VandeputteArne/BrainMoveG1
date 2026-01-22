@@ -145,6 +145,10 @@ function isActive(targetPath) {
     list-style: none;
     margin: 0;
     padding: 0;
+
+    @media (width < 992px) {
+      gap: 1rem;
+    }
   }
 
   .c-topbar-desktop__left {

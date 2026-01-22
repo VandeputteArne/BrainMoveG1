@@ -20,6 +20,11 @@ const isOnboardingRoute = () => {
   return name === 'onboarding' || name === 'setup' || name === 'warning';
 };
 
+const isDetailRoute = () => {
+  const name = route?.name;
+  return name === 'game-detail' || name === 'game-memory-detail';
+};
+
 const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameRoute);
 import { ref } from 'vue';
 const popupCustomTitle = ref('');
@@ -44,13 +49,17 @@ const paddingtop = computed(() => !!route.meta.paddingtop);
 
 onMounted(() => {
   if (isOnboardingRoute()) {
-    // Don't monitor devices or show popups during onboarding
     pauseMonitoring();
     popupCustomTitle.value = '';
     popupCustomMessage.value = '';
     showPopup.value = false;
   } else if (isInGameRoute()) {
     pauseMonitoring();
+  } else if (isDetailRoute()) {
+    pauseMonitoring();
+    popupCustomTitle.value = '';
+    popupCustomMessage.value = '';
+    showPopup.value = false;
   } else {
     resumeMonitoring();
     fetchDeviceStatus();
@@ -58,8 +67,7 @@ onMounted(() => {
   }
 
   window.addEventListener('show_global_popup', (ev) => {
-    // don't show global popups on onboarding screens
-    if (isOnboardingRoute()) return;
+    if (isOnboardingRoute() || isDetailRoute()) return;
 
     const detail = ev?.detail || {};
     popupCustomTitle.value = detail.title || '';
@@ -79,8 +87,11 @@ watch(
       popupCustomMessage.value = '';
       showPopup.value = false;
     } else if (newName === 'onboarding' || newName === 'setup' || newName === 'warning') {
-      // onboarding routes: disable monitoring and hide popups
       pauseMonitoring();
+      popupCustomTitle.value = '';
+      popupCustomMessage.value = '';
+      showPopup.value = false;
+    } else if (newName === 'game-detail' || newName === 'game-memory-detail') {
       popupCustomTitle.value = '';
       popupCustomMessage.value = '';
       showPopup.value = false;
@@ -94,7 +105,7 @@ watch(
 </script>
 
 <template>
-  <AppPopup v-if="!isOnboardingRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
+  <AppPopup v-if="!isOnboardingRoute() && !isDetailRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
     <router-view v-slot="{ Component, route }">

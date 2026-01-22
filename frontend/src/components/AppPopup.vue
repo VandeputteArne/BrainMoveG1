@@ -16,7 +16,6 @@ const props = defineProps({
     default: 'low',
     validator: (v) => ['low', 'offline'].includes(v),
   },
-  // Optional custom title/message for generic popups
   customTitle: {
     type: String,
     default: '',
@@ -25,9 +24,37 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  confirmMode: {
+    type: Boolean,
+    default: false,
+  },
+  confirmValue: {
+    type: String,
+    default: '',
+  },
+  confirmPlaceholder: {
+    type: String,
+    default: 'Wachtwoord',
+  },
+  confirmLoading: {
+    type: Boolean,
+    default: false,
+  },
+  confirmError: {
+    type: String,
+    default: '',
+  },
+  confirmCancelLabel: {
+    type: String,
+    default: 'Annuleren',
+  },
+  confirmConfirmLabel: {
+    type: String,
+    default: 'Bevestigen',
+  },
 });
 
-const emit = defineEmits(['close']);
+const emit = defineEmits(['close', 'confirm', 'update:confirmValue']);
 
 function getColorName(kleur) {
   const colors = {
@@ -87,6 +114,14 @@ const hasCustom = computed(() => !!(props.customTitle || props.customMessage));
 function handleClose() {
   emit('close');
 }
+
+function handleConfirm() {
+  emit('confirm');
+}
+
+function onInput(e) {
+  emit('update:confirmValue', e.target.value);
+}
 </script>
 
 <template>
@@ -99,13 +134,21 @@ function handleClose() {
         </div>
 
         <div class="c-popup__content">
-          <!-- If a custom message is provided, show it plainly -->
-          <template v-if="hasCustom">
+          <template v-if="props.confirmMode">
+            <p class="c-popup__submessage">{{ props.customMessage || message }}</p>
+            <input class="c-popup__input" type="password" :placeholder="props.confirmPlaceholder" :value="props.confirmValue" @input="onInput" @keyup.enter="handleConfirm" :disabled="props.confirmLoading" />
+            <p class="c-popup__error" v-if="props.confirmError">{{ props.confirmError }}</p>
+            <div class="c-popup__confirm-actions">
+              <button class="c-popup__cancel" @click="handleClose" :disabled="props.confirmLoading">{{ props.confirmCancelLabel }}</button>
+              <button class="c-popup__confirm" @click="handleConfirm" :disabled="props.confirmLoading">{{ props.confirmLoading ? 'Bezig...' : props.confirmConfirmLabel }}</button>
+            </div>
+          </template>
+
+          <template v-else-if="hasCustom">
             <p class="c-popup__message">{{ title }}</p>
             <p class="c-popup__submessage">{{ message }}</p>
           </template>
 
-          <!-- Otherwise show device(s) view -->
           <template v-else>
             <div v-if="deviceList.length === 1" class="c-popup__single-device">
               <img :src="deviceList[0].image" :alt="`${deviceList[0].colorName} potje`" class="c-popup__image" />
@@ -121,7 +164,7 @@ function handleClose() {
           </template>
         </div>
 
-        <button class="c-popup__button" @click="handleClose">Begrepen</button>
+        <button v-if="!props.confirmMode" class="c-popup__button" @click="handleClose">Begrepen</button>
       </div>
     </div>
   </Transition>
@@ -174,6 +217,43 @@ function handleClose() {
   flex-direction: column;
   align-items: center;
   gap: 1rem;
+}
+
+.c-popup__input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.25rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+
+.c-popup__error {
+  color: #b91c1c;
+  margin: 0.25rem 0 0.5rem 0;
+}
+
+.c-popup__confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.c-popup__cancel {
+  background: transparent;
+  border: 1px solid #e5e7eb;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+}
+
+.c-popup__confirm {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
 }
 
 .c-popup__single-device {

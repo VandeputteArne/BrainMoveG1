@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, computed, ref } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
+import AppPopup from '../../components/AppPopup.vue';
 import { Power } from 'lucide-vue-next';
 import { getApiUrl } from '../../config/api.js';
 
@@ -19,7 +20,7 @@ function normalizeDevice(d) {
   if (!d || typeof d !== 'object') return d;
   const copy = { ...d };
   const nested = copy.status && (copy.status.batterij ?? copy.status.battery);
-  copy.batterij = copy.batterij ?? copy.battery ?? nested ?? 0;
+  copy.batterij = copy.batterij ?? copy.battery ?? nested ?? 100;
   return copy;
 }
 
@@ -99,22 +100,65 @@ const devices = computed(() => {
 });
 
 function formatBattery(b) {
-  if (b === null || b === undefined) return 0;
+  if (b === null || b === undefined) return 100;
   return b;
 }
 
+const showConfirmModal = ref(false);
+const confirmPassword = ref('');
+const confirmError = ref('');
+const confirmLoading = ref(false);
+
 function turnOff() {
-  fetch(getApiUrl(`devices/uitschakelen`), {
-    method: 'GET',
-  })
-    .then((res) => {
-      if (!res.ok) {
-        console.error('Failed to turn off devices:', res.statusText);
-      }
-    })
-    .catch((err) => {
-      console.error('Error turning off devices:', err);
+  confirmPassword.value = '';
+  confirmError.value = '';
+  showConfirmModal.value = true;
+}
+
+async function performTurnOff(password) {
+  confirmError.value = '';
+  confirmLoading.value = true;
+  try {
+    const res = await fetch(getApiUrl(`devices/uitschakelen`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputGebruiker: password }),
     });
+
+    if (!res.ok) {
+      let msg = res.statusText || 'Fout bij uitschakelen';
+      try {
+        const j = await res.json();
+        if (j && j.message) msg = j.message;
+      } catch (e) {}
+      confirmError.value = msg;
+      console.error('Failed to turn off devices:', msg);
+      return false;
+    }
+
+    showConfirmModal.value = false;
+    return true;
+  } catch (err) {
+    confirmError.value = 'Netwerkfout — probeer opnieuw';
+    console.error('Error turning off devices:', err);
+    return false;
+  } finally {
+    confirmLoading.value = false;
+  }
+}
+
+function cancelTurnOff() {
+  showConfirmModal.value = false;
+  confirmPassword.value = '';
+  confirmError.value = '';
+}
+
+async function confirmAndTurnOff() {
+  if (!confirmPassword.value) {
+    confirmError.value = 'Vul je wachtwoord in';
+    return;
+  }
+  await performTurnOff(confirmPassword.value);
 }
 </script>
 
@@ -134,6 +178,8 @@ function turnOff() {
       <span class="c-button__icon"><Power /></span>
       <h3>Alles uitschakelen</h3>
     </button>
+
+    <AppPopup :show="showConfirmModal" confirmMode v-model:confirmValue="confirmPassword" :confirmPlaceholder="'Wachtwoord'" :confirmError="confirmError" :confirmLoading="confirmLoading" :customTitle="'Bevestig uitschakelen'" :customMessage="'Voer uw wachtwoord in om alle apparaten uit te schakelen.'" :confirmCancelLabel="'Annuleren'" :confirmConfirmLabel="'Bevestigen'" @close="cancelTurnOff" @confirm="() => performTurnOff(confirmPassword)" />
   </div>
 </template>
 
@@ -169,5 +215,43 @@ function turnOff() {
   margin-top: 1rem;
   max-width: 400px;
   align-self: center;
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--surface, #fff);
+  padding: 1.25rem;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 28rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+.modal-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--muted, #ddd);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+.modal-error {
+  color: var(--danger, #b71c1c);
+  margin: 0.25rem 0 0.75rem 0;
+}
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
 }
 </style>

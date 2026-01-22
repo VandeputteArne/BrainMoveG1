@@ -48,7 +48,8 @@ export function useDeviceStatus() {
     if (!d || typeof d !== 'object') return d;
     const copy = { ...d };
     const nested = copy.status && (copy.status.batterij ?? copy.status.battery);
-    copy.batterij = copy.batterij ?? copy.battery ?? nested ?? 0;
+    // If battery is missing/null, treat it as fully charged (100%)
+    copy.batterij = copy.batterij ?? copy.battery ?? nested ?? 100;
     return copy;
   }
 
