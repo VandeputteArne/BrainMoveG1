@@ -18,6 +18,7 @@ from backend.src.services.mqtt_client import MQTTDeviceManager
 from backend.src.routers.leaderboard_router import router as leaderboard_router
 from backend.src.routers.trainingen_router import router as trainingen_router
 from backend.src.routers.games_router import router as games_router
+from backend.src.routers import devices_router
 from backend.src.services.GameService import GameService
 from backend.src.services.game_manager import GameManager
 from backend.src.models.models import Instellingen
@@ -41,6 +42,9 @@ device_manager = MQTTDeviceManager(sio=sio)
 game_service = GameService(device_manager=device_manager, sio=sio, hardware_delay=HARDWARE_DELAY)
 game_manager = GameManager(game_service=game_service, sio=sio)
 
+# Inject dependencies
+devices_router.set_device_manager(device_manager)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     mqtt_task = asyncio.create_task(device_manager.start())
@@ -62,6 +66,7 @@ app.add_middleware(
 app.include_router(leaderboard_router)
 app.include_router(trainingen_router)
 app.include_router(games_router)
+app.include_router(devices_router.router)
 
 sio_app = socketio.ASGIApp(sio, app)
 
@@ -104,18 +109,9 @@ async def stop_game():
     await device_manager.stop_alle()
     return result
 
-# Apparaat Endpoints
-@app.get("/devices/status", summary="Get current device status", tags=["Apparaten"])
-async def get_device_status():
-    return {
-        "apparaten": device_manager.verkrijg_apparaten_status(),
-        "connected": device_manager._connected,
-        "totaal_verwacht": 4
-    }
-
 @app.get("/")
 async def read_root():
-    return {"Hello": "World"}
+    return {"BrainMoveG1": "Backend is running"}
 
 if __name__ == "__main__":
     uvicorn.run("backend.src.main:sio_app", host="0.0.0.0", port=8000, log_level="info", reload_dirs=["backend"])
