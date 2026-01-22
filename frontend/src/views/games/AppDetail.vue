@@ -10,6 +10,7 @@ import { Play } from 'lucide-vue-next';
 import { ref, onMounted, computed, nextTick, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { getApiUrl } from '../../config/api.js';
+import { enableAudio } from '../../services/sound.js';
 
 const router = useRouter();
 const route = useRoute();
@@ -31,7 +32,6 @@ watch(username, (v) => {
 const difficulties = ref([]);
 const selectedDifficulty = ref('Gemiddeld');
 
-// Fetch leaderboard when difficulty changes
 watch(selectedDifficulty, async (newDifficulty) => {
   if (newDifficulty && gameId.value) {
     await fetchLeaderboard();
@@ -52,19 +52,16 @@ const gameDescription = ref('');
 const gameImage = ref('');
 
 onMounted(async () => {
-  // Check sessionStorage first for game settings
   const cachedDetails = sessionStorage.getItem(`gameDetails_${gameId.value}`);
 
   if (cachedDetails) {
     const data = JSON.parse(cachedDetails);
     loadGameData(data);
   } else {
-    // Fetch game details from API if not cached
     try {
       const res = await fetch(getApiUrl(`games/${gameId.value}/details`));
       const data = await res.json();
 
-      // Store in sessionStorage (without leaderboard)
       const { leaderboard, ...gameSettings } = data;
       sessionStorage.setItem(`gameDetails_${gameId.value}`, JSON.stringify(gameSettings));
 
@@ -74,7 +71,6 @@ onMounted(async () => {
     }
   }
 
-  // Fetch leaderboard based on selected difficulty
   await fetchLeaderboard();
 });
 
@@ -96,12 +92,10 @@ async function fetchLeaderboard() {
 }
 
 function loadGameData(data) {
-  // Set game info
   gameName.value = data.game_naam || '';
   gameDescription.value = data.game_beschrijving || '';
   gameImage.value = `/images/cards/${data.game_naam?.toLowerCase().replace(/\s+/g, '')}.png` || '';
 
-  // Set difficulties
   difficulties.value = data.list_moeilijkheden.map((item, index) => ({
     id: String(item.moeilijkheid_id),
     moeilijkheid: item.moeilijkheid,
@@ -110,20 +104,17 @@ function loadGameData(data) {
   }));
   selectedDifficulty.value = difficulties.value.length >= 2 ? difficulties.value[1].id : difficulties.value.length > 0 ? difficulties.value[0].id : '';
 
-  // Set rounds
   roundsOptions.value = data.aantal_rondes.map((item) => ({
     id: String(item.ronde_id),
     rondes: item.nummer,
   }));
   selectedRounds.value = roundsOptions.value.length > 0 ? roundsOptions.value[0].id : '';
 
-  // Set default selected colors
   if (Array.isArray(backendColors.value) && backendColors.value.length && selectedColor.value.length === 0) {
     selectedColor.value = backendColors.value.filter((id) => id !== excludedColor.value);
   }
 }
 
-// clear kleuren error when user selects enough colors
 watch(selectedColor, (v) => {
   if (Array.isArray(v) && v.length >= 2) kleurenError.value = false;
 });
@@ -151,20 +142,17 @@ function buildPayload() {
 }
 
 async function startGame() {
-  // gecombineerde validatie: toon beide foutmeldingen tegelijk indien nodig
   const name = (username.value || '').toString().trim();
   const colorsValid = Array.isArray(selectedColor.value) && selectedColor.value.length >= 2;
 
   usernameError.value = !name;
   kleurenError.value = !colorsValid;
 
-  // zet focus op gebruikersnaam indien die ontbreekt
   if (usernameError.value) {
     await nextTick();
     usernameInput.value?.focus?.();
   }
 
-  // stop als één van de validaties faalt
   if (usernameError.value || kleurenError.value) return;
 
   const payload = buildPayload();
@@ -183,6 +171,9 @@ async function startGame() {
     });
 
     if (res.ok) {
+      try {
+        await enableAudio();
+      } catch (e) {}
       router.push(`/games/${gameId.value}/play`);
       return;
     }
@@ -190,6 +181,9 @@ async function startGame() {
     // netwerk/backend niet beschikbaar -> fallback
   }
 
+  try {
+    await enableAudio();
+  } catch (e) {}
   router.push(`/games/${gameId.value}/play`);
 }
 </script>
