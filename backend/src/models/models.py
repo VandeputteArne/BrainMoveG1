@@ -94,7 +94,7 @@ class StatistiekenVoorMemoryGame(BaseModel):
     aantal_kleuren: int
     gemiddelde_waarde: float
     exactheid: float
-    correcte_rondewaarden: list[CorrecteRondeWaarde]
+    lijst_voor_grafiek: list[CorrecteRondeWaarde]
     aantal_correct: int
     aantal_fout: int
     aantal_rondes_niet_gespeeld: int
