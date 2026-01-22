@@ -26,6 +26,7 @@ from backend.src.repositories.data_repository import DataRepository
 
 from backend.src.routers.leaderboard_router import router as leaderboard_router
 from backend.src.routers.trainingen_router import router as trainingen_router
+from backend.src.routers.games_router import router as games_router
 
 from backend.src.models.models import (
     FiltersVoorHistorie,
@@ -70,7 +71,7 @@ app.add_middleware(
 # Register routers
 app.include_router(leaderboard_router)
 app.include_router(trainingen_router)
-
+app.include_router(games_router)
 HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
 
 sio = socketio.AsyncServer(
@@ -508,42 +509,7 @@ async def stop_game():
 #resulaten endpoint
 
 
-#games overview endpoint
-@app.get("/games/overview", response_model=list[GameVoorOverzicht], summary="Haal een overzicht op van alle spellen met hun highscores", tags=["Spelletjes"])
-async def get_games_overview():
-    games = DataRepository.get_all_games()
-    
-    result = []
-    for game in games:
-        game_id = game['GameId']
-        
-        # GameId 1 = Color Sprint: laagste gemiddelde tijd van rondewaarden
-        # GameId 2+ = Memory etc: hoogste aantal kleuren gebruikt
-        if game_id == 1:
-            highscore = DataRepository.get_best_avg_for_game(game_id, use_min=True)
-        else:
-            highscore = DataRepository.get_max_kleuren_for_game(game_id)
-        
-        result.append(GameVoorOverzicht(
-            game_naam=game['GameNaam'],
-            tag=game['Tag'],
-            highscore=round(highscore, 2),
-            eenheid=game['Eenheid']
-        ))
-    
-    return result
 
-@app.get("/games/{game_id}/details", response_model=DetailGame, summary="Haal de details op voor een specifiek spel", tags=["Spelletjes"])
-async def get_game_details(game_id: int):
-    details = DataRepository.get_game_details(game_id)
-    return details
-
-
-#historie endpoint ----------------------------------------------
-@app.get("/games/filters", response_model=list[GameVoorFilter], summary="Haal de lijst van spellen op voor filterdoeleinden", tags=["Spelletjes"])
-async def get_games_for_filter():
-    games = DataRepository.get_games_for_filter()
-    return games
 
 
 
