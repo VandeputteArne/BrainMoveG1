@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, computed, ref } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import { Power } from 'lucide-vue-next';
+import { getApiUrl } from '../../config/api.js';
 
 const connectedDevices = ref([]);
 const disconnectedDevices = ref([]);
@@ -101,6 +102,20 @@ function formatBattery(b) {
   if (b === null || b === undefined) return 0;
   return b;
 }
+
+function turnOff() {
+  fetch(getApiUrl(`devices/uitschakelen`), {
+    method: 'GET',
+  })
+    .then((res) => {
+      if (!res.ok) {
+        console.error('Failed to turn off devices:', res.statusText);
+      }
+    })
+    .catch((err) => {
+      console.error('Error turning off devices:', err);
+    });
+}
 </script>
 
 <template>
@@ -115,7 +130,7 @@ function formatBattery(b) {
       </template>
     </div>
 
-    <button class="c-button c-apparaten__button">
+    <button @click="turnOff" class="c-button c-apparaten__button">
       <span class="c-button__icon"><Power /></span>
       <h3>Alles uitschakelen</h3>
     </button>

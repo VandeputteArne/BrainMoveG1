@@ -15,6 +15,11 @@ const isInGameRoute = () => {
   return name === 'game-play' || name === 'game-memory-play';
 };
 
+const isOnboardingRoute = () => {
+  const name = route?.name;
+  return name === 'onboarding' || name === 'setup' || name === 'warning';
+};
+
 const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameRoute);
 import { ref } from 'vue';
 const popupCustomTitle = ref('');
@@ -38,7 +43,13 @@ const paddingbottom = computed(() => !!route.meta.paddingbottom);
 const paddingtop = computed(() => !!route.meta.paddingtop);
 
 onMounted(() => {
-  if (isInGameRoute()) {
+  if (isOnboardingRoute()) {
+    // Don't monitor devices or show popups during onboarding
+    pauseMonitoring();
+    popupCustomTitle.value = '';
+    popupCustomMessage.value = '';
+    showPopup.value = false;
+  } else if (isInGameRoute()) {
     pauseMonitoring();
   } else {
     resumeMonitoring();
@@ -46,12 +57,13 @@ onMounted(() => {
     checkDeviceAlerts();
   }
 
-  // Listen for global popup events (e.g. game start errors)
   window.addEventListener('show_global_popup', (ev) => {
+    // don't show global popups on onboarding screens
+    if (isOnboardingRoute()) return;
+
     const detail = ev?.detail || {};
     popupCustomTitle.value = detail.title || '';
     popupCustomMessage.value = detail.message || '';
-    // show the popup using existing AppPopup control
     popupDevices.value = [];
     popupType.value = 'low';
     showPopup.value = true;
@@ -66,6 +78,12 @@ watch(
       popupCustomTitle.value = '';
       popupCustomMessage.value = '';
       showPopup.value = false;
+    } else if (newName === 'onboarding' || newName === 'setup' || newName === 'warning') {
+      // onboarding routes: disable monitoring and hide popups
+      pauseMonitoring();
+      popupCustomTitle.value = '';
+      popupCustomMessage.value = '';
+      showPopup.value = false;
     } else {
       resumeMonitoring();
       fetchDeviceStatus();
@@ -76,7 +94,7 @@ watch(
 </script>
 
 <template>
-  <AppPopup :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
+  <AppPopup v-if="!isOnboardingRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
     <router-view v-slot="{ Component, route }">

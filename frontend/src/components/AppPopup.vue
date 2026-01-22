@@ -205,7 +205,7 @@ function handleClose() {
 }
 
 .c-popup__image {
-  width: 10rem;
+  width: 4rem;
   height: auto;
   object-fit: contain;
   margin-bottom: 0.5rem;
