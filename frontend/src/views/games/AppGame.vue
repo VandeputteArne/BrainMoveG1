@@ -12,7 +12,6 @@ const bgColor = ref('');
 const currentRound = ref(1);
 const totalRounds = ref(5);
 
-// Timer state (counts seconds from game start)
 const elapsedSeconds = ref(0);
 let timerInterval = null;
 
@@ -50,10 +49,9 @@ const kleuren = {
 };
 
 let _socket = null;
-// read chosen colors from last saved payload (from AppDetail)
 let chosenColors = [];
 try {
-  const raw = localStorage.getItem('lastGamePayload');
+  const raw = sessionStorage.getItem('lastGamePayload');
   if (raw) {
     const parsed = JSON.parse(raw || '{}');
     if (Array.isArray(parsed.kleuren)) {
@@ -134,7 +132,6 @@ onUnmounted(() => {
   } finally {
     // stop timer and disconnect socket when component unmounts
     stopTimer();
-    disconnectSocket();
   }
 });
 

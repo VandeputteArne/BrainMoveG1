@@ -1,8 +1,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import IntroOverlay from '../../components/game/IntroOverlay.vue';
 import { useRouter } from 'vue-router';
 
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
+import { enableAudio, tryResumeIfExists } from '../../services/sound.js';
 import { useGameTimer } from '../../composables/useGameTimer.js';
 import { useGameCountdown } from '../../composables/useGameCountdown.js';
 import GameCountdown from '../../components/game/GameCountdown.vue';
@@ -23,16 +25,35 @@ const kleuren = {
   groen: '#00b709',
 };
 
-// Use the timer composable
 const { formattedTime, startTimer, stopTimer } = useGameTimer();
 
-// Use the countdown composable
 const { countdown, showCountdown, countdownText, startCountdown } = useGameCountdown({
-  gameId: 2, // Memory game ID
+  gameId: 2,
   onComplete: () => {
     startTimer();
   },
 });
+
+const showIntro = ref(true);
+
+function beginGame() {
+  console.debug('[Memory] beginGame (overlay done)');
+  try {
+    enableAudio().catch(() => {});
+  } catch (e) {}
+}
+
+async function onOverlayExiting() {
+  // overlay starting to hide: resume audio and start countdown underneath
+  try {
+    await tryResumeIfExists();
+  } catch (e) {}
+  try {
+    startCountdown();
+  } catch (e) {
+    console.error('[Memory] startCountdown error', e);
+  }
+}
 
 const router = useRouter();
 
@@ -53,14 +74,11 @@ onMounted(async () => {
     _socket.on('ronde_start', (payload) => {
       console.log('[socket] ronde_start received:', payload);
 
-      // Reset color to prevent flash
       bgColor.value = '#313335';
       isAnimating.value = false;
 
-      // Hide waiting screen when new round starts
       showWaitingScreen.value = false;
 
-      // Show round screen
       showRoundScreen.value = true;
 
       if (payload && typeof payload === 'object') {
@@ -86,7 +104,6 @@ onMounted(async () => {
         message = payload.bericht || payload.message || null;
       }
 
-      // Hide round screen when message is 'start'
       if (message === 'start') {
         showRoundScreen.value = false;
       }
@@ -95,7 +112,6 @@ onMounted(async () => {
     _socket.on('kleuren_getoond', (payload) => {
       console.log('[socket] kleuren_getoond received:', payload);
 
-      // Show waiting screen when colors have been shown
       showWaitingScreen.value = true;
     });
 
@@ -133,7 +149,6 @@ onMounted(async () => {
         status = payload.status || null;
       }
 
-      // Navigate to proficiat when game is done
       if (status === 'game gedaan') {
         stopTimer();
         router.push('/resultaten/proficiat');
@@ -143,8 +158,7 @@ onMounted(async () => {
     console.error('[socket] error:', err);
   }
 
-  // Start countdown
-  await startCountdown();
+  // Intro overlay is handled by IntroOverlay component (auto-advances and resumes audio)
 });
 
 onUnmounted(() => {
@@ -158,37 +172,41 @@ onUnmounted(() => {
     }
   } finally {
     stopTimer();
-    disconnectSocket();
+    // IntroOverlay clears its own timer
   }
 });
 </script>
 
 <template>
-  <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
+  <div class="c-game-root">
+    <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-  <div v-else class="c-game-memory">
-    <GameHeader :formatted-time="formattedTime" @stop="goBack" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Memory" text="Wacht tot de kleuren getoond zijn. Kijk goed en probeer ze te onthouden." overlayClass="c-game-memory__intro" contentClass="c-game-memory__intro-content" @done="beginGame" />
 
-    <div class="c-game-memory__content">
-      <div class="c-game-memory__background"></div>
-      <div class="c-game-memory__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
+    <div v-if="!showIntro" class="c-game-memory">
+      <GameHeader :formatted-time="formattedTime" @stop="goBack" />
 
-      <!-- Round screen overlay -->
-      <div v-if="showRoundScreen" class="c-game-memory__round-screen">
-        <div class="c-game-memory__round-content">
-          <h2>Ronde {{ currentRound }}</h2>
+      <div class="c-game-memory__content">
+        <div class="c-game-memory__background"></div>
+        <div class="c-game-memory__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
+
+        <!-- Round screen overlay -->
+        <div v-if="showRoundScreen" class="c-game-memory__round-screen">
+          <div class="c-game-memory__round-content">
+            <h2>Ronde {{ currentRound }}</h2>
+          </div>
         </div>
-      </div>
 
-      <!-- Waiting screen overlay -->
-      <div v-if="showWaitingScreen" class="c-game-memory__waiting">
-        <div class="c-game-memory__waiting-content">
-          <h2>Doe maar!</h2>
-          <p>Wachten op volgende ronde...</p>
+        <!-- Waiting screen overlay -->
+        <div v-if="showWaitingScreen" class="c-game-memory__waiting">
+          <div class="c-game-memory__waiting-content">
+            <h2>Doe maar!</h2>
+            <p>Wachten op volgende ronde...</p>
+          </div>
         </div>
-      </div>
 
-      <GameProgress :current-round="currentRound" :total-rounds="totalRounds" />
+        <GameProgress :current-round="currentRound" :total-rounds="totalRounds" />
+      </div>
     </div>
   </div>
 </template>
@@ -209,6 +227,13 @@ onUnmounted(() => {
   justify-content: center;
   gap: 1rem;
   position: relative;
+}
+
+.c-game-memory__background {
+  position: absolute;
+  inset: 0;
+  background: var(--gray-80);
+  z-index: 0;
 }
 
 .c-game-memory__color {
@@ -280,6 +305,34 @@ onUnmounted(() => {
   font-size: 1.25rem;
   margin: 0;
   opacity: 0.8;
+}
+
+.c-game-memory__intro {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+}
+.c-game-memory__intro-content {
+  text-align: center;
+  color: white;
+  padding: 2rem;
+}
+.c-game-memory__intro-content p {
+  margin: 1rem 0 2rem 0;
+}
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+.btn-primary {
+  background: var(--blue-500);
+  color: white;
 }
 
 @keyframes fadeIn {
