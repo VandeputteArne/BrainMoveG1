@@ -1,11 +1,8 @@
-from fastapi import APIRouter, Body
-from pydantic import BaseModel
+from fastapi import APIRouter
+from models.models import UitschakelenRequest
 import os
 
 router = APIRouter(prefix="/devices", tags=["Apparaten"])
-
-class UitschakelenRequest(BaseModel):
-    inputGebruiker: str
 
 # Deze variabele wordt geïnjecteerd vanuit main.py
 device_manager = None
