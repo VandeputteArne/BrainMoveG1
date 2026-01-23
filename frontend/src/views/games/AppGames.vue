@@ -108,7 +108,8 @@ onUnmounted(() => {
 
   @media (width >= 768px) {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: 100%;
     gap: 2rem;
   }
 }
