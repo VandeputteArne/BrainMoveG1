@@ -2,6 +2,7 @@ from typing import Union
 from fastapi import APIRouter
 from backend.src.repositories.data_repository import DataRepository
 from backend.src.models.models import StatistiekenVoorColorSprint, StatistiekenVoorMemoryGame, CorrecteRondeWaarde, TrainingVoorHistorie
+import logging
 
 router = APIRouter(
     prefix="/trainingen",
@@ -19,7 +20,7 @@ async def get_laatste_rondewaarden():
     # Bepaal ID van de laatst toegevoegde training en vraag ranking op
     last_training_id = DataRepository.get_last_training_id()
 
-     
+    logging.debug(f"Last training ID: {last_training_id}")
     gebruikersnaam = DataRepository.get_gebruikersnaam_by_trainingid(last_training_id)
     exactheid = len([item for item in list_rondewaarden if item.uitkomst.lower() == 'correct']) / len(list_rondewaarden) * 100 if list_rondewaarden else 0
 
@@ -35,7 +36,7 @@ async def get_laatste_rondewaarden():
     correcte_rondewaarden_data = [CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=item.waarde) for item in correcte_rondewaarden]
 
     game_id = DataRepository.get_gameid_by_trainingid(last_training_id) if last_training_id else None
-    if(game_id ==1 or game_id == 3):
+    if(game_id ==1 or game_id == 3 or game_id ==4):
         ranking = DataRepository.get_ranking_for_onetraining(last_training_id)
         return StatistiekenVoorColorSprint(
         game_id=game_id or 0,
@@ -105,7 +106,7 @@ async def get_training_details(training_id: int):
     game_id = DataRepository.get_gameid_by_trainingid(training_id)
     gebruikersnaam = DataRepository.get_gebruikersnaam_by_trainingid(training_id)
 
-    if(game_id==1 or game_id==3):
+    if(game_id==1 or game_id==3 or game_id == 4):
         return StatistiekenVoorColorSprint(
         game_id=game_id or 0,
         gebruikersnaam=gebruikersnaam or "",
