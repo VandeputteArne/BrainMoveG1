@@ -132,7 +132,6 @@ onUnmounted(() => {
   } finally {
     // stop timer and disconnect socket when component unmounts
     stopTimer();
-    disconnectSocket();
   }
 });
 

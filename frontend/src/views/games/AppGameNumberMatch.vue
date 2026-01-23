@@ -206,7 +206,6 @@ onUnmounted(() => {
     }
   } finally {
     stopTimer();
-    disconnectSocket();
     // IntroOverlay manages its own timer
   }
 });

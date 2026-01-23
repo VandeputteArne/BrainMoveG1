@@ -101,7 +101,6 @@ onUnmounted(() => {
     }
   } finally {
     stopTimer();
-    disconnectSocket();
   }
 });
 

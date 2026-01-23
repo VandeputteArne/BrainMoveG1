@@ -194,7 +194,6 @@ onUnmounted(() => {
     }
   } finally {
     stopTimer();
-    disconnectSocket();
     window.removeEventListener('resize', updateWrapperWidth);
   }
 });
