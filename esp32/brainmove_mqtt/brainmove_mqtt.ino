@@ -17,6 +17,7 @@ const int MQTT_KEEPALIVE_DURATION = 5;
 // ==================== PIN DEFINITIES ====================
 const int PIN_BATTERIJ_ADC = 2;
 const int PIN_KNOP = 3;
+const int PIN_TOF_XSHUT = 4;
 const int PIN_ZOEMER = 5;
 
 const int PIN_I2C_SDA = 6;
@@ -134,7 +135,8 @@ void loop() {
     }
   }
 
-  if (millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
+  // Alleen slapen door inactiviteit als niet actief bezig (polling)
+  if (!isPolling && millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
     gaaDiepeSlaap();
   }
 
@@ -244,6 +246,14 @@ void initHardware() {
   ledcWrite(PIN_ZOEMER, 0);
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
+
+  // Reset ToF sensor via XSHUT before I2C init
+  pinMode(PIN_TOF_XSHUT, OUTPUT);
+  digitalWrite(PIN_TOF_XSHUT, LOW);
+  delay(10);
+  digitalWrite(PIN_TOF_XSHUT, HIGH);
+  delay(10);
+
   Wire.begin(PIN_I2C_SDA, PIN_I2C_SCL);
   Wire.setClock(400000);
   tofSensor.setTimeout(500);
@@ -357,6 +367,10 @@ void gaaDiepeSlaap() {
     }
     delay(100); zoemerUit();
     if (tofGeinitialiseerd) tofSensor.stopContinuous();
+
+    // Shut down ToF sensor before sleep
+    digitalWrite(PIN_TOF_XSHUT, LOW);
+
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);
     esp_deep_sleep_start();
 }

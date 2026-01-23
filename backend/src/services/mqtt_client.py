@@ -165,6 +165,9 @@ class MQTTDeviceManager:
     async def play_sound_incorrect(self, color: str):
         await self.send_command(color.lower(), "sound_fail")
 
+    async def sleep_alle(self):
+        await self.send_command_all("sleep")
+
     def zet_detectie_callback(self, callback: Optional[Callable]):
         self._detectie_callback = callback
 
