@@ -32,7 +32,7 @@ const isPopupHiddenRoute = () => {
 
 const isMonitoringPausedRoute = () => {
   const name = route?.name;
-  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'onboarding' || name === 'setup' || name === 'warning' || name === 'game-memory-detail';
+  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'onboarding' || name === 'setup' || name === 'warning' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'game-falling-colors-play';
 };
 
 const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isPopupHiddenRoute);

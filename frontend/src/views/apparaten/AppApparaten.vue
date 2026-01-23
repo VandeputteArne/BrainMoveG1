@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, computed, ref } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
-import AppPopup from '../../components/AppPopup.vue';
+import AppPasswordConfirm from '../../components/AppPasswordConfirm.vue';
 import { Power } from 'lucide-vue-next';
 import { getApiUrl } from '../../config/api.js';
 
@@ -195,7 +195,7 @@ async function confirmAndTurnOff() {
       <h3>Alles uitschakelen</h3>
     </button>
 
-    <AppPopup :show="showConfirmModal" confirmMode v-model:confirmValue="confirmPassword" :confirmPlaceholder="'Wachtwoord'" :confirmError="confirmError" :confirmLoading="confirmLoading" :customTitle="'Bevestig uitschakelen'" :customMessage="'Voer uw wachtwoord in om alle apparaten uit te schakelen.'" :confirmCancelLabel="'Annuleren'" :confirmConfirmLabel="'Bevestigen'" @close="cancelTurnOff" @confirm="() => performTurnOff(confirmPassword)" />
+    <AppPasswordConfirm :show="showConfirmModal" v-model:confirmValue="confirmPassword" :placeholder="'Wachtwoord'" :error="confirmError" :loading="confirmLoading" :title="'Bevestig uitschakelen'" :message="'Voer uw wachtwoord in om alle apparaten uit te schakelen.'" :cancelLabel="'Annuleren'" :confirmLabel="'Bevestigen'" @close="cancelTurnOff" @confirm="() => performTurnOff(confirmPassword)" />
   </div>
 </template>
 
