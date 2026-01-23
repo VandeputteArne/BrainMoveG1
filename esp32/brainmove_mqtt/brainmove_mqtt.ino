@@ -5,7 +5,7 @@
 #include <VL53L0X.h>
 
 // PAS DIT AAN PER APPARAAT ("rood", "blauw", "geel", "groen")
-#define DEVICE_COLOR "groen" 
+#define DEVICE_COLOR "geel"
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
@@ -25,7 +25,7 @@ const int PIN_I2C_SCL = 7;
 
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
-const uint16_t TOF_POLL_INTERVAL_MS = 33;
+const uint16_t TOF_POLL_INTERVAL_MS = 40;
 const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
 
 const float BATTERIJ_VOL_SPANNING = 4.2f;
@@ -257,7 +257,7 @@ void initHardware() {
     Serial.println("FOUT: Geen sensor!");
     tofGeinitialiseerd = false;
   } else {
-    tofSensor.setMeasurementTimingBudget(33000);
+    tofSensor.setMeasurementTimingBudget(40000);
     tofSensor.startContinuous();
     tofGeinitialiseerd = true;
   }
