@@ -1,7 +1,8 @@
 <script setup>
-import { Wifi, BatteryFull, ChevronLeft } from 'lucide-vue-next';
-import { useRoute } from 'vue-router';
+import { Wifi, BatteryFull, BatteryMedium, BatteryLow, AlertTriangle, ChevronLeft } from 'lucide-vue-next';
+import { useDeviceStatus } from '../composables/useDeviceStatus';
 import { computed } from 'vue';
+import { useRoute } from 'vue-router';
 
 const props = defineProps({
   showBack: { type: Boolean, default: false },
@@ -9,6 +10,37 @@ const props = defineProps({
 
 const route = useRoute();
 const currentPath = computed(() => route.path);
+
+const { connectedDevices, disconnectedDevices } = useDeviceStatus();
+
+const averageBattery = computed(() => {
+  const list = (connectedDevices.value || []).filter(Boolean);
+  const known = list.filter((d) => !d?._batterijUnknown && d?.batterij !== undefined && d?.batterij !== null);
+  if (!known.length) return null;
+  const vals = known.map((d) => Number(d.batterij));
+  const sum = vals.reduce((s, v) => s + v, 0);
+  return Math.round(sum / vals.length);
+});
+
+const anyBatteryCritical = computed(() => {
+  const list = (connectedDevices.value || []).filter(Boolean);
+  return list.some((d) => {
+    const n = Number(d?.batterij);
+    return Number.isFinite(n) ? n <= 1 : false;
+  });
+});
+
+const anyDisconnected = computed(() => (disconnectedDevices.value || []).length > 0);
+
+const showWifi = computed(() => true);
+
+const batteryIcon = computed(() => {
+  const avg = averageBattery.value;
+  if (avg === null) return null;
+  if (avg > 66) return 'full';
+  if (avg > 33) return 'medium';
+  return 'low';
+});
 
 function isActive(targetPath) {
   return currentPath.value === targetPath || currentPath.value.startsWith(targetPath + '/');
@@ -24,8 +56,11 @@ function isActive(targetPath) {
       </router-link>
       <h3 v-else>BrainMove</h3>
       <div class="c-topbar__icons">
-        <Wifi />
-        <BatteryFull />
+        <Wifi class="c-topbar__icon" :class="anyDisconnected ? 'c-topbar__icon--warn' : ''" />
+        <template v-if="(connectedDevices || []).length > 0">
+          <component :is="batteryIcon === 'full' ? BatteryFull : batteryIcon === 'medium' ? BatteryMedium : BatteryLow" class="c-topbar__icon" :class="batteryIcon === 'low' || anyBatteryCritical || anyDisconnected ? 'c-topbar__icon--warn' : ''" />
+          <AlertTriangle v-if="anyBatteryCritical || anyDisconnected" class="c-topbar__icon--warn c-topbar__icon" />
+        </template>
       </div>
     </div>
   </div>
@@ -56,8 +91,11 @@ function isActive(targetPath) {
         </nav>
       </div>
       <div class="c-topbar__icons">
-        <Wifi />
-        <BatteryFull />
+        <Wifi class="c-topbar__icon" :class="anyDisconnected ? 'c-topbar__icon--warn' : ''" />
+        <template v-if="(connectedDevices || []).length > 0">
+          <component :is="batteryIcon === 'full' ? BatteryFull : batteryIcon === 'medium' ? BatteryMedium : BatteryLow" class="c-topbar__icon" :class="batteryIcon === 'low' || anyBatteryCritical || anyDisconnected ? 'c-topbar__icon--warn' : ''" />
+          <AlertTriangle v-if="anyBatteryCritical || anyDisconnected" class="c-topbar__icon--warn c-topbar__icon" />
+        </template>
       </div>
     </div>
   </div>
@@ -90,6 +128,12 @@ function isActive(targetPath) {
     gap: 0.5rem;
   }
 
+  .c-topbar__icon {
+    color: var(--gray-80);
+    width: 1.25rem;
+    height: 1.25rem;
+  }
+
   .c-topbar__back {
     display: flex;
     align-items: center;
@@ -97,6 +141,10 @@ function isActive(targetPath) {
     gap: 0.0625rem;
     text-decoration: none;
   }
+}
+
+.c-topbar__icon--warn {
+  color: var(--color-warning, #f59e0b) !important;
 }
 
 .c-topbar-desktop {
@@ -145,6 +193,10 @@ function isActive(targetPath) {
     list-style: none;
     margin: 0;
     padding: 0;
+
+    @media (width < 992px) {
+      gap: 1rem;
+    }
   }
 
   .c-topbar-desktop__left {

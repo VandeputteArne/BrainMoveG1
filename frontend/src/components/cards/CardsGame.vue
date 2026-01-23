@@ -32,11 +32,22 @@ const displayTag = computed(() => {
   }
   return props.tag;
 });
+
+const tagColor = computed(() => {
+  switch (props.tag.toLowerCase()) {
+    case 'geheugen':
+      return 'var(--color-red)';
+    case 'reactiesnelheid':
+      return 'var(--blue-100)';
+    default:
+      return 'var(--color-gray)';
+  }
+});
 </script>
 
 <template>
   <router-link :to="`/games/${props.id}`" class="c-game-card" :class="`c-game-card--${props.view}`" :style="{ backgroundImage: `url(${props.image})` }">
-    <div class="c-game-card__tag">
+    <div class="c-game-card__tag" :style="{ background: tagColor }">
       <Zap class="c-game-card__icon" />
       <p>{{ displayTag }}</p>
     </div>

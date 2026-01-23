@@ -1,0 +1,127 @@
+<script setup>
+import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { tryResumeIfExists } from '../../services/sound.js';
+
+const props = defineProps({
+  modelValue: { type: Boolean, default: false },
+  durationMs: { type: Number, default: 2000 },
+  title: { type: String, default: 'Start' },
+  text: { type: String, default: '' },
+  autoResume: { type: Boolean, default: true },
+  overlayClass: { type: String, default: 'c-game__intro' },
+  contentClass: { type: String, default: 'c-game__intro-content' },
+  ariaLabel: { type: String, default: 'Start' },
+});
+
+const emit = defineEmits(['update:modelValue', 'done', 'exiting']);
+const root = ref(null);
+const hiding = ref(false);
+let timer = null;
+
+function clearTimer() {
+  if (timer) {
+    clearTimeout(timer);
+    timer = null;
+  }
+}
+
+async function startAutoTimer() {
+  clearTimer();
+  if (props.autoResume) {
+    try {
+      await tryResumeIfExists();
+    } catch (e) {}
+  }
+  timer = setTimeout(() => {
+    initiateExit();
+  }, props.durationMs);
+}
+
+function initiateExit() {
+  clearTimer();
+  if (hiding.value) return;
+  emit('exiting');
+  hiding.value = true;
+  const el = root.value;
+  if (!el) {
+    finishExit();
+    return;
+  }
+
+  const onTransitionEnd = (ev) => {
+    if (ev.target === el && (ev.propertyName === 'opacity' || ev.propertyName === 'visibility')) {
+      el.removeEventListener('transitionend', onTransitionEnd);
+      finishExit();
+    }
+  };
+  el.addEventListener('transitionend', onTransitionEnd);
+}
+
+function finishExit() {
+  hiding.value = false;
+  emit('update:modelValue', false);
+  emit('done');
+}
+
+function onClickStart() {
+  initiateExit();
+}
+
+watch(
+  () => props.modelValue,
+  (v) => {
+    if (v) {
+      hiding.value = false;
+      startAutoTimer();
+    } else {
+      initiateExit();
+    }
+  },
+);
+
+onMounted(() => {
+  if (props.modelValue) startAutoTimer();
+});
+
+onUnmounted(() => {
+  clearTimer();
+});
+</script>
+
+<template>
+  <div ref="root" :class="[overlayClass, { 'is-hidden': hiding, 'is-visible': !hiding }]" @click.self="onClickStart" role="button" :aria-label="ariaLabel">
+    <div :class="contentClass">
+      <h2>{{ title }}</h2>
+      <p v-if="text">{{ text }}</p>
+      <slot />
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.c-game__intro,
+.c-game-memory__intro {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  opacity: 1;
+  transition:
+    opacity 260ms ease,
+    visibility 260ms ease;
+}
+.c-game__intro.is-hidden,
+.c-game-memory__intro.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+.c-game__intro-content,
+.c-game-memory__intro-content {
+  text-align: center;
+  color: white;
+  padding: 2rem;
+}
+</style>

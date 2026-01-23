@@ -1,9 +1,12 @@
 import asyncio
 import datetime
+import logging
 from typing import Optional
 from backend.src.services.GameService import GameService
 from backend.src.repositories.data_repository import DataRepository
 from backend.src.models.models import Training, RondeWaarde
+
+logger = logging.getLogger(__name__)
 
 class GameManager:
     def __init__(self, game_service: GameService, sio):
@@ -32,7 +35,7 @@ class GameManager:
         self.kleuren = instellingen.kleuren
         self.starttijd = datetime.datetime.now()
         
-        print(f"GameManager instellingen opgeslagen: game_id={self.game_id}, rondes={self.rondes}")
+        logger.info(f"GameManager instellingen opgeslagen: game_id={self.game_id}, rondes={self.rondes}")
     
     def reset_instellingen(self):
         """Reset alle game instellingen naar None"""
@@ -44,23 +47,23 @@ class GameManager:
         self.rondes = None
         self.kleuren = None
         self.starttijd = None
-        print("GameManager instellingen gereset")
+        logger.info("GameManager instellingen gereset")
     
     async def start_colorgame(self):
         """Start colorgame in de achtergrond"""
         try:
             self.game_service.reset_stop_event()
             
-            print(f"Start colorgame met {self.rondes} rondes")
+            logger.info(f"Start colorgame met {self.rondes} rondes")
             rondes = await self.game_service.run_colorgame(
                 self.rondes, self.kleuren, self.snelheid
             )
             
             await self._save_training_results(rondes, "waarde")
-            print("Colorgame afgelopen en opgeslagen")
+            logger.info("Colorgame afgelopen en opgeslagen")
             
         except Exception as e:
-            print(f"Fout in colorgame: {e}")
+            logger.error(f"Fout in colorgame: {e}")
             await self.sio.emit('game_error', {"error": str(e)})
         finally:
             self.current_task = None
@@ -71,16 +74,16 @@ class GameManager:
         try:
             self.game_service.reset_stop_event()
             
-            print(f"Start memorygame met {self.rondes} rondes")
+            logger.info(f"Start memorygame met {self.rondes} rondes")
             rondes = await self.game_service.run_memorygame(
                 self.snelheid, self.rondes, self.kleuren
             )
             
             await self._save_training_results(rondes, "reactietijd")
-            print("Memorygame afgelopen en opgeslagen")
+            logger.info("Memorygame afgelopen en opgeslagen")
             
         except Exception as e:
-            print(f"Fout in memorygame: {e}")
+            logger.error(f"Fout in memorygame: {e}")
             await self.sio.emit('game_error', {"error": str(e)})
         finally:
             self.current_task = None
@@ -91,16 +94,36 @@ class GameManager:
         try:
             self.game_service.reset_stop_event()
             
-            print(f"Start numbergame met {self.rondes} rondes")
+            logger.info(f"Start numbergame met {self.rondes} rondes")
             rondes = await self.game_service.run_numbergame(
                 self.rondes, self.kleuren, self.snelheid
             )
             
             await self._save_training_results(rondes, "waarde")
-            print("Numbergame afgelopen en opgeslagen")
+            logger.info("Numbergame afgelopen en opgeslagen")
             
         except Exception as e:
-            print(f"Fout in numbergame: {e}")
+            logger.error(f"Fout in numbergame: {e}")
+            await self.sio.emit('game_error', {"error": str(e)})
+        finally:
+            self.current_task = None
+            self.reset_instellingen()
+    
+    async def start_fallingcolorgame(self):
+        """Start falling color game in de achtergrond"""
+        try:
+            self.game_service.reset_stop_event()
+            
+            logger.info(f"Start falling color game met {self.rondes} rondes")
+            rondes = await self.game_service.run_fallingcolorgame(
+                self.rondes, self.kleuren, self.snelheid
+            )
+            
+            await self._save_training_results(rondes, "waarde")
+            logger.info("Falling color game afgelopen en opgeslagen")
+            
+        except Exception as e:
+            logger.error(f"Fout in falling color game: {e}")
             await self.sio.emit('game_error', {"error": str(e)})
         finally:
             self.current_task = None
@@ -109,7 +132,7 @@ class GameManager:
     async def _save_training_results(self, rondes: list, waarde_key: str):
         """Sla trainingsresultaten op in de database"""
         user_id = DataRepository.add_gebruiker(self.gebruikersnaam)
-        print(f"Nieuwe gebruiker toegevoegd met ID: {user_id}")
+        logger.info(f"Nieuwe gebruiker toegevoegd met ID: {user_id}")
         
         training_id = DataRepository.add_training(
             Training(
@@ -121,7 +144,7 @@ class GameManager:
                 game_id=self.game_id
             )
         )
-        print(f"Nieuwe training toegevoegd met ID: {training_id}")
+        logger.info(f"Nieuwe training toegevoegd met ID: {training_id}")
         
         for ronde in rondes:
             DataRepository.add_ronde_waarde(
@@ -169,6 +192,8 @@ class GameManager:
             self.current_task = asyncio.create_task(self.start_memorygame())
         elif game_id == 3:
             self.current_task = asyncio.create_task(self.start_numbergame())
+        elif game_id == 4:
+            self.current_task = asyncio.create_task(self.start_fallingcolorgame())
         else:
             return {
                 "status": "error",
@@ -194,7 +219,7 @@ class GameManager:
         try:
             await self.current_task
         except asyncio.CancelledError:
-            print("Game task succesvol geannuleerd")
+            logger.info("Game task succesvol geannuleerd")
         finally:
             self.current_task = None
             self.reset_instellingen()

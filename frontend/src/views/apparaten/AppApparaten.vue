@@ -2,7 +2,9 @@
 import { onMounted, onUnmounted, computed, ref } from 'vue';
 import CardPotjes from '../../components/cards/CardPotjes.vue';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
+import AppPasswordConfirm from '../../components/AppPasswordConfirm.vue';
 import { Power } from 'lucide-vue-next';
+import { getApiUrl } from '../../config/api.js';
 
 const connectedDevices = ref([]);
 const disconnectedDevices = ref([]);
@@ -18,7 +20,10 @@ function normalizeDevice(d) {
   if (!d || typeof d !== 'object') return d;
   const copy = { ...d };
   const nested = copy.status && (copy.status.batterij ?? copy.status.battery);
-  copy.batterij = copy.batterij ?? copy.battery ?? nested ?? 0;
+  const rawBattery = copy.batterij ?? copy.battery ?? nested;
+  const batteryUnknown = rawBattery === null || rawBattery === undefined;
+  copy._batterijUnknown = batteryUnknown;
+  copy.batterij = batteryUnknown ? 100 : rawBattery;
   return copy;
 }
 
@@ -98,8 +103,78 @@ const devices = computed(() => {
 });
 
 function formatBattery(b) {
-  if (b === null || b === undefined) return 0;
+  if (b === null || b === undefined) return 100;
   return b;
+}
+
+const showConfirmModal = ref(false);
+const confirmPassword = ref('');
+const confirmError = ref('');
+const confirmLoading = ref(false);
+
+function turnOff() {
+  confirmPassword.value = '';
+  confirmError.value = '';
+  showConfirmModal.value = true;
+}
+
+async function performTurnOff(password) {
+  confirmError.value = '';
+  confirmLoading.value = true;
+  try {
+    const res = await fetch(getApiUrl(`devices/uitschakelen`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputGebruiker: password }),
+    });
+
+    let json = null;
+    try {
+      json = await res.json();
+    } catch (e) {
+      // non-JSON response
+    }
+
+    if (!res.ok) {
+      let msg = res.statusText || 'Fout bij uitschakelen';
+      if (json && (json.message || json.status)) msg = json.message || json.status;
+      confirmError.value = msg;
+      console.error('Failed to turn off devices:', msg);
+      return false;
+    }
+
+    if (json && json.status && typeof json.status === 'string') {
+      const statusText = json.status || '';
+      if (statusText.toLowerCase().includes('fout') || statusText.toLowerCase().includes('niet uitgeschakeld')) {
+        confirmError.value = statusText;
+        console.warn('Turn off rejected by backend:', statusText);
+        return false;
+      }
+    }
+
+    showConfirmModal.value = false;
+    return true;
+  } catch (err) {
+    confirmError.value = 'Netwerkfout — probeer opnieuw';
+    console.error('Error turning off devices:', err);
+    return false;
+  } finally {
+    confirmLoading.value = false;
+  }
+}
+
+function cancelTurnOff() {
+  showConfirmModal.value = false;
+  confirmPassword.value = '';
+  confirmError.value = '';
+}
+
+async function confirmAndTurnOff() {
+  if (!confirmPassword.value) {
+    confirmError.value = 'Vul je wachtwoord in';
+    return;
+  }
+  await performTurnOff(confirmPassword.value);
 }
 </script>
 
@@ -115,10 +190,12 @@ function formatBattery(b) {
       </template>
     </div>
 
-    <button class="c-button c-apparaten__button">
+    <button @click="turnOff" class="c-button c-apparaten__button">
       <span class="c-button__icon"><Power /></span>
       <h3>Alles uitschakelen</h3>
     </button>
+
+    <AppPasswordConfirm :show="showConfirmModal" v-model:confirmValue="confirmPassword" :placeholder="'Wachtwoord'" :error="confirmError" :loading="confirmLoading" :title="'Bevestig uitschakelen'" :message="'Voer uw wachtwoord in om alle apparaten uit te schakelen.'" :cancelLabel="'Annuleren'" :confirmLabel="'Bevestigen'" @close="cancelTurnOff" @confirm="() => performTurnOff(confirmPassword)" />
   </div>
 </template>
 

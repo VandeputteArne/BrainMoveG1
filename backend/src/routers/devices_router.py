@@ -1,3 +1,4 @@
+import subprocess
 from fastapi import APIRouter
 from models.models import UitschakelenRequest
 import os
@@ -27,5 +28,5 @@ async def uitschakelen_apparaten(request: UitschakelenRequest):
         return {"status": "Foutief wachtwoord, apparaten niet uitgeschakeld"}
     
     await device_manager.stop_alle()
-    print("Uitschakelen alle apparaten via endpoint")
+    subprocess.run(["sudo", "poweroff"])
     return {"status": "Alle apparaten zijn uitgeschakeld"}

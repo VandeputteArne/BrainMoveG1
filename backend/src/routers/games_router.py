@@ -17,7 +17,7 @@ async def get_games_overview():
         
         # GameId 1 = Color Sprint: laagste gemiddelde tijd van rondewaarden
         # GameId 2+ = Memory etc: hoogste aantal kleuren gebruikt
-        if game_id == 1:
+        if game_id == 1 or game_id == 3 or game_id == 4:
             highscore = DataRepository.get_best_avg_for_game(game_id, use_min=True)
         else:
             highscore = DataRepository.get_max_kleuren_for_game(game_id)

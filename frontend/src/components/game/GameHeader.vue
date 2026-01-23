@@ -44,10 +44,13 @@ async function handleStop() {
 
 <style scoped>
 .c-game-header {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1.5rem 0.75rem;
+  background-color: var(--color-white);
+  z-index: 1000;
 }
 
 .c-game-header__stop {

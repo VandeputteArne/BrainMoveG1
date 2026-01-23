@@ -12,6 +12,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { useDeviceStatus } from '../../composables/useDeviceStatus';
 import { getApiUrl } from '../../config/api.js';
 import { enableAudio } from '../../services/sound.js';
+import DetailPopup from '../../components/DetailPopup.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -81,6 +82,9 @@ watch(
 const gameName = ref('');
 const gameDescription = ref('');
 const gameImage = ref('');
+const showDetailPopup = ref(false);
+const detailPopupTitle = ref('');
+const detailPopupMessage = ref('');
 
 onMounted(async () => {
   const cachedDetails = sessionStorage.getItem(`gameDetails_${gameId.value}`);
@@ -103,6 +107,17 @@ onMounted(async () => {
   }
 
   await fetchLeaderboard();
+
+  try {
+    const raw = sessionStorage.getItem('last_global_popup');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      detailPopupTitle.value = parsed.title || '';
+      detailPopupMessage.value = parsed.message || '';
+      showDetailPopup.value = true;
+      sessionStorage.removeItem('last_global_popup');
+    }
+  } catch (e) {}
 });
 
 async function fetchLeaderboard() {
@@ -186,6 +201,18 @@ onMounted(() => {
   window.addEventListener('storage', (ev) => {
     if (ev.key === 'device_status') readAvailableColors();
   });
+  const onGlobalPopup = (ev) => {
+    const detail = ev?.detail || {};
+    if (detail && (detail.title || detail.message)) {
+      detailPopupTitle.value = detail.title || '';
+      detailPopupMessage.value = detail.message || '';
+      showDetailPopup.value = true;
+    }
+  };
+  window.addEventListener('show_global_popup', onGlobalPopup);
+  onUnmounted(() => {
+    window.removeEventListener('show_global_popup', onGlobalPopup);
+  });
 });
 
 onUnmounted(() => {
@@ -238,7 +265,10 @@ async function startGame() {
   const payload = buildPayload();
 
   try {
-    localStorage.setItem('lastGamePayload', JSON.stringify(payload));
+    try {
+      sessionStorage.removeItem('last_global_popup');
+    } catch (e) {}
+    sessionStorage.setItem('lastGamePayload', JSON.stringify(payload));
   } catch (e) {
     // opslag niet beschikbaar, ga verder zonder opslaan
   }
@@ -256,21 +286,35 @@ async function startGame() {
       } catch (e) {}
       router.push(`/games/${gameId.value}/play`);
       return;
+    } else {
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 409) {
+        detailPopupTitle.value = 'Spel al bezig';
+        detailPopupMessage.value = data?.message || 'Er loopt al een spel. Probeer het later opnieuw.';
+      } else if (res.status === 400) {
+        detailPopupTitle.value = 'Instellingen missen';
+        detailPopupMessage.value = data?.message || 'Controleer de spelinstellingen.';
+      } else {
+        detailPopupTitle.value = 'Fout bij starten';
+        detailPopupMessage.value = data?.message || 'Kon het spel niet starten. Probeer het opnieuw.';
+      }
+      showDetailPopup.value = true;
+      return;
     }
   } catch (e) {
-    // netwerk/backend niet beschikbaar -> fallback
+    // netwerk/backend niet beschikbaar -> show error
     console.error('Network error:', e);
+    detailPopupTitle.value = 'Netwerkfout';
+    detailPopupMessage.value = 'Kan verbinding met de server niet maken. Controleer uw netwerk.';
+    showDetailPopup.value = true;
+    return;
   }
-
-  try {
-    await enableAudio();
-  } catch (e) {}
-  router.push(`/games/${gameId.value}/play`);
 }
 </script>
 
 <template>
   <div class="c-game-detail">
+    <DetailPopup :show="showDetailPopup" :title="detailPopupTitle" :message="detailPopupMessage" @close="showDetailPopup = false" />
     <div class="c-game-detail__left">
       <div>
         <InputGebruikersnaam ref="usernameInput" v-model="username" bold />
