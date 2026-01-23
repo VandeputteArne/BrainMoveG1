@@ -346,7 +346,7 @@ const char* DEVICE_COLOR = "rood";  // of: blauw, geel, groen
 
 ## Fase 11: Custom Domein Instellen (Optioneel)
 
-*Doel: `brainmove.g1` gebruiken in plaats van het IP-adres.*
+*Doel: `brainmove.local` gebruiken in plaats van het IP-adres.*
 
 Dit is optioneel - het IP-adres blijft altijd werken als fallback.
 
@@ -358,7 +358,7 @@ Dit is optioneel - het IP-adres blijft altijd werken als fallback.
 
 2. **Plak deze inhoud:**
    ```conf
-   address=/brainmove.g1/10.42.0.1
+   address=/brainmove.local/10.42.0.1
    address=/brainmove/10.42.0.1
    ```
 
@@ -375,7 +375,7 @@ Dit is optioneel - het IP-adres blijft altijd werken als fallback.
 
    Verander naar:
    ```env
-   VITE_API_BASE_URL=http://brainmove.g1:8000
+   VITE_API_BASE_URL=http://brainmove.local:8000
    ```
 
 5. **Frontend rebuilden:**
@@ -389,7 +389,7 @@ Dit is optioneel - het IP-adres blijft altijd werken als fallback.
    ./scripts/restart_all.sh
    ```
 
-**Resultaat:** Webapp bereikbaar via `http://brainmove.g1:3000`
+**Resultaat:** Webapp bereikbaar via `http://brainmove.local:3000`
 
 > Voor uitgebreide troubleshooting, zie [dnsmasq-setup-guide.md](dnsmasq-setup-guide.md)
 
@@ -403,7 +403,7 @@ Print deze twee QR-codes uit voor op het apparaat:
    * Code: `WIFI:T:WPA;S:BrainMoveG1;P:<YOUR_PASSWORD_HERE>;;`
 
 2. **Sticker 2: "Speel het spel"**
-   * Code: `http://10.42.0.1:3000`
+   * Code: `http://brainmove.local:3000`
 
 ---
 
@@ -472,8 +472,8 @@ sudo nmcli connection up BrainMoveG1
 
 | Service | URL/Poort | Doel |
 |---------|-----------|------|
-| Frontend | `http://10.42.0.1:3000` | Webapp |
-| Backend API | `http://10.42.0.1:8000` | REST API |
-| API Docs | `http://10.42.0.1:8000/docs` | Swagger documentatie |
-| MQTT Broker | `10.42.0.1:1883` | ESP32 communicatie |
+| Frontend | `http://brainmove.local:3000` | Webapp |
+| Backend API | `http://brainmove.local:8000` | REST API |
+| API Docs | `http://brainmove.local:8000/docs` | Swagger documentatie |
+| MQTT Broker | `brainmove.local:1883` | ESP32 communicatie |
 | Hotspot | `BrainMoveG1` | WiFi netwerk |
