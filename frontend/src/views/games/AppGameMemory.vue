@@ -230,6 +230,13 @@ onUnmounted(() => {
   position: relative;
 }
 
+.c-game-memory__background {
+  position: absolute;
+  inset: 0;
+  background: var(--gray-80);
+  z-index: 0;
+}
+
 .c-game-memory__color {
   position: absolute;
   inset: 0;
