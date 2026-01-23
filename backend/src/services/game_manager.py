@@ -86,6 +86,26 @@ class GameManager:
             self.current_task = None
             self.reset_instellingen()
     
+    async def start_numbergame(self):
+        """Start numbergame in de achtergrond"""
+        try:
+            self.game_service.reset_stop_event()
+            
+            print(f"Start numbergame met {self.rondes} rondes")
+            rondes = await self.game_service.run_numbergame(
+                self.rondes, self.kleuren, self.snelheid
+            )
+            
+            await self._save_training_results(rondes, "waarde")
+            print("Numbergame afgelopen en opgeslagen")
+            
+        except Exception as e:
+            print(f"Fout in numbergame: {e}")
+            await self.sio.emit('game_error', {"error": str(e)})
+        finally:
+            self.current_task = None
+            self.reset_instellingen()
+    
     async def _save_training_results(self, rondes: list, waarde_key: str):
         """Sla trainingsresultaten op in de database"""
         user_id = DataRepository.add_gebruiker(self.gebruikersnaam)
@@ -147,6 +167,8 @@ class GameManager:
             self.current_task = asyncio.create_task(self.start_colorgame())
         elif game_id == 2:
             self.current_task = asyncio.create_task(self.start_memorygame())
+        elif game_id == 3:
+            self.current_task = asyncio.create_task(self.start_numbergame())
         else:
             return {
                 "status": "error",

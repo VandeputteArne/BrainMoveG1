@@ -110,6 +110,9 @@ class StatistiekenVoorColorSprint(BaseModel):
     aantal_correct: int
     aantal_fout: int
     aantal_telaat: int
+
+class UitschakelenRequest(BaseModel):
+    inputGebruiker: str
     
 
 

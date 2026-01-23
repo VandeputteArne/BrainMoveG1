@@ -35,7 +35,7 @@ async def get_laatste_rondewaarden():
     correcte_rondewaarden_data = [CorrecteRondeWaarde(ronde_nummer=item.ronde_nummer, waarde=item.waarde) for item in correcte_rondewaarden]
 
     game_id = DataRepository.get_gameid_by_trainingid(last_training_id) if last_training_id else None
-    if(game_id ==1):
+    if(game_id ==1 or game_id == 3):
         ranking = DataRepository.get_ranking_for_onetraining(last_training_id)
         return StatistiekenVoorColorSprint(
         game_id=game_id or 0,
@@ -105,7 +105,7 @@ async def get_training_details(training_id: int):
     game_id = DataRepository.get_gameid_by_trainingid(training_id)
     gebruikersnaam = DataRepository.get_gebruikersnaam_by_trainingid(training_id)
 
-    if(game_id==1):
+    if(game_id==1 or game_id==3):
         return StatistiekenVoorColorSprint(
         game_id=game_id or 0,
         gebruikersnaam=gebruikersnaam or "",
