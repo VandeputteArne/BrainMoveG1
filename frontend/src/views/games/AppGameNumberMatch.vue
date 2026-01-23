@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import IntroOverlay from '../../components/game/IntroOverlay.vue';
 import { useRouter } from 'vue-router';
 
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
@@ -35,23 +36,25 @@ const mappingData = ref([]);
 const rawMappingPayload = ref(null);
 
 const showIntro = ref(true);
-const introDurationMs = 2000; // change this number to set seconds
-let introTimer = null;
 
 function beginGame() {
-  console.debug('[NumberMatch] beginGame');
-  showIntro.value = false;
+  // called when overlay has finished hiding; keep for any final setup
+  console.debug('[NumberMatch] beginGame (overlay done)');
   try {
     enableAudio().catch(() => {});
   } catch (e) {}
-  // Start countdown; use slight delay as a fallback to avoid blocking UI
-  setTimeout(() => {
-    try {
-      startCountdown();
-    } catch (e) {
-      console.error('[NumberMatch] startCountdown error', e);
-    }
-  }, 50);
+}
+
+async function onOverlayExiting() {
+  // overlay is starting to hide; start the countdown so it's visible under the overlay
+  try {
+    await tryResumeIfExists();
+  } catch (e) {}
+  try {
+    startCountdown();
+  } catch (e) {
+    console.error('[NumberMatch] startCountdown error', e);
+  }
 }
 
 const { countdown, showCountdown, countdownText, startCountdown } = useGameCountdown({
@@ -189,14 +192,7 @@ onMounted(async () => {
     // socket connect may fail (CORS, network) — ignore here
   }
 
-  if (showIntro.value) {
-    introTimer = setTimeout(async () => {
-      try {
-        await tryResumeIfExists();
-      } catch (e) {}
-      beginGame();
-    }, introDurationMs);
-  }
+  // Intro overlay is provided by IntroOverlay component (auto-advance + resume)
 });
 
 onUnmounted(() => {
@@ -209,10 +205,7 @@ onUnmounted(() => {
   } finally {
     stopTimer();
     disconnectSocket();
-    if (introTimer) {
-      clearTimeout(introTimer);
-      introTimer = null;
-    }
+    // IntroOverlay manages its own timer
   }
 });
 
@@ -229,14 +222,9 @@ function goBack() {
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
     <!-- Intro instruction overlay shown before countdown (click anywhere to start) -->
-    <div v-if="showIntro" class="c-game__intro" @click.self="beginGame" role="button" aria-label="Start game">
-      <div class="c-game__intro-content">
-        <h2>Number Match</h2>
-        <p>Onthoud welke kleur bij welk nummer hoort. Wacht op het startsignaal.</p>
-      </div>
-    </div>
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Number Match" text="Onthoud welke kleur bij welk nummer hoort. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
 
-    <div v-else class="c-game">
+    <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
 
       <div class="c-game__content">

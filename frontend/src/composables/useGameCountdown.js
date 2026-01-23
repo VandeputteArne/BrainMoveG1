@@ -17,6 +17,7 @@ export function useGameCountdown(options = {}) {
   const countdownText = ref('');
 
   async function startCountdown() {
+    if (showCountdown.value) return;
     showCountdown.value = true;
 
     for (let i = 3; i >= 1; i--) {

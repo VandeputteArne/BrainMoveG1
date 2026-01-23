@@ -1,5 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue';
+import IntroOverlay from '../../components/game/IntroOverlay.vue';
 import { useRouter } from 'vue-router';
 
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
@@ -16,9 +17,6 @@ const bgColor = ref('#313335');
 const isAnimating = ref(false);
 const showWaitingScreen = ref(false);
 const showRoundScreen = ref(false);
-
-const introDurationMs = 2000; // change this number to set seconds
-let introTimer = null;
 
 const kleuren = {
   blauw: '#2979ff',
@@ -39,19 +37,22 @@ const { countdown, showCountdown, countdownText, startCountdown } = useGameCount
 const showIntro = ref(true);
 
 function beginGame() {
-  console.debug('[Memory] beginGame clicked');
-  showIntro.value = false;
+  console.debug('[Memory] beginGame (overlay done)');
   try {
     enableAudio().catch(() => {});
   } catch (e) {}
-  // start the countdown (3..2..1..GO) after a tiny delay so UI updates
-  setTimeout(() => {
-    try {
-      startCountdown();
-    } catch (e) {
-      console.error('[Memory] startCountdown error', e);
-    }
-  }, 50);
+}
+
+async function onOverlayExiting() {
+  // overlay starting to hide: resume audio and start countdown underneath
+  try {
+    await tryResumeIfExists();
+  } catch (e) {}
+  try {
+    startCountdown();
+  } catch (e) {
+    console.error('[Memory] startCountdown error', e);
+  }
 }
 
 const router = useRouter();
@@ -157,14 +158,7 @@ onMounted(async () => {
     console.error('[socket] error:', err);
   }
 
-  if (showIntro.value) {
-    introTimer = setTimeout(async () => {
-      try {
-        await tryResumeIfExists();
-      } catch (e) {}
-      beginGame();
-    }, introDurationMs);
-  }
+  // Intro overlay is handled by IntroOverlay component (auto-advances and resumes audio)
 });
 
 onUnmounted(() => {
@@ -179,10 +173,7 @@ onUnmounted(() => {
   } finally {
     stopTimer();
     disconnectSocket();
-    if (introTimer) {
-      clearTimeout(introTimer);
-      introTimer = null;
-    }
+    // IntroOverlay clears its own timer
   }
 });
 </script>
@@ -191,15 +182,9 @@ onUnmounted(() => {
   <div class="c-game-root">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <div v-if="showIntro" class="c-game-memory__intro" @click.self="beginGame" role="button" aria-label="Start memory">
-      <div class="c-game-memory__intro-content">
-        <h2>Memory</h2>
-        <p>Wacht tot de kleuren getoond zijn. Kijk goed en probeer ze te onthouden.</p>
-        <button type="button" class="btn btn-primary" @click.stop.prevent="beginGame">Ik ben klaar</button>
-      </div>
-    </div>
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Memory" text="Wacht tot de kleuren getoond zijn. Kijk goed en probeer ze te onthouden." overlayClass="c-game-memory__intro" contentClass="c-game-memory__intro-content" @done="beginGame" />
 
-    <div v-else class="c-game-memory">
+    <div v-if="!showIntro" class="c-game-memory">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
 
       <div class="c-game-memory__content">
