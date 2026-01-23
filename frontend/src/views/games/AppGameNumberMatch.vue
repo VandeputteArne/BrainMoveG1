@@ -66,6 +66,7 @@ const { countdown, showCountdown, countdownText, startCountdown } = useGameCount
 
 const isAnimating = ref(false);
 const currentNumber = ref(null);
+const numberKey = ref(0);
 
 const kleuren = {
   blauw: '#2979ff', // blauw
@@ -165,6 +166,7 @@ onMounted(async () => {
 
       if (nummer !== null && (typeof nummer === 'number' || !isNaN(Number(nummer)))) {
         currentNumber.value = Number(nummer);
+        numberKey.value = (numberKey.value || 0) + 1;
         try {
           const mapped = (mappingData.value || []).find((it) => Number(it.nummer) === Number(nummer));
           console.debug('[socket] gekozen_nummer resolved mapping ->', mapped);
@@ -242,9 +244,11 @@ function goBack() {
         </div>
 
         <div v-else class="c-game__number-area">
-          <div class="c-game__number" :class="{ 'is-animating': isAnimating }">
-            <span v-if="currentNumber !== null">{{ currentNumber }}</span>
-            <span v-else class="c-game__waiting">Wachten...</span>
+          <div class="c-game__number">
+            <transition name="number-switch" mode="out-in">
+              <span v-if="currentNumber !== null" :key="numberKey" class="number-value">{{ currentNumber }}</span>
+              <span v-else key="waiting" class="c-game__waiting">Wachten...</span>
+            </transition>
           </div>
         </div>
 
@@ -372,10 +376,61 @@ function goBack() {
   color: white;
   font-weight: 800;
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  position: relative;
+  width: 100%;
+  height: 6rem; /* reserve space to avoid layout jump */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
 }
-.c-game__number.is-animating {
-  transform: scale(1.08);
-  transition: transform 120ms ease-out;
+
+/* Ensure the switching elements overlay each other for smooth out-in animation */
+.c-game__number .number-value,
+.c-game__number .c-game__waiting {
+  display: inline-block;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+/* Enter: pop from very small to slightly overshoot, then settle */
+.number-switch-enter-active {
+  animation: pop-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.number-switch-leave-active {
+  animation: pop-out 200ms ease-in both;
+}
+
+@keyframes pop-in {
+  0% {
+    transform: translate(-50%, -50%) scale(0.12);
+    opacity: 0;
+    filter: blur(4px);
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.18);
+    opacity: 1;
+    filter: blur(0);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes pop-out {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.28);
+    opacity: 0;
+    filter: blur(2px);
+  }
 }
 .c-game__waiting {
   font-size: 1.25rem;
