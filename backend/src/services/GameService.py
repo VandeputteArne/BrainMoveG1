@@ -1,7 +1,10 @@
 import asyncio
 import random
 import time
+import logging
 from typing import List, Dict
+
+logger = logging.getLogger(__name__)
 
 class GameService:
     def __init__(self, device_manager, sio, hardware_delay: float = 0.07):
@@ -28,7 +31,7 @@ class GameService:
         
         for ronde in range(1, aantal_rondes + 1):
             if self.stop_event.is_set():
-                print("Game gestopt door gebruiker")
+                logger.info("Game gestopt door gebruiker")
                 break
             
             gekozen_kleur = random.choice(kleuren).upper()
@@ -38,7 +41,7 @@ class GameService:
                 'maxronden': aantal_rondes,
                 'kleur': gekozen_kleur
             })
-            print(f"Round {ronde}: Chosen color = {gekozen_kleur}")
+            logger.info(f"Round {ronde}: Chosen color = {gekozen_kleur}")
             
             await asyncio.sleep(0.2)
             await self.device_manager.set_correct_kegel(gekozen_kleur)
@@ -60,7 +63,7 @@ class GameService:
                     task.cancel()
                 
                 if stop_task in done:
-                    print("Game gestopt tijdens wachten op detectie")
+                    logger.info("Game gestopt tijdens wachten op detectie")
                     break
                 
                 if detectie_task in done:
@@ -70,21 +73,21 @@ class GameService:
                     if (max_tijd - reactietijd) < 0:
                         reactietijd = max_tijd
                         status = "te laat"
-                        print(f"Too late! Reaction time: {reactietijd}s")
+                        logger.info(f"Too late! Reaction time: {reactietijd}s")
                     elif detected_kleur == gekozen_kleur.lower():
                         status = "correct"
-                        print(f"Correct! Reaction time: {reactietijd}s")
+                        logger.info(f"Correct! Reaction time: {reactietijd}s")
                     else:
                         status = "fout"
                         reactietijd += max_tijd
-                        print(f"Wrong color! Detected: {detected_kleur}, Expected: {gekozen_kleur}")
+                        logger.info(f"Wrong color! Detected: {detected_kleur}, Expected: {gekozen_kleur}")
                 else:
                     reactietijd = max_tijd
                     status = "te laat"
-                    print(f"Too late! Timeout after {max_tijd}s")
+                    logger.info(f"Too late! Timeout after {max_tijd}s")
                     
             except Exception as e:
-                print(f"Error in colorgame ronde: {e}")
+                logger.error(f"Error in colorgame ronde: {e}")
                 reactietijd = max_tijd
                 status = "fout"
             
@@ -119,7 +122,7 @@ class GameService:
 
         for ronde in range(1, aantal_rondes + 1):
             if self.stop_event.is_set():
-                print("Game gestopt door gebruiker")
+                logger.info("Game gestopt door gebruiker")
                 break
                 
             nieuwe_kleur = random.choice(kleuren)
@@ -131,7 +134,7 @@ class GameService:
 
             for kleur in geheugen_lijst:
                 await self.sio.emit('toon_kleur', {'kleur': kleur.upper()})
-                print(kleur)
+                logger.debug(f"Toon kleur: {kleur}")
                 await asyncio.sleep(snelheid)
 
             await self.sio.emit('kleuren_getoond', {'aantal': len(geheugen_lijst)})
@@ -142,7 +145,7 @@ class GameService:
 
             for verwachte_kleur in geheugen_lijst:
                 if self.stop_event.is_set():
-                    print("Game gestopt tijdens memory sequence")
+                    logger.info("Game gestopt tijdens memory sequence")
                     status = "gestopt"
                     break
                 
@@ -171,7 +174,7 @@ class GameService:
                     await self.device_manager.reset_correct_kegel(verwachte_kleur)
                     
                     if stop_task in done:
-                        print("Game gestopt tijdens wachten op aanraking")
+                        logger.info("Game gestopt tijdens wachten op aanraking")
                         status = "gestopt"
                         break
                     
@@ -181,26 +184,26 @@ class GameService:
                         if detected_kleur != verwachte_kleur.lower():
                             await self.sio.emit('fout_kleur', {'status': 'game over'})
                             status = "fout"
-                            print(f"Fout! Verwacht: {verwachte_kleur}, Gekregen: {detected_kleur}")
+                            logger.info(f"Fout! Verwacht: {verwachte_kleur}, Gekregen: {detected_kleur}")
                             break
                         
-                        print(f"Correct: {detected_kleur}")
+                        logger.debug(f"Correct: {detected_kleur}")
                     else:
                         await self.sio.emit('fout_kleur', {'status': 'timeout'})
                         status = "fout"
-                        print("Timeout: Te lang gewacht op aanraking")
+                        logger.info("Timeout: Te lang gewacht op aanraking")
                         break
 
                 except Exception as e:
                     await self.device_manager.reset_correct_kegel(verwachte_kleur)
-                    print(f"Error in memory sequence: {e}")
+                    logger.error(f"Error in memory sequence: {e}")
                     status = "fout"
                     break
 
             eindtijd = time.time()
             reactietijd = round(eindtijd - starttijd, 2)
             await self.sio.emit('ronde_einde', {'ronde': ronde, 'status': status})
-            print(f"Ronde {ronde} klaar: {status}")
+            logger.info(f"Ronde {ronde} klaar: {status}")
             await self.device_manager.stop_alle()
 
             rondes_memory.append({
@@ -214,7 +217,7 @@ class GameService:
 
         self.device_manager.zet_detectie_callback(None)
         await self.sio.emit('game_einde', {"status": "game gedaan"})
-        print("Einde memory game")
+        logger.info("Einde memory game")
         return rondes_memory
     
     async def run_numbergame(self, aantal_rondes: int, kleuren: List[str], snelheid: float) -> List[Dict]:
@@ -247,7 +250,7 @@ class GameService:
         await self.sio.emit('nummer_mapping', {
             'mapping': kleur_naar_nummer
         })
-        print(f"Random mapping: {kleur_naar_nummer}")
+        logger.info(f"Random mapping: {kleur_naar_nummer}")
         
         # Wacht even zodat de gebruiker de mapping kan zien
         await asyncio.sleep(5)
@@ -259,7 +262,7 @@ class GameService:
         
         for ronde in range(1, aantal_rondes + 1):
             if self.stop_event.is_set():
-                print("Game gestopt door gebruiker")
+                logger.info("Game gestopt door gebruiker")
                 break
             
             # Kies een random nummer tussen 1 en het aantal gekozen kleuren
@@ -277,7 +280,7 @@ class GameService:
                 'maxronden': aantal_rondes,
                 'nummer': gekozen_nummer
             })
-            print(f"Round {ronde}: Chosen number = {gekozen_nummer}, Expected color = {verwachte_kleur}")
+            logger.info(f"Round {ronde}: Chosen number = {gekozen_nummer}, Expected color = {verwachte_kleur}")
             
             await asyncio.sleep(0.2)
             await self.device_manager.set_correct_kegel(verwachte_kleur)
@@ -304,7 +307,7 @@ class GameService:
                         pass
                 
                 if stop_task in done:
-                    print("Game gestopt tijdens wachten op detectie")
+                    logger.info("Game gestopt tijdens wachten op detectie")
                     break
                 
                 if detectie_task in done:
@@ -314,21 +317,21 @@ class GameService:
                     if (max_tijd - reactietijd) < 0:
                         reactietijd = max_tijd
                         status = "te laat"
-                        print(f"Too late! Reaction time: {reactietijd}s")
+                        logger.info(f"Too late! Reaction time: {reactietijd}s")
                     elif detected_kleur == verwachte_kleur.lower():
                         status = "correct"
-                        print(f"Correct! Reaction time: {reactietijd}s")
+                        logger.info(f"Correct! Reaction time: {reactietijd}s")
                     else:
                         status = "fout"
                         reactietijd += max_tijd
-                        print(f"Wrong color! Detected: {detected_kleur}, Expected: {verwachte_kleur}")
+                        logger.info(f"Wrong color! Detected: {detected_kleur}, Expected: {verwachte_kleur}")
                 else:
                     reactietijd = max_tijd
                     status = "te laat"
-                    print(f"Too late! Timeout after {max_tijd}s")
+                    logger.info(f"Too late! Timeout after {max_tijd}s")
                     
             except Exception as e:
-                print(f"Error in numbergame ronde: {e}")
+                logger.error(f"Error in numbergame ronde: {e}")
                 reactietijd = max_tijd
                 status = "fout"
             
@@ -345,6 +348,123 @@ class GameService:
         await self.sio.emit('game_einde', {"status": "game gedaan"})
         
         return numbergame_rondes
+    
+    async def run_fallingcolorgame(self, aantal_rondes: int, kleuren: List[str], snelheid: float) -> List[Dict]:
+        """Voert het falling color game uit waarbij kleuren van 100% naar 0% vallen"""
+        fallingcolor_rondes = []
+        val_tijd = float(snelheid)  # Tijd om van 100% naar 0% te vallen
+        update_interval = 0.05  # Update percentage elke 50ms
+        
+        detectie_event = asyncio.Event()
+        detected_color = {}
+        
+        def on_detectie(gebeurtenis):
+            detected_color.clear()
+            detected_color.update(gebeurtenis)
+            detectie_event.set()
+        
+        self.device_manager.zet_detectie_callback(on_detectie)
+        await self.device_manager.start_alle()
+        
+        for ronde in range(1, aantal_rondes + 1):
+            if self.stop_event.is_set():
+                logger.info("Game gestopt door gebruiker")
+                break
+            
+            gekozen_kleur = random.choice(kleuren).upper()
+            
+            await self.sio.emit('vallende_kleur_start', {
+                'rondenummer': ronde,
+                'maxronden': aantal_rondes,
+                'kleur': gekozen_kleur,
+                'val_tijd': val_tijd
+            })
+            logger.info(f"Round {ronde}: Falling color = {gekozen_kleur}, Fall time = {val_tijd}s")
+            
+            await asyncio.sleep(0.2)
+            await self.device_manager.set_correct_kegel(gekozen_kleur)
+            
+            detectie_event.clear()
+            detected_color.clear()
+            starttijd = time.time()
+            correct_touched = False
+            status = "te laat"  # Default status als tijd op is
+            
+            try:
+                # Start falling loop
+                while True:
+                    elapsed = time.time() - starttijd
+                    
+                    if elapsed >= val_tijd:
+                        # Tijd is op, kleur op 100%, speler is dood
+                        percentage = 100
+                        await self.sio.emit('vallende_kleur_percentage', {
+                            'percentage': percentage,
+                            'rondenummer': ronde
+                        })
+                        status = "te laat"
+                        await self.sio.emit('fout_kleur', {'status': 'game over - te laat'})
+                        logger.info(f"Game Over! Kleur bereikte 100%")
+                        break
+                    
+                    # Bereken percentage (0% -> 100%)
+                    percentage = min(100, (elapsed / val_tijd * 100))
+                    
+                    await self.sio.emit('vallende_kleur_percentage', {
+                        'percentage': round(percentage, 1),
+                        'rondenummer': ronde
+                    })
+                    
+                    # Check of er een detectie is
+                    if detectie_event.is_set():
+                        reactietijd = round(elapsed, 2) - self.hardware_delay
+                        detected_kleur = detected_color.get("kleur", "").lower()
+                        
+                        if detected_kleur == gekozen_kleur.lower():
+                            status = "correct"
+                            correct_touched = True
+                            logger.info(f"Correct! Reaction time: {reactietijd}s at {percentage:.1f}%")
+                            break
+                        else:
+                            status = "fout"
+                            await self.sio.emit('fout_kleur', {'status': 'game over - foute kleur'})
+                            logger.info(f"Wrong color! Detected: {detected_kleur}, Expected: {gekozen_kleur}")
+                            break
+                    
+                    # Check of game gestopt is
+                    if self.stop_event.is_set():
+                        logger.info("Game gestopt tijdens falling color")
+                        status = "gestopt"
+                        break
+                    
+                    await asyncio.sleep(update_interval)
+                
+            except Exception as e:
+                logger.error(f"Error in fallingcolorgame ronde: {e}")
+                status = "fout"
+            
+            # Bereken reactietijd voor opslag
+            eindtijd = time.time()
+            reactietijd = round(eindtijd - starttijd, 2) - self.hardware_delay
+            
+            fallingcolor_rondes.append({
+                "rondenummer": ronde,
+                "waarde": reactietijd if status == "correct" else val_tijd,
+                "uitkomst": status,
+            })
+            
+            await self.device_manager.reset_correct_kegel(gekozen_kleur)
+            
+            # Als de speler dood is (fout of te laat), stop de game
+            if status in ["fout", "te laat"]:
+                logger.info(f"Speler is dood na ronde {ronde}")
+                break
+        
+        await self.device_manager.stop_alle()
+        self.device_manager.zet_detectie_callback(None)
+        await self.sio.emit('game_einde', {"status": "game gedaan"})
+        
+        return fallingcolor_rondes
     
     def reset_stop_event(self):
         """Reset het stop event voor een nieuwe game"""

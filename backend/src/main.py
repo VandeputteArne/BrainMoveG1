@@ -23,8 +23,20 @@ from backend.src.services.GameService import GameService
 from backend.src.services.game_manager import GameManager
 from backend.src.models.models import Instellingen
 
+# Configure logging
+log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
+os.makedirs(log_dir, exist_ok=True)
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(os.path.join(log_dir, 'brainmove.log')),
+        logging.StreamHandler()
+    ]
+)
+
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 HARDWARE_DELAY = float(os.getenv("HARDWARE_DELAY", "0.07"))
 
