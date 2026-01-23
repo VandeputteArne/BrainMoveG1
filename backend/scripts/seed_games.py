@@ -133,9 +133,78 @@ def add_memory_game():
 
     conn.close()
 
+def add_number_match():
+    db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'brainmove.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+    INSERT INTO Games (GameId, GameBeschrijving, GameNaam, Eenheid, Tag, LaatstBewerkt) 
+    VALUES (?, ?, ?, ?, ?, ?)
+    ''', (
+        3,
+        'Blijf gefocust! Eerst zie je welke kleur bij welk potje hoort, bijvoorbeeld rood is 1, blauw 2, groen 3, geel 4. Onthoud de koppeling en zoek daarna razendsnel het juiste potje op. Elke seconde telt. Verbeter je geheugen, versla je records en word steeds sneller.',
+        'Number Match',
+        's',
+        'geheugen',
+        '2026-01-22'
+    ))
+
+    conn.commit()
+    print('✓ Game "Number Match" succesvol toegevoegd met ID 3')
+
+    moeilijkheden = [
+        ('Gemakkelijk', 5, 3),
+        ('Gemiddeld', 3, 3),
+        ('Moeilijk', 2, 3)
+    ]
+    
+    for moeilijkheid, snelheid, game_id in moeilijkheden:
+        cursor.execute('''
+        INSERT INTO Moeilijkheden (Moeilijkheid, Snelheid, GameId) 
+        VALUES (?, ?, ?)
+        ''', (moeilijkheid, snelheid, game_id))
+    
+    conn.commit()
+    print('✓ Moeilijkheden toegevoegd (Gemakkelijk, Gemiddeld, Moeilijk)')
+
+    rondes = [5, 10, 15]
+    
+    for nummer in rondes:
+        cursor.execute('''
+        INSERT INTO Rondes (Nummer, GameId) 
+        VALUES (?, ?)
+        ''', (nummer, 3))
+    
+    conn.commit()
+    print('✓ Rondes toegevoegd (5, 10, 15)')
+
+    cursor.execute('SELECT * FROM Games WHERE GameId = 3')
+    row = cursor.fetchone()
+    print(f'\nOpgeslagen Game:')
+    print(f'  GameId: {row[0]}')
+    print(f'  GameNaam: {row[2]}')
+    print(f'  Eenheid: {row[3]}')
+    print(f'  Tag: {row[4]}')
+    print(f'  LaatstBewerkt: {row[5]}')
+
+    cursor.execute('SELECT * FROM Moeilijkheden WHERE GameId = 3')
+    print(f'\nOpgeslagen Moeilijkheden:')
+    for row in cursor.fetchall():
+        print(f'  {row[1]} - Snelheid: {row[2]} (LaatstBewerkt: {row[4]})')
+
+    cursor.execute('SELECT * FROM Rondes WHERE GameId = 3')
+    print(f'\nOpgeslagen Rondes:')
+    for row in cursor.fetchall():
+        print(f'  Nummer: {row[1]} (LaatstBewerkt: {row[3]})')
+
+    conn.close()
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "memory":
         add_memory_game()
+    elif len(sys.argv) > 1 and sys.argv[1] == "number":
+        add_number_match()
     else:
         add_color_sprint()

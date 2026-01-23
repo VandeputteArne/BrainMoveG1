@@ -7,7 +7,6 @@ router = APIRouter(
     tags=["Games"]
 )
 
-#games overview endpoint
 @router.get("/overview", response_model=list[GameVoorOverzicht], summary="Haal een overzicht op van alle spellen met hun highscores", tags=["Spelletjes"])
 async def get_games_overview():
     games = DataRepository.get_all_games()
@@ -25,7 +24,7 @@ async def get_games_overview():
         
         result.append(GameVoorOverzicht(
             game_naam=game['GameNaam'],
-            tag=game['Tag'],
+            tag=game['Tag'].capitalize(),
             highscore=round(highscore, 2),
             eenheid=game['Eenheid']
         ))
@@ -37,8 +36,6 @@ async def get_game_details(game_id: int):
     details = DataRepository.get_game_details(game_id)
     return details
 
-
-#historie endpoint ----------------------------------------------
 @router.get("/filters", response_model=list[GameVoorFilter], summary="Haal de lijst van spellen op voor filterdoeleinden", tags=["Spelletjes"])
 async def get_games_for_filter():
     games = DataRepository.get_games_for_filter()
