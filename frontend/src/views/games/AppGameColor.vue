@@ -13,10 +13,8 @@ const bgColor = ref('');
 const currentRound = ref(1);
 const totalRounds = ref(5);
 
-// Use the timer composable
 const { formattedTime, startTimer, stopTimer } = useGameTimer();
 
-// Use the countdown composable
 const { countdown, showCountdown, countdownText, startCountdown } = useGameCountdown({
   gameId: 1,
   onComplete: () => {
@@ -35,10 +33,9 @@ const kleuren = {
 };
 
 let _socket = null;
-// read chosen colors from last saved payload (from AppDetail)
 let chosenColors = [];
 try {
-  const raw = localStorage.getItem('lastGamePayload');
+  const raw = sessionStorage.getItem('lastGamePayload');
   if (raw) {
     const parsed = JSON.parse(raw || '{}');
     if (Array.isArray(parsed.kleuren)) {
@@ -86,7 +83,6 @@ onMounted(async () => {
 
     _socket.on('game_einde', () => {
       console.log('[socket] game_einde received');
-      // stop timer before navigating
       stopTimer();
       router.push('/resultaten/proficiat');
     });
@@ -94,7 +90,6 @@ onMounted(async () => {
     // socket connect may fail (CORS, network) — ignore here
   }
 
-  // Start countdown
   await startCountdown();
 });
 
@@ -105,7 +100,6 @@ onUnmounted(() => {
       _socket.off('game_einde');
     }
   } finally {
-    // stop timer and disconnect socket when component unmounts
     stopTimer();
     disconnectSocket();
   }

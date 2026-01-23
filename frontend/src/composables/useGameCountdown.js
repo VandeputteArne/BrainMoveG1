@@ -13,7 +13,7 @@ export function useGameCountdown(options = {}) {
   const router = useRouter();
 
   const countdown = ref(3);
-  const showCountdown = ref(true);
+  const showCountdown = ref(false);
   const countdownText = ref('');
 
   async function startCountdown() {
@@ -25,11 +25,9 @@ export function useGameCountdown(options = {}) {
       await new Promise((r) => setTimeout(r, 700));
     }
 
-    // Show "GO!" and signal backend
     countdown.value = 'GO!';
     countdownText.value = '';
 
-    // Signal backend when showing GO! (if gameId provided)
     if (gameId) {
       try {
         const res = await fetch(`http://10.42.0.1:8000/games/${gameId}/play`, { method: 'GET' });
@@ -49,15 +47,22 @@ export function useGameCountdown(options = {}) {
           const data = await res.json();
           console.warn('Game conflict (409):', data);
           // notify UI and redirect
-          window.dispatchEvent(new CustomEvent('show_global_popup', { detail: { title: 'Game niet gestart', message: data?.message || 'Er is al een game actief.' } }));
+          const detail = { title: 'Game niet gestart', message: data?.message || 'Er is al een game actief.' };
+          try {
+            sessionStorage.setItem('last_global_popup', JSON.stringify(detail));
+          } catch (e) {}
+          window.dispatchEvent(new CustomEvent('show_global_popup', { detail }));
           showCountdown.value = false;
           router.push(`/games/${gameId}`);
           return;
         } else if (res.status === 400) {
-          // 400 Bad Request - missing settings
           const data = await res.json();
           console.warn('Missing game settings (400):', data);
-          window.dispatchEvent(new CustomEvent('show_global_popup', { detail: { title: 'Instellingen missen', message: data?.message || 'Controleer de spelinstellingen.' } }));
+          const detail = { title: 'Instellingen missen', message: data?.message || 'Controleer de spelinstellingen.' };
+          try {
+            sessionStorage.setItem('last_global_popup', JSON.stringify(detail));
+          } catch (e) {}
+          window.dispatchEvent(new CustomEvent('show_global_popup', { detail }));
           showCountdown.value = false;
           router.push(`/games/${gameId}`);
           return;
@@ -71,7 +76,6 @@ export function useGameCountdown(options = {}) {
 
     await new Promise((r) => setTimeout(r, 500));
 
-    // Hide countdown and trigger callback
     showCountdown.value = false;
 
     if (onComplete && typeof onComplete === 'function') {

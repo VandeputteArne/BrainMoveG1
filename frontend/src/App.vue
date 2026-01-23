@@ -12,7 +12,7 @@ const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus, connectedDevices, 
 
 const isInGameRoute = () => {
   const name = route?.name;
-  return name === 'game-play' || name === 'game-memory-play';
+  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play';
 };
 
 const isOnboardingRoute = () => {
@@ -25,7 +25,17 @@ const isDetailRoute = () => {
   return name === 'game-detail' || name === 'game-memory-detail';
 };
 
-const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameRoute);
+const isPopupHiddenRoute = () => {
+  const name = route?.name;
+  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'game-detail' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'onboarding' || name === 'apparaten' || name === 'setup' || name === 'warning';
+};
+
+const isMonitoringPausedRoute = () => {
+  const name = route?.name;
+  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'onboarding' || name === 'setup' || name === 'warning' || name === 'game-memory-detail';
+};
+
+const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isPopupHiddenRoute);
 import { ref } from 'vue';
 const popupCustomTitle = ref('');
 const popupCustomMessage = ref('');
@@ -48,14 +58,7 @@ const paddingbottom = computed(() => !!route.meta.paddingbottom);
 const paddingtop = computed(() => !!route.meta.paddingtop);
 
 onMounted(() => {
-  if (isOnboardingRoute()) {
-    pauseMonitoring();
-    popupCustomTitle.value = '';
-    popupCustomMessage.value = '';
-    showPopup.value = false;
-  } else if (isInGameRoute()) {
-    pauseMonitoring();
-  } else if (isDetailRoute()) {
+  if (isMonitoringPausedRoute()) {
     pauseMonitoring();
     popupCustomTitle.value = '';
     popupCustomMessage.value = '';
@@ -67,7 +70,7 @@ onMounted(() => {
   }
 
   window.addEventListener('show_global_popup', (ev) => {
-    if (isOnboardingRoute() || isDetailRoute()) return;
+    if (isPopupHiddenRoute()) return;
 
     const detail = ev?.detail || {};
     popupCustomTitle.value = detail.title || '';
@@ -81,17 +84,8 @@ onMounted(() => {
 watch(
   () => route.name,
   (newName) => {
-    if (newName === 'game-play' || newName === 'game-memory-play') {
+    if (isMonitoringPausedRoute()) {
       pauseMonitoring();
-      popupCustomTitle.value = '';
-      popupCustomMessage.value = '';
-      showPopup.value = false;
-    } else if (newName === 'onboarding' || newName === 'setup' || newName === 'warning') {
-      pauseMonitoring();
-      popupCustomTitle.value = '';
-      popupCustomMessage.value = '';
-      showPopup.value = false;
-    } else if (newName === 'game-detail' || newName === 'game-memory-detail') {
       popupCustomTitle.value = '';
       popupCustomMessage.value = '';
       showPopup.value = false;
@@ -105,7 +99,7 @@ watch(
 </script>
 
 <template>
-  <AppPopup v-if="!isOnboardingRoute() && !isDetailRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
+  <AppPopup v-if="!isPopupHiddenRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
     <router-view v-slot="{ Component, route }">
