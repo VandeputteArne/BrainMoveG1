@@ -135,10 +135,6 @@ void loop() {
     }
   }
 
-  // Alleen slapen door inactiviteit als niet actief bezig (polling)
-  if (!isPolling && millis() - laatsteActiviteitTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
-    gaaDiepeSlaap();
-  }
 
   yield();
 }
