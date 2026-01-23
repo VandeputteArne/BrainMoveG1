@@ -1,17 +1,22 @@
-import subprocess
+import os
 from fastapi import APIRouter
 from models.models import UitschakelenRequest
-import os
 
 router = APIRouter(prefix="/devices", tags=["Apparaten"])
 
 # Deze variabele wordt geïnjecteerd vanuit main.py
 device_manager = None
+_shutdown_callback = None
 
 def set_device_manager(manager):
     """Inject de device manager dependency"""
     global device_manager
     device_manager = manager
+
+def set_shutdown_callback(callback):
+    """Inject shutdown callback to trigger after lifespan cleanup"""
+    global _shutdown_callback
+    _shutdown_callback = callback
 
 @router.get("/status", summary="Get current device status")
 async def get_device_status():
@@ -26,7 +31,10 @@ async def uitschakelen_apparaten(request: UitschakelenRequest):
     wachtwoord = os.getenv("PI_PASSWORD")
     if(request.inputGebruiker != wachtwoord):
         return {"status": "Foutief wachtwoord, apparaten niet uitgeschakeld"}
-    
-    await device_manager.stop_alle()
-    subprocess.run(["sudo", "poweroff"])
-    return {"status": "Alle apparaten zijn uitgeschakeld"}
+
+    await device_manager.sleep_alle()
+
+    if _shutdown_callback:
+        _shutdown_callback()
+
+    return {"status": "Alle apparaten worden uitgeschakeld"}

@@ -1,5 +1,7 @@
 import logging
 import asyncio
+import signal
+import subprocess
 import socketio
 import uvicorn
 import sys
@@ -54,8 +56,17 @@ device_manager = MQTTDeviceManager(sio=sio)
 game_service = GameService(device_manager=device_manager, sio=sio, hardware_delay=HARDWARE_DELAY)
 game_manager = GameManager(game_service=game_service, sio=sio)
 
+# Shutdown state
+_should_poweroff = False
+
+def trigger_shutdown():
+    global _should_poweroff
+    _should_poweroff = True
+    os.kill(os.getpid(), signal.SIGTERM)
+
 # Inject dependencies
 devices_router.set_device_manager(device_manager)
+devices_router.set_shutdown_callback(trigger_shutdown)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -63,6 +74,11 @@ async def lifespan(app: FastAPI):
     yield
     await device_manager.stop()
     mqtt_task.cancel()
+
+    # Poweroff after cleanup if requested
+    if _should_poweroff:
+        logger.info("Lifespan cleanup complete, powering off...")
+        subprocess.run(["sudo", "poweroff"])
 
 app = FastAPI(lifespan=lifespan)
 
