@@ -466,10 +466,231 @@ class GameService:
         
         return fallingcolor_rondes
     
+    async def run_colorbattle(
+        self,
+        aantal_rondes: int,
+        kleuren: List[str],
+        snelheid: float,
+        speler1_naam: str,
+        speler2_naam: str
+    ) -> Dict:
+        """Voert het Color Battle game uit met 2 spelers"""
+        rondes_resultaten = []
+        max_tijd = float(snelheid)
+
+        # Track scores
+        speler1_correct = 0
+        speler2_correct = 0
+        speler1_totaal_tijd = 0.0
+        speler2_totaal_tijd = 0.0
+
+        # Detection state for handling 2 touches per round
+        detecties = []
+        detectie_event = asyncio.Event()
+
+        def on_detectie(gebeurtenis):
+            detecties.append({
+                "kleur": gebeurtenis.get("kleur", "").lower(),
+                "tijd": time.time()
+            })
+            detectie_event.set()  # Signal that a new detection arrived
+
+        self.device_manager.zet_detectie_callback(on_detectie)
+        await self.device_manager.start_alle()
+
+        # Emit game start with player names
+        await self.sio.emit('colorbattle_start', {
+            'speler1_naam': speler1_naam,
+            'speler2_naam': speler2_naam,
+            'aantal_rondes': aantal_rondes
+        })
+
+        for ronde in range(1, aantal_rondes + 1):
+            if self.stop_event.is_set():
+                logger.info("Game gestopt door gebruiker")
+                break
+
+            # Pick 2 different colors for each player
+            beschikbare_kleuren = [k.lower() for k in kleuren]
+            random.shuffle(beschikbare_kleuren)
+            speler1_kleur = beschikbare_kleuren[0].upper()
+            speler2_kleur = beschikbare_kleuren[1].upper()
+
+            # Emit round start with colors
+            await self.sio.emit('colorbattle_ronde', {
+                'rondenummer': ronde,
+                'maxronden': aantal_rondes,
+                'speler1_kleur': speler1_kleur,
+                'speler2_kleur': speler2_kleur
+            })
+            logger.info(f"Round {ronde}: Player1={speler1_kleur}, Player2={speler2_kleur}")
+
+            await asyncio.sleep(0.2)
+
+            # Set both cones as "correct" for detection
+            await self.device_manager.set_correct_kegel(speler1_kleur)
+            await self.device_manager.set_correct_kegel(speler2_kleur)
+
+            # Reset detection state
+            detecties.clear()
+            detectie_event.clear()
+            starttijd = time.time()
+
+            # Initialize round results
+            speler1_tijd = max_tijd
+            speler2_tijd = max_tijd
+            speler1_uitkomst = "te laat"
+            speler2_uitkomst = "te laat"
+            speler1_touch_tijd = None
+            speler2_touch_tijd = None
+
+            try:
+                # Wait until both players have results, or timeout/stop
+                while speler1_touch_tijd is None or speler2_touch_tijd is None:
+                    if self.stop_event.is_set():
+                        logger.info("Game gestopt tijdens wachten op detectie")
+                        break
+
+                    elapsed = time.time() - starttijd
+                    if elapsed >= max_tijd:
+                        logger.info(f"Timeout na {max_tijd}s")
+                        break
+
+                    # Check for new detection
+                    remaining = max_tijd - elapsed
+                    try:
+                        await asyncio.wait_for(
+                            detectie_event.wait(),
+                            timeout=min(0.1, remaining)
+                        )
+                        # Clear event so we wait for the next detection
+                        detectie_event.clear()
+                    except asyncio.TimeoutError:
+                        pass
+
+                    # Process any detections we have
+                    # Note: Hardware has 500ms cooldown per cone, so no software bounce filter needed
+                    for det in detecties:
+                        det_kleur = det["kleur"]
+                        det_tijd = det["tijd"] - starttijd - self.hardware_delay
+
+                        # Check for correct touches first (target color matches)
+                        if det_kleur == speler1_kleur.lower() and speler1_touch_tijd is None:
+                            speler1_touch_tijd = det_tijd
+                            speler1_tijd = round(max(0, det_tijd), 2)
+                            speler1_uitkomst = "correct"
+                            logger.info(f"Player1 touched {det_kleur} at {speler1_tijd}s")
+
+                        elif det_kleur == speler2_kleur.lower() and speler2_touch_tijd is None:
+                            speler2_touch_tijd = det_tijd
+                            speler2_tijd = round(max(0, det_tijd), 2)
+                            speler2_uitkomst = "correct"
+                            logger.info(f"Player2 touched {det_kleur} at {speler2_tijd}s")
+
+                        # Non-target color: attribute to first unregistered player
+                        elif speler1_touch_tijd is None and det_kleur != speler2_kleur.lower():
+                            speler1_touch_tijd = det_tijd
+                            speler1_tijd = round(max_tijd + max(0, det_tijd), 2)
+                            speler1_uitkomst = "fout"
+                            logger.info(f"Player1 wrong color {det_kleur}")
+
+                        # P2 not registered yet: attribute any remaining detection
+                        elif speler2_touch_tijd is None:
+                            speler2_touch_tijd = det_tijd
+                            speler2_tijd = round(max_tijd + max(0, det_tijd), 2)
+                            speler2_uitkomst = "fout"
+                            logger.info(f"Player2 wrong color {det_kleur}")
+
+            except Exception as e:
+                logger.error(f"Error in colorbattle ronde: {e}")
+
+            # Handle timeout for players who didn't touch
+            if speler1_touch_tijd is None:
+                speler1_tijd = max_tijd
+                speler1_uitkomst = "te laat"
+            if speler2_touch_tijd is None:
+                speler2_tijd = max_tijd
+                speler2_uitkomst = "te laat"
+
+            # Determine round winner
+            ronde_winnaar = None
+            if speler1_uitkomst == "correct" and speler2_uitkomst == "correct":
+                if speler1_touch_tijd < speler2_touch_tijd:
+                    ronde_winnaar = 1
+                elif speler2_touch_tijd < speler1_touch_tijd:
+                    ronde_winnaar = 2
+                # else: tie (ronde_winnaar stays None)
+            elif speler1_uitkomst == "correct":
+                ronde_winnaar = 1
+            elif speler2_uitkomst == "correct":
+                ronde_winnaar = 2
+            # else: both wrong/late, no winner
+
+            # Update totals
+            if speler1_uitkomst == "correct":
+                speler1_correct += 1
+            if speler2_uitkomst == "correct":
+                speler2_correct += 1
+            speler1_totaal_tijd += speler1_tijd
+            speler2_totaal_tijd += speler2_tijd
+
+            ronde_resultaat = {
+                "rondenummer": ronde,
+                "speler1_kleur": speler1_kleur,
+                "speler2_kleur": speler2_kleur,
+                "speler1_tijd": speler1_tijd,
+                "speler2_tijd": speler2_tijd,
+                "speler1_uitkomst": speler1_uitkomst,
+                "speler2_uitkomst": speler2_uitkomst,
+                "ronde_winnaar": ronde_winnaar
+            }
+            rondes_resultaten.append(ronde_resultaat)
+
+            # Emit round result
+            await self.sio.emit('colorbattle_ronde_einde', ronde_resultaat)
+
+            # Reset cones
+            await self.device_manager.reset_correct_kegel(speler1_kleur)
+            await self.device_manager.reset_correct_kegel(speler2_kleur)
+
+            if self.stop_event.is_set():
+                break
+
+        await self.device_manager.stop_alle()
+        self.device_manager.zet_detectie_callback(None)
+
+        # Determine overall winner
+        winnaar = None
+        if speler1_correct > speler2_correct:
+            winnaar = 1
+        elif speler2_correct > speler1_correct:
+            winnaar = 2
+        elif speler1_totaal_tijd < speler2_totaal_tijd:
+            winnaar = 1
+        elif speler2_totaal_tijd < speler1_totaal_tijd:
+            winnaar = 2
+        # else: complete tie
+
+        eind_resultaat = {
+            "speler1_naam": speler1_naam,
+            "speler2_naam": speler2_naam,
+            "speler1_correct": speler1_correct,
+            "speler2_correct": speler2_correct,
+            "speler1_totaal_tijd": round(speler1_totaal_tijd, 2),
+            "speler2_totaal_tijd": round(speler2_totaal_tijd, 2),
+            "winnaar": winnaar,
+            "rondes": rondes_resultaten
+        }
+
+        await self.sio.emit('colorbattle_einde', eind_resultaat)
+        logger.info(f"Color Battle ended. Winner: Player {winnaar}")
+
+        return eind_resultaat
+
     def reset_stop_event(self):
         """Reset het stop event voor een nieuwe game"""
         self.stop_event.clear()
-    
+
     def stop_game(self):
         """Zet het stop event om de game te stoppen"""
         self.stop_event.set()

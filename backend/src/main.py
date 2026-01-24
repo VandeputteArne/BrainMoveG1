@@ -21,9 +21,9 @@ from backend.src.routers.leaderboard_router import router as leaderboard_router
 from backend.src.routers.trainingen_router import router as trainingen_router
 from backend.src.routers.games_router import router as games_router
 from backend.src.routers import devices_router
-from backend.src.services.GameService import GameService
+from backend.src.services.game_service import GameService
 from backend.src.services.game_manager import GameManager
-from backend.src.models.models import Instellingen
+from backend.src.models.models import Instellingen, ColorBattleInstellingen
 
 # Configure logging
 log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
@@ -103,6 +103,12 @@ sio_app = socketio.ASGIApp(sio, app)
 async def get_game_instellingen(json: Instellingen):
     """Sla game instellingen op in GameManager"""
     game_manager.set_instellingen(json)
+    return json
+
+@app.post("/games/colorbattle/instellingen", response_model=ColorBattleInstellingen, tags=["Spelletjes"])
+async def set_colorbattle_instellingen(json: ColorBattleInstellingen):
+    """Sla Color Battle instellingen op (2 spelers)"""
+    game_manager.set_colorbattle_instellingen(json)
     return json
 
 @app.get("/games/{game_id}/play", tags=["Spelletjes"])

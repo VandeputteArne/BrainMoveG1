@@ -9,6 +9,16 @@ class Instellingen(BaseModel):
     rondes: int
     kleuren: list[str]
 
+class ColorBattleInstellingen(BaseModel):
+    game_id: int
+    speler1_naam: str
+    speler2_naam: str
+    moeilijkheids_id: int
+    snelheid: int
+    ronde_id: int
+    rondes: int
+    kleuren: list[str]
+
 class Training(BaseModel):
     start_tijd: str
     aantal_kleuren: int
@@ -113,6 +123,26 @@ class StatistiekenVoorColorSprint(BaseModel):
 
 class UitschakelenRequest(BaseModel):
     inputGebruiker: str
+
+class ColorBattleRondeResultaat(BaseModel):
+    rondenummer: int
+    speler1_kleur: str
+    speler2_kleur: str
+    speler1_tijd: float
+    speler2_tijd: float
+    speler1_uitkomst: str
+    speler2_uitkomst: str
+    ronde_winnaar: int | None  # 1, 2, or None for tie
+
+class ColorBattleEindResultaat(BaseModel):
+    speler1_naam: str
+    speler2_naam: str
+    speler1_correct: int
+    speler2_correct: int
+    speler1_totaal_tijd: float
+    speler2_totaal_tijd: float
+    winnaar: int | None  # 1, 2, or None for tie
+    rondes: list[ColorBattleRondeResultaat]
     
 
 
