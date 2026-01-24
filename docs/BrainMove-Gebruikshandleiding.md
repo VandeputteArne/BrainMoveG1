@@ -25,12 +25,13 @@ BrainMove is een interactief trainingssysteem met cognitieve en motorische oefen
 
 ### Stap 2: Potjes Activeren
 
-1. **Druk op de knop** op elk potje om deze te activeren.
-2. Het potje maakt een **verbindingsgeluid** wanneer deze succesvol verbindt.
-3. Herhaal voor alle 4 de potjes (rood, blauw, geel, groen).
+1. **Druk op de knop** op elk potje om deze te activeren (wakker maken uit slaapstand).
+2. Wacht **circa 2 seconden** - het potje start op uit slaapstand.
+3. Het potje maakt een **verbindingsgeluid** wanneer deze succesvol verbindt.
+4. Herhaal voor alle 4 de potjes (rood, blauw, geel, groen).
 
 **Als een potje niet verbindt:**
-- Druk nogmaals op de knop om te resetten
+- **Houd de knop 1,5-3 seconden ingedrukt** om te herstarten (je hoort een piepje bij 1,5s)
 - Zet het potje dichter bij de hub
 - Laad het potje op, mogelijk is de batterij leeg
 
@@ -295,7 +296,7 @@ Om alle potjes uit te schakelen (bijv. aan het einde van de dag):
 **Symptoom:** Potje maakt geen verbindingsgeluid, blijft offline in de app.
 
 **Oplossingen:**
-1. Druk **nogmaals op de knop** om te resetten
+1. **Houd de knop 1,5-3 seconden ingedrukt** om te herstarten (je hoort een piepje bij 1,5s, laat dan los)
 2. Controleer of het potje **opgeladen** is (laad eventueel op)
 3. Breng het potje **dichter bij de hub**
 4. Wacht 30 seconden en probeer opnieuw
@@ -329,7 +330,7 @@ Om alle potjes uit te schakelen (bijv. aan het einde van de dag):
 2. Tik op het **midden** van het potje (waar de sensor zit)
 3. Houd je hand niet te lang boven het potje (kort tikken)
 4. Controleer of het spel daadwerkelijk is **gestart**
-5. Reset het potje door nogmaals op de knop te drukken
+5. Herstart het potje door de knop **1,5-3 seconden ingedrukt** te houden
 
 ### Hub Start Niet Op
 
@@ -340,6 +341,28 @@ Om alle potjes uit te schakelen (bijv. aan het einde van de dag):
 2. Controleer of het **LED-lampje** brandt op de Raspberry Pi
 3. Houd het witte knopje ingedrukt en wacht tot het lampje op de Raspberry Pi rood wordt. Trek de stekker eruit, en sluit opnieuw aan
 4. Neem contact op met de technische beheerder
+
+---
+
+## Knopbediening Potjes
+
+Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang je drukt:
+
+### Vanuit Slaapstand
+| Actie | Resultaat |
+|-------|-----------|
+| Kort drukken | Potje wordt wakker en verbindt |
+
+> **Let op:** Na het indrukken duurt het circa **2 seconden** voordat je een geluid hoort. Dit is normaal - het potje start op uit slaapstand.
+
+### Wanneer Actief (verbonden of verbindend)
+| Indrukduur | Resultaat | Geluidssignaal |
+|------------|-----------|----------------|
+| < 1,5 seconden | Slaapstand | Dalende toon (hoog → laag) |
+| 1,5 - 3 seconden | Herstarten | Piepje bij 1,5s, dan stijgende toon |
+| > 3 seconden | Geannuleerd | Lage toon |
+
+> **Tip:** Bij het herstarten hoor je een kort piepje wanneer je de 1,5 seconden bereikt. Laat dan de knop los om te herstarten. Houd je langer dan 3 seconden vast, dan wordt de actie geannuleerd.
 
 ---
 
@@ -415,8 +438,10 @@ Om alle potjes uit te schakelen (bijv. aan het einde van de dag):
 | Actie | Hoe |
 |-------|-----|
 | Systeem starten | USB-C voeding aansluiten op hub |
-| Potje activeren | Druk op de knop |
-| Potje resetten | Druk nogmaals op de knop |
+| Potje wakker maken | Druk kort op de knop (vanuit slaapstand) |
+| Potje in slaapstand | Druk kort op de knop (< 1,5 sec) |
+| Potje herstarten | Houd knop 1,5-3 sec ingedrukt (piepje = loslaten) |
+| Knopactie annuleren | Houd knop > 3 sec ingedrukt |
 | Verbinden met WiFi | Netwerk "BrainMoveG1" |
 | Webapp openen | `http://brainmove.local:3000` |
 | Potjes uitschakelen | Apparaten → Alles uitschakelen |

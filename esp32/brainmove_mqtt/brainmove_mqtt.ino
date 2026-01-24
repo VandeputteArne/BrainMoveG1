@@ -5,7 +5,7 @@
 #include <VL53L0X.h>
 
 // PAS DIT AAN PER APPARAAT ("rood", "blauw", "geel", "groen")
-#define DEVICE_COLOR "geel"
+#define DEVICE_COLOR "blauw"
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
@@ -66,6 +66,8 @@ void verbindGeforceerd();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void initHardware();
 void verwerkKnopDruk();
+void verwerkKnopTijdensVerbinden();
+void verwerkKnopHold(bool tijdensVerbinden);
 void verwerkToF();
 uint8_t leesBatterijPercentage();
 void speelCorrectGeluid();
@@ -161,6 +163,11 @@ void verbindGeforceerd() {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     while (WiFi.status() != WL_CONNECTED) {
+      // Full button handling during connection
+      if (knopIngedrukt) {
+        knopIngedrukt = false;
+        verwerkKnopTijdensVerbinden();
+      }
       if (millis() - verbindingStartTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
         Serial.println("\nWiFi timeout - ga slapen...");
         gaaDiepeSlaap();
@@ -175,6 +182,11 @@ void verbindGeforceerd() {
   }
 
   while (!mqttClient.connected()) {
+    // Full button handling during connection
+    if (knopIngedrukt) {
+      knopIngedrukt = false;
+      verwerkKnopTijdensVerbinden();
+    }
     if (millis() - verbindingStartTijd > GLOBALE_INACTIEF_TIMEOUT_MS) {
       Serial.println("MQTT timeout - ga slapen...");
       gaaDiepeSlaap();
@@ -263,6 +275,64 @@ void initHardware() {
   }
 }
 
+// Shared button hold detection logic
+void verwerkKnopHold(bool tijdensVerbinden) {
+    // Thresholds for button hold detection
+    const unsigned long HOLD_RESTART_MS = 1500;  // 1.5s+ = restart zone
+    const unsigned long HOLD_CANCEL_MS = 3000;   // 3s+ = cancel
+
+    unsigned long pressStart = millis();
+    bool restartBeeped = false;
+
+    // Wait for button release, measure hold duration
+    while (digitalRead(PIN_KNOP) == LOW) {
+        unsigned long holdTime = millis() - pressStart;
+
+        // Audio feedback when restart threshold reached
+        if (!restartBeeped && holdTime >= HOLD_RESTART_MS) {
+            zoemerToon(1500, 80);  // Higher beep = restart armed
+            restartBeeped = true;
+        }
+
+        // Safety timeout to avoid infinite loop
+        if (holdTime >= HOLD_CANCEL_MS + 1000) break;
+
+        delay(10);
+    }
+
+    unsigned long holdDuration = millis() - pressStart;
+
+    // Determine action based on hold duration
+    if (holdDuration >= HOLD_CANCEL_MS) {
+        // Too long = cancelled
+        Serial.println("Knop te lang ingedrukt - geannuleerd");
+        zoemerToon(300, 200);  // Low tone = cancelled
+
+        // Wait for full button release + cooldown to prevent immediate re-trigger
+        while (digitalRead(PIN_KNOP) == LOW) delay(10);
+        delay(500);  // Cooldown after release
+        knopIngedrukt = false;  // Clear any pending ISR trigger
+        return;
+
+    } else if (holdDuration >= HOLD_RESTART_MS) {
+        // Long hold (1.5s - 3s) = restart
+        Serial.println("Knop lang ingedrukt - herstart ESP...");
+        zoemerToon(1000, 100); delay(50); zoemerToon(1500, 100);  // Rising tone = restarting
+        if (!tijdensVerbinden && mqttClient.connected()) {
+            mqttClient.publish(topic_status.c_str(), "restarting", true);
+            mqttClient.disconnect();
+        }
+        delay(100);
+        ESP.restart();
+
+    } else {
+        // Short press (150ms - 1.5s) = sleep
+        Serial.println("Knop kort ingedrukt - ga slapen...");
+        zoemerToon(800, 100); delay(50); zoemerToon(500, 150);  // Falling tone = going to sleep
+        gaaDiepeSlaap();
+    }
+}
+
 void verwerkKnopDruk() {
     if (!knopIngedrukt) return;
     if (millis() - laatsteKnopDrukTijd < KNOP_DEBOUNCE_MS) { knopIngedrukt = false; return; }
@@ -270,13 +340,11 @@ void verwerkKnopDruk() {
     laatsteKnopDrukTijd = millis();
     laatsteActiviteitTijd = millis();
 
-    Serial.println("Knop ingedrukt - herstart ESP...");
-    if (mqttClient.connected()) {
-        mqttClient.publish(topic_status.c_str(), "restarting", true);
-        mqttClient.disconnect();
-    }
-    delay(100);
-    ESP.restart();
+    verwerkKnopHold(false);
+}
+
+void verwerkKnopTijdensVerbinden() {
+    verwerkKnopHold(true);
 }
 
 void verwerkToF() {
