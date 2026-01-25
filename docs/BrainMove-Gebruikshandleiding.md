@@ -379,7 +379,7 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 ### Batterijduur
 
-- Een volle batterij gaat **ongeveer 10 uur** mee bij normaal gebruik
+- Een volle batterij gaat **ongeveer 28 uur** mee bij normaal gebruik en **ongeveer 14 uur** bij intens gebruik (game na game)
 - In slaapstand gaat de batterij **weken** mee
 - Bij inactiviteit gaan potjes automatisch in slaapstand
 
