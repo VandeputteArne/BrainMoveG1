@@ -267,6 +267,72 @@ def add_falling_color():
 
     conn.close()
 
+def add_color_battle():
+    db_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'brainmove.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute('''
+    INSERT INTO Games (GameId, GameBeschrijving, GameNaam, Eenheid, Tag)
+    VALUES (?, ?, ?, ?, ?)
+    ''', (
+        5,
+        'Neem het op tegen een vriend! Twee spelers krijgen elk een andere kleur te zien en racen om als eerste hun kleur aan te raken. De snelste wint de ronde. Wie wint de meeste rondes?',
+        'Color Battle',
+        's',
+        'reactiesnelheid'
+    ))
+
+    conn.commit()
+    print('✓ Game "Color Battle" succesvol toegevoegd met ID 5')
+
+    moeilijkheden = [
+        ('Gemakkelijk', 10, 5),
+        ('Gemiddeld', 5, 5),
+        ('Moeilijk', 3, 5)
+    ]
+
+    for moeilijkheid, snelheid, game_id in moeilijkheden:
+        cursor.execute('''
+        INSERT INTO Moeilijkheden (Moeilijkheid, Snelheid, GameId)
+        VALUES (?, ?, ?)
+        ''', (moeilijkheid, snelheid, game_id))
+
+    conn.commit()
+    print('✓ Moeilijkheden toegevoegd (Gemakkelijk, Gemiddeld, Moeilijk)')
+
+    rondes = [5, 10, 15]
+
+    for nummer in rondes:
+        cursor.execute('''
+        INSERT INTO Rondes (Nummer, GameId)
+        VALUES (?, ?)
+        ''', (nummer, 5))
+
+    conn.commit()
+    print('✓ Rondes toegevoegd (5, 10, 15)')
+
+    cursor.execute('SELECT * FROM Games WHERE GameId = 5')
+    row = cursor.fetchone()
+    print(f'\nOpgeslagen Game:')
+    print(f'  GameId: {row[0]}')
+    print(f'  GameNaam: {row[2]}')
+    print(f'  Eenheid: {row[3]}')
+    print(f'  Tag: {row[4]}')
+    print(f'  LaatstBewerkt: {row[5]}')
+
+    cursor.execute('SELECT * FROM Moeilijkheden WHERE GameId = 5')
+    print(f'\nOpgeslagen Moeilijkheden:')
+    for row in cursor.fetchall():
+        print(f'  {row[1]} - Snelheid: {row[2]} (LaatstBewerkt: {row[4]})')
+
+    cursor.execute('SELECT * FROM Rondes WHERE GameId = 5')
+    print(f'\nOpgeslagen Rondes:')
+    for row in cursor.fetchall():
+        print(f'  Nummer: {row[1]} (LaatstBewerkt: {row[3]})')
+
+    conn.close()
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "memory":
@@ -275,5 +341,7 @@ if __name__ == "__main__":
         add_number_match()
     elif len(sys.argv) > 1 and sys.argv[1] == "falling":
         add_falling_color()
+    elif len(sys.argv) > 1 and sys.argv[1] == "colorbattle":
+        add_color_battle()
     else:
         add_color_sprint()

@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-#define DEVICE_COLOR "geel"
+#define DEVICE_COLOR "blauw"
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
@@ -24,7 +24,7 @@ const int PIN_I2C_SCL = 7;
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
 const uint16_t TOF_POLL_INTERVAL_MS = 40;
-const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
+const uint16_t TOF_DETECTIE_AFKOELING_MS = 400;
 
 const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
@@ -232,7 +232,10 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   }
   else if (message == "correct") isCorrectTarget = true;
   else if (message == "incorrect") isCorrectTarget = false;
-  else if (message == "sleep") gaaDiepeSlaap();
+  else if (message == "sleep") {
+    zoemerToon(800, 100); delay(50); zoemerToon(500, 150);
+    gaaDiepeSlaap();
+  }
   else if (message == "sound_ok") speelCorrectGeluid();
   else if (message == "sound_fail") speelIncorrectGeluid();
 }

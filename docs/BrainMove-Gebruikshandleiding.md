@@ -51,6 +51,8 @@ Scan deze QR-code met je telefoon camera om automatisch te verbinden.
 2. Verbind met netwerk: **`BrainMoveG1`**
 3. Voer het wachtwoord in (vraag dit aan de beheerder)
 
+Wacht tot je apparaat verbonden is met het WiFi-netwerk.
+
 ### Stap 4: Open de Webapp
 
 **Optie A: Scan de QR-code (aanbevolen)**
@@ -117,7 +119,7 @@ Na de onboarding kom je in het hoofdmenu. Onderaan het scherm vind je de navigat
 
 ### Stap 1: Kies een spel
 
-In het **Spellenvenster** zie je alle 4 de spellen. Elk spel toont:
+In het **Spellenvenster** zie je alle 5 de spellen. Elk spel toont:
 - De **naam** van het spel
 - Je **hoogste score** (indien beschikbaar)
 - Een **tag** met het type oefening
@@ -156,7 +158,7 @@ Na afloop van het spel zie je:
 
 ## De Spellen
 
-BrainMove bevat 4 verschillende spellen, elk gericht op andere vaardigheden.
+BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
 ### Spel 1: Kleur Sprint (Reactiesnelheid)
 
@@ -212,6 +214,22 @@ BrainMove bevat 4 verschillende spellen, elk gericht op andere vaardigheden.
 4. Mis je de kleur? Game over!
 
 **Score:** Aantal succesvol gevangen kleuren
+
+---
+
+### Spel 5: Color Battle (2 Spelers)
+
+**Doel:** Versla je tegenstander door sneller te reageren op jouw kleur.
+
+**Hoe werkt het:**
+1. Twee spelers spelen tegen elkaar
+2. Elke ronde krijgt elke speler een **andere kleur** te zien
+3. Race om als eerste jouw kleur aan te tikken
+4. De snelste speler wint de ronde
+5. Na alle rondes wint de speler met de meeste gewonnen rondes
+
+**Score:** Aantal gewonnen rondes (bij gelijkstand telt de totale reactietijd)
+
 
 ---
 
@@ -393,7 +411,8 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 1. Ga naar **"Apparaten"** in de app
 2. Tik op **"Alles uitschakelen"** om potjes in slaapstand te zetten
-3. Ontkoppel de **voeding** van de Raspberry Pi
+3. Moest de webapp niet meer toehankelijk zijn, draai de hub open en **houd het witte knopje ingedrukt** tot de LED rood wordt
+4. Ontkoppel de **voeding** van de Raspberry Pi
 
 ---
 
