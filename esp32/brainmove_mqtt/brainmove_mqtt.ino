@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-#define DEVICE_COLOR "blauw"
+#define DEVICE_COLOR "groen"
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
