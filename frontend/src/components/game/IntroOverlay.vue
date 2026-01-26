@@ -91,8 +91,8 @@ onUnmounted(() => {
 <template>
   <div ref="root" :class="[overlayClass, { 'is-hidden': hiding, 'is-visible': !hiding }]" @click.self="onClickStart" role="button" :aria-label="ariaLabel">
     <div :class="contentClass">
-      <h2>{{ title }}</h2>
-      <p v-if="text">{{ text }}</p>
+      <h2 class="c-intro__title">{{ title }}</h2>
+      <p v-if="text" class="c-intro__text">{{ text }}</p>
       <slot />
     </div>
   </div>
@@ -123,5 +123,16 @@ onUnmounted(() => {
   text-align: center;
   color: white;
   padding: 2rem;
+}
+
+.c-intro__title {
+  margin: 0;
+  margin-bottom: 1rem;
+  font-size: 2rem;
+}
+
+.c-intro__text {
+  margin: 0;
+  font-size: 1.2rem;
 }
 </style>
