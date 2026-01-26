@@ -390,7 +390,7 @@ async function startGame() {
 
       <div v-if="!isColorBattle" class="c-game-detail__leader">
         <h2>Leaderboard</h2>
-        <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" :unit="entry.unit" />
+        <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="`${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" :unit="entry.unit" />
       </div>
     </div>
   </div>

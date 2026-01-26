@@ -216,7 +216,7 @@ onUnmounted(() => {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  width: min(800px, 100%);
+  width: 100%;
   height: 100%;
 }
 

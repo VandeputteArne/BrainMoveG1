@@ -39,6 +39,8 @@ const tagColor = computed(() => {
       return 'var(--color-red)';
     case 'reactiesnelheid':
       return 'var(--blue-100)';
+    case 'multiplayer':
+      return 'var(--color-green)';
     default:
       return 'var(--color-gray)';
   }

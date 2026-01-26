@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted } from 'vue';
 import FilterGame from '../../components/filters/FilterGame.vue';
+import FilterDatum from '../../components/filters/FilterDatum.vue';
 import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
 import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue';
 import LeaderboardPlayer from '../../components/leaderboard/LeaderboardPlayer.vue';
@@ -9,6 +10,7 @@ import { useScrollReveal } from '../../composables/useScrollReveal.js';
 
 const selectedGame = ref(null);
 const selectedDifficulty = ref('2');
+const selectedDatum = ref('');
 
 const difficulties = ref([]);
 
@@ -51,7 +53,16 @@ async function fetchLeaderboard() {
   }
 
   try {
-    const res = await fetch(getApiUrl(`leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}`));
+    const params = new URLSearchParams();
+    if (selectedDatum.value) {
+      const dateObj = new Date(selectedDatum.value);
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const year = dateObj.getFullYear();
+      params.append('datum', `${day}-${month}-${year}`);
+    }
+    const queryString = params.toString();
+    const res = await fetch(getApiUrl(`leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}${queryString ? '?' + queryString : ''}`));
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
     const data = await res.json();
 
@@ -71,7 +82,7 @@ watch(selectedGame, () => {
   fetchDifficulties();
 });
 
-watch([selectedGame, selectedDifficulty], () => {
+watch([selectedGame, selectedDifficulty, selectedDatum], () => {
   fetchLeaderboard();
 });
 
@@ -92,6 +103,7 @@ onMounted(() => {
             <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
           </div>
         </div>
+        <FilterDatum v-model="selectedDatum" />
       </div>
 
       <div class="c-leaderboard__board">

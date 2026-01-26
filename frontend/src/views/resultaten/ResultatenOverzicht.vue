@@ -195,6 +195,21 @@ const computedBest = computed(() => {
 
 // Excel export
 async function exportCsv() {
+  if (isColorBattle.value) {
+    await exportToExcel({
+      stats: [
+        { waarde: activeAverage.value, label: 'Gemiddelde' },
+        { waarde: `${activeAccuracy.value}%`, label: 'Exactheid' },
+      ],
+      counts: [
+        { type: 'correct', label: 'Correct', value: activeCorrect.value },
+        { type: 'fout', label: 'Fout', value: activeFout.value },
+      ],
+      rounds: activeRounds.value,
+      username: activePlayerName.value,
+    });
+    return;
+  }
   await exportToExcel({
     stats: stats.value,
     counts: counts.value,
@@ -208,7 +223,7 @@ async function exportCsv() {
   <div class="c-overzicht">
     <div class="c-overzicht__title">
       <h1>Resultaten</h1>
-      <button v-if="!isColorBattle" class="c-overzicht__export" type="button" @click="exportCsv" aria-label="Exporteren">
+      <button class="c-overzicht__export" type="button" @click="exportCsv" aria-label="Exporteren">
         <span class="c-overzicht__export-icon"><Download class="c-overzicht__export-svg" /></span>
         <h3>Exporteren</h3>
       </button>
