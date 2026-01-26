@@ -4,10 +4,10 @@ from backend.src.models.models import GameVoorOverzicht, DetailGame, GameVoorFil
 
 router = APIRouter(
     prefix="/games",
-    tags=["Games"]
+    tags=["Games"],
 )
 
-@router.get("/overview", response_model=list[GameVoorOverzicht], summary="Haal een overzicht op van alle spellen met hun highscores", tags=["Spelletjes"])
+@router.get("/overview", response_model=list[GameVoorOverzicht], summary="Haal een overzicht op van alle spellen met hun highscores", tags=["Games"])
 async def get_games_overview():
     games = DataRepository.get_all_games()
     
@@ -17,7 +17,7 @@ async def get_games_overview():
         
         # GameId 1 = Color Sprint: laagste gemiddelde tijd van rondewaarden
         # GameId 2+ = Memory etc: hoogste aantal kleuren gebruikt
-        if game_id == 1 or game_id == 3 or game_id == 4:
+        if game_id == 1 or game_id == 3 or game_id == 4 or game_id == 5:
             highscore = DataRepository.get_best_avg_for_game(game_id, use_min=True)
         else:
             highscore = DataRepository.get_max_kleuren_for_game(game_id)
@@ -31,12 +31,12 @@ async def get_games_overview():
     
     return result
 
-@router.get("/details/{game_id}", response_model=DetailGame, summary="Haal de details op voor een specifiek spel", tags=["Spelletjes"])
+@router.get("/details/{game_id}", response_model=DetailGame, summary="Haal de details op voor een specifiek spel", tags=["Games"])
 async def get_game_details(game_id: int):
     details = DataRepository.get_game_details(game_id)
     return details
 
-@router.get("/filters", response_model=list[GameVoorFilter], summary="Haal de lijst van spellen op voor filterdoeleinden", tags=["Spelletjes"])
+@router.get("/filters", response_model=list[GameVoorFilter], summary="Haal de lijst van spellen op voor filterdoeleinden", tags=["Games"])
 async def get_games_for_filter():
     games = DataRepository.get_games_for_filter()
     return games

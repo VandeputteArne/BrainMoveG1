@@ -466,14 +466,7 @@ class GameService:
         
         return fallingcolor_rondes
     
-    async def run_colorbattle(
-        self,
-        aantal_rondes: int,
-        kleuren: List[str],
-        snelheid: float,
-        speler1_naam: str,
-        speler2_naam: str
-    ) -> Dict:
+    async def run_colorbattle(self,aantal_rondes: int,kleuren: List[str],snelheid: float,speler1_naam: str,speler2_naam: str) -> Dict:
         """Voert het Color Battle game uit met 2 spelers"""
         rondes_resultaten = []
         max_tijd = float(snelheid)
@@ -552,9 +545,6 @@ class GameService:
                         break
 
                     elapsed = time.time() - starttijd
-                    if elapsed >= max_tijd:
-                        logger.info(f"Timeout na {max_tijd}s")
-                        break
 
                     # Check for new detection
                     remaining = max_tijd - elapsed
@@ -574,43 +564,55 @@ class GameService:
                         det_kleur = det["kleur"]
                         det_tijd = det["tijd"] - starttijd - self.hardware_delay
 
-                        # Check for correct touches first (target color matches)
-                        if det_kleur == speler1_kleur.lower() and speler1_touch_tijd is None:
-                            speler1_touch_tijd = det_tijd
-                            speler1_tijd = round(max(0, det_tijd), 2)
-                            speler1_uitkomst = "correct"
-                            logger.info(f"Player1 touched {det_kleur} at {speler1_tijd}s")
+                        # Speler 1's kleur aangeraakt
+                        if det_kleur == speler1_kleur.lower():
+                            if speler1_touch_tijd is None:
+                                # Speler 1 raakt zijn eigen kleur aan = correct
+                                speler1_touch_tijd = det_tijd
+                                speler1_tijd = round(max(0, det_tijd), 2)
+                                speler1_uitkomst = "correct"
+                                logger.info(f"Player1 touched {det_kleur} (correct) at {speler1_tijd}s")
+                            elif speler2_touch_tijd is None:
+                                # Speler 2 raakt speler 1's kleur aan = fout
+                                speler2_touch_tijd = det_tijd
+                                speler2_tijd = round(max_tijd + max(0, det_tijd), 2)
+                                speler2_uitkomst = "te laat"
+                                logger.info(f"Player2 touched {det_kleur} (wrong) at {det_tijd:.2f}s")
 
-                        elif det_kleur == speler2_kleur.lower() and speler2_touch_tijd is None:
-                            speler2_touch_tijd = det_tijd
-                            speler2_tijd = round(max(0, det_tijd), 2)
-                            speler2_uitkomst = "correct"
-                            logger.info(f"Player2 touched {det_kleur} at {speler2_tijd}s")
+                        # Speler 2's kleur aangeraakt
+                        elif det_kleur == speler2_kleur.lower():
+                            if speler2_touch_tijd is None:
+                                # Speler 2 raakt zijn eigen kleur aan = correct
+                                speler2_touch_tijd = det_tijd
+                                speler2_tijd = round(max(0, det_tijd), 2)
+                                speler2_uitkomst = "correct"
+                                logger.info(f"Player2 touched {det_kleur} (correct) at {speler2_tijd}s")
+                            elif speler1_touch_tijd is None:
+                                # Speler 1 raakt speler 2's kleur aan = fout
+                                speler1_touch_tijd = det_tijd
+                                speler1_tijd = round(max_tijd + max(0, det_tijd), 2)
+                                speler1_uitkomst = "te laat"
+                                logger.info(f"Player1 touched {det_kleur} (wrong) at {det_tijd:.2f}s")
 
-                        # Non-target color: attribute to first unregistered player
-                        elif speler1_touch_tijd is None and det_kleur != speler2_kleur.lower():
-                            speler1_touch_tijd = det_tijd
-                            speler1_tijd = round(max_tijd + max(0, det_tijd), 2)
-                            speler1_uitkomst = "fout"
-                            logger.info(f"Player1 wrong color {det_kleur}")
+                        # Andere kleur aangeraakt (niet van speler 1 of 2)
+                        else:
+                            if speler1_touch_tijd is None:
+                                # Attribute to speler 1 = fout
+                                speler1_touch_tijd = det_tijd
+                                speler1_tijd = round(max_tijd + max(0, det_tijd), 2)
+                                speler1_uitkomst = "te laat"
+                                logger.info(f"Player1 touched {det_kleur} (wrong) at {det_tijd:.2f}s")
+                            elif speler2_touch_tijd is None:
+                                # Attribute to speler 2 = fout
+                                speler2_touch_tijd = det_tijd
+                                speler2_tijd = round(max_tijd + max(0, det_tijd), 2)
+                                speler2_uitkomst = "te laat"
+                                logger.info(f"Player2 touched {det_kleur} (wrong) at {det_tijd:.2f}s")
 
-                        # P2 not registered yet: attribute any remaining detection
-                        elif speler2_touch_tijd is None:
-                            speler2_touch_tijd = det_tijd
-                            speler2_tijd = round(max_tijd + max(0, det_tijd), 2)
-                            speler2_uitkomst = "fout"
-                            logger.info(f"Player2 wrong color {det_kleur}")
+                        
 
             except Exception as e:
                 logger.error(f"Error in colorbattle ronde: {e}")
-
-            # Handle timeout for players who didn't touch
-            if speler1_touch_tijd is None:
-                speler1_tijd = max_tijd
-                speler1_uitkomst = "te laat"
-            if speler2_touch_tijd is None:
-                speler2_tijd = max_tijd
-                speler2_uitkomst = "te laat"
 
             # Determine round winner
             ronde_winnaar = None
@@ -646,8 +648,14 @@ class GameService:
             }
             rondes_resultaten.append(ronde_resultaat)
 
+            ronde_resultaat_voor_emit = {
+                "speler1_uitkomst": speler1_uitkomst,
+                "speler2_uitkomst": speler2_uitkomst,
+            }
+
             # Emit round result
-            await self.sio.emit('colorbattle_ronde_einde', ronde_resultaat)
+            await self.sio.emit('colorbattle_ronde_einde', ronde_resultaat_voor_emit)
+            await asyncio.sleep(1)  # Small delay to allow frontend processing
 
             # Reset cones
             await self.device_manager.reset_correct_kegel(speler1_kleur)

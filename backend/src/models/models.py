@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Optional
 
 class Instellingen(BaseModel):
     game_id: int
@@ -13,6 +14,18 @@ class ColorBattleInstellingen(BaseModel):
     game_id: int
     speler1_naam: str
     speler2_naam: str
+    moeilijkheids_id: int
+    snelheid: int
+    ronde_id: int
+    rondes: int
+    kleuren: list[str]
+
+class AlgemeneInstellingen(BaseModel):
+    """Universeel model voor zowel single-player als multiplayer games"""
+    game_id: int
+    gebruikersnaam: Optional[str] = None
+    speler1_naam: Optional[str] = None
+    speler2_naam: Optional[str] = None
     moeilijkheids_id: int
     snelheid: int
     ronde_id: int
@@ -36,6 +49,11 @@ class RondeWaarde(BaseModel):
 class CorrecteRondeWaarde(BaseModel):
     ronde_nummer: int
     waarde: float
+
+class ColorBattleCorrecteRonde(BaseModel):
+    ronde_nummer: int
+    waarde: float
+    speler_naam: str
 
 class Resultaat(BaseModel):
     game_id: int
@@ -143,7 +161,18 @@ class ColorBattleEindResultaat(BaseModel):
     speler2_totaal_tijd: float
     winnaar: int | None  # 1, 2, or None for tie
     rondes: list[ColorBattleRondeResultaat]
-    
+
+class StatistiekenVoorColorBattle(BaseModel):
+    game_id: int
+    speler1_naam: str
+    speler2_naam: str
+    speler1_correct: int
+    speler2_correct: int
+    speler1_fout: int
+    speler2_fout: int
+    winnaar: str
+    lijst_voor_grafiek: list[ColorBattleCorrecteRonde]  # Alleen rondes met correcte antwoorden, tijden en spelernamen
+
 
 
 

@@ -199,14 +199,16 @@ class GameManager:
             )
 
     async def _save_colorbattle_results(self, resultaat: dict):
-        """Sla Color Battle resultaten op voor beide spelers"""
+        """Sla Color Battle resultaten op voor beide spelers bij dezelfde training"""
         rondes = resultaat["rondes"]
 
-        # Save player 1
+        # Add both players
         user1_id = DataRepository.add_gebruiker(self.speler1_naam)
-        logger.info(f"Speler 1 toegevoegd met ID: {user1_id}")
+        user2_id = DataRepository.add_gebruiker(self.speler2_naam)
+        logger.info(f"Spelers toegevoegd: {self.speler1_naam} (ID: {user1_id}), {self.speler2_naam} (ID: {user2_id})")
 
-        training1_id = DataRepository.add_training(
+        # Create ONE shared training for both players (use speler1 as primary)
+        shared_training_id = DataRepository.add_training(
             Training(
                 start_tijd=self.starttijd.isoformat(),
                 aantal_kleuren=len(self.kleuren),
@@ -216,43 +218,30 @@ class GameManager:
                 game_id=self.game_id
             )
         )
-        logger.info(f"Training speler 1 toegevoegd met ID: {training1_id}")
+        logger.info(f"Gedeelde training aangemaakt met ID: {shared_training_id}")
 
+        # Save both players' rounds to the same training
         for ronde in rondes:
+            # Speler 1's ronde
             DataRepository.add_ronde_waarde(
                 RondeWaarde(
-                    trainings_id=training1_id,
+                    trainings_id=shared_training_id,
                     ronde_nummer=ronde["rondenummer"],
                     waarde=ronde["speler1_tijd"],
                     uitkomst=ronde["speler1_uitkomst"]
                 )
             )
-
-        # Save player 2
-        user2_id = DataRepository.add_gebruiker(self.speler2_naam)
-        logger.info(f"Speler 2 toegevoegd met ID: {user2_id}")
-
-        training2_id = DataRepository.add_training(
-            Training(
-                start_tijd=self.starttijd.isoformat(),
-                aantal_kleuren=len(self.kleuren),
-                gebruikers_id=user2_id,
-                ronde_id=self.ronde_id,
-                moeilijkheids_id=self.moeilijkheids_id,
-                game_id=self.game_id
-            )
-        )
-        logger.info(f"Training speler 2 toegevoegd met ID: {training2_id}")
-
-        for ronde in rondes:
+            # Speler 2's ronde
             DataRepository.add_ronde_waarde(
                 RondeWaarde(
-                    trainings_id=training2_id,
+                    trainings_id=shared_training_id,
                     ronde_nummer=ronde["rondenummer"],
                     waarde=ronde["speler2_tijd"],
                     uitkomst=ronde["speler2_uitkomst"]
                 )
             )
+        
+        logger.info(f"Beide spelers opgeslagen bij training {shared_training_id}")
     
     def is_game_running(self) -> bool:
         """Check of er een game actief is"""

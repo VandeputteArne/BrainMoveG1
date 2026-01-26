@@ -1,7 +1,7 @@
 from typing import Union
 from fastapi import APIRouter
 from backend.src.repositories.data_repository import DataRepository
-from backend.src.models.models import StatistiekenVoorColorSprint, StatistiekenVoorMemoryGame, CorrecteRondeWaarde, TrainingVoorHistorie
+from backend.src.models.models import StatistiekenVoorColorSprint, StatistiekenVoorMemoryGame, StatistiekenVoorColorBattle, CorrecteRondeWaarde, TrainingVoorHistorie, ColorBattleCorrecteRonde
 import logging
 
 router = APIRouter(
@@ -10,7 +10,7 @@ router = APIRouter(
 )
 
 
-@router.get("/laatste_rondewaarden",)
+@router.get("/laatste_rondewaarden", response_model=Union[StatistiekenVoorColorSprint, StatistiekenVoorMemoryGame, StatistiekenVoorColorBattle])
 async def get_laatste_rondewaarden():
     list_rondewaarden = DataRepository.get_last_rondewaarden_from_last_training()
 
@@ -85,6 +85,71 @@ async def get_laatste_rondewaarden():
         aantal_fout=aantal_fout_memory,
         aantal_rondes_niet_gespeeld=aantal_rondes_niet_gespeeld
     )
+    
+    if game_id == 5:  # Color Battle
+        # Voor Color Battle hebben we 2x zoveel rondewaarden (beide spelers)
+        totaal_rondes = len(list_rondewaarden) // 2 if list_rondewaarden else 0
+        
+        # Haal beide spelernamen op
+        speler1_naam, speler2_naam = DataRepository.get_colorbattle_spelernamen_by_trainingid(last_training_id)
+        if not speler1_naam:
+            speler1_naam = gebruikersnaam or "Speler 1"
+        if not speler2_naam:
+            speler2_naam = "Speler 2"
+        
+        # Split rondewaarden per speler (even indices = speler1, oneven = speler2)
+        speler1_waarden = [list_rondewaarden[i] for i in range(0, len(list_rondewaarden), 2)] if list_rondewaarden else []
+        speler2_waarden = [list_rondewaarden[i] for i in range(1, len(list_rondewaarden), 2)] if list_rondewaarden else []
+        
+        # Bereken statistieken per speler
+        speler1_correct = len([r for r in speler1_waarden if r.uitkomst.lower() == 'correct'])
+        speler1_fout = len([r for r in speler1_waarden if r.uitkomst.lower() == 'te laat'])
+        speler1_totaal_tijd = sum(float(r.waarde) for r in speler1_waarden)
+        
+        speler2_correct = len([r for r in speler2_waarden if r.uitkomst.lower() == 'correct'])
+        speler2_fout = len([r for r in speler2_waarden if r.uitkomst.lower() == 'te laat'])
+        speler2_totaal_tijd = sum(float(r.waarde) for r in speler2_waarden)
+        
+        # Bepaal winnaar
+        winnaar = None
+        if speler1_correct > speler2_correct:
+            winnaar = speler1_naam
+        elif speler2_correct > speler1_correct:
+            winnaar = speler2_naam
+        elif speler1_totaal_tijd < speler2_totaal_tijd:
+            winnaar = speler1_naam
+        elif speler2_totaal_tijd < speler1_totaal_tijd:
+            winnaar = speler2_naam
+        
+        # Bouw lijst met correcte rondes voor grafiek
+        lijst_voor_grafiek = []
+        for i in range(totaal_rondes):
+            if i < len(speler1_waarden) and i < len(speler2_waarden):
+                # Voeg alleen rondes toe waar iemand het juist had
+                if speler1_waarden[i].uitkomst == 'correct':
+                    lijst_voor_grafiek.append(ColorBattleCorrecteRonde(
+                        ronde_nummer=speler1_waarden[i].ronde_nummer,
+                        waarde=float(speler1_waarden[i].waarde),
+                        speler_naam=speler1_naam
+                    ))
+                elif speler2_waarden[i].uitkomst == 'correct':
+                    lijst_voor_grafiek.append(ColorBattleCorrecteRonde(
+                        ronde_nummer=speler2_waarden[i].ronde_nummer,
+                        waarde=float(speler2_waarden[i].waarde),
+                        speler_naam=speler2_naam
+                    ))
+        
+        return StatistiekenVoorColorBattle(
+            game_id=game_id,
+            speler1_naam=speler1_naam,
+            speler2_naam=speler2_naam,
+            speler1_correct=speler1_correct,
+            speler2_correct=speler2_correct,
+            speler1_fout=speler1_fout,
+            speler2_fout=speler2_fout,
+            winnaar=winnaar,
+            lijst_voor_grafiek=lijst_voor_grafiek
+        )
 
 @router.get("/historie/{game_id}", response_model=list[TrainingVoorHistorie], summary="Haal de trainingshistorie op voor een gebruiker")
 async def get_training_history(game_id: int, gebruikersnaam: str | None = None, datum: str | None = None):
@@ -100,7 +165,7 @@ async def get_training_history(game_id: int, gebruikersnaam: str | None = None, 
     trainingen = DataRepository.get_trainingen_with_filters(game_id, datum, gebruikersnaam)
     return trainingen
 
-@router.get("/{training_id}/details", response_model=Union[StatistiekenVoorColorSprint, StatistiekenVoorMemoryGame], summary="Haal de details op voor een specifieke training")
+@router.get("/{training_id}/details", response_model=Union[StatistiekenVoorColorSprint, StatistiekenVoorMemoryGame, StatistiekenVoorColorBattle], summary="Haal de details op voor een specifieke training")
 async def get_training_details(training_id: int):
     rondewaarden = DataRepository.get_allerondewaarden_by_trainingsId(training_id)
     game_id = DataRepository.get_gameid_by_trainingid(training_id)
@@ -133,3 +198,24 @@ async def get_training_details(training_id: int):
         aantal_fout=len([item for item in rondewaarden if item.uitkomst == 'fout']),
         aantal_rondes_niet_gespeeld=DataRepository.get_totale_aantal_rondes_by_trainingid(training_id) - len(rondewaarden)
         )
+    
+    if(game_id == 5):
+        return StatistiekenVoorColorBattle(
+            game_id=game_id,
+            speler1_naam=DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[0],
+            speler2_naam=DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[1],
+            speler1_correct=len([item for item in rondewaarden[::2] if item.uitkomst == 'correct']),
+            speler2_correct=len([item for item in rondewaarden[1::2] if item.uitkomst == 'correct']),
+            speler1_fout=len([item for item in rondewaarden[::2] if item.uitkomst == 'te laat']),
+            speler2_fout=len([item for item in rondewaarden[1::2] if item.uitkomst == 'te laat']),
+            winnaar=DataRepository.get_colorbattle_winnaar_by_trainingid(training_id),
+            lijst_voor_grafiek=[
+                ColorBattleCorrecteRonde(
+                    ronde_nummer=item.ronde_nummer,
+                    waarde=float(item.waarde),
+                    speler_naam=DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[0] if index % 2 == 0 else DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[1]
+                )
+                for index, item in enumerate(rondewaarden) if item.uitkomst == 'correct'
+            ]
+        )
+    
