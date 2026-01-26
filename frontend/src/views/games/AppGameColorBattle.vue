@@ -7,6 +7,7 @@ import GameCountdown from '../../components/game/GameCountdown.vue';
 import GameHeader from '../../components/game/GameHeader.vue';
 import GameProgress from '../../components/game/GameProgress.vue';
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
+import IntroOverlay from '../../components/game/IntroOverlay.vue';
 
 const router = useRouter();
 const currentRound = ref(1);
@@ -71,6 +72,18 @@ const { countdown, showCountdown, countdownText, startCountdown } = useGameCount
   },
 });
 
+const showIntro = ref(true);
+
+function beginGame() {
+  // overlay done
+}
+
+function onOverlayExiting() {
+  try {
+    startCountdown();
+  } catch (e) {}
+}
+
 function goBack() {
   stopTimer();
   router.push({ name: 'games' });
@@ -123,9 +136,7 @@ onMounted(async () => {
   } catch (e) {
     // socket connect may fail (CORS, network) — ignore here
   }
-  try {
-    await startCountdown();
-  } catch (e) {}
+  // countdown starts when intro overlay exits
 });
 
 onUnmounted(() => {
@@ -147,7 +158,9 @@ onUnmounted(() => {
   <div class="c-game-root">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <div v-else class="c-game">
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Color Battle" text="Twee spelers, één strijd. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
+
+    <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
 
       <div class="c-game__content">
