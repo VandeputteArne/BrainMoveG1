@@ -23,8 +23,8 @@ export async function exportToExcel({ stats, counts, rounds, username }) {
         extension: 'png',
       });
 
-      worksheet.getRow(1).height = 30;
-      worksheet.getRow(2).height = 30;
+      worksheet.getRow(1).height = 40;
+      worksheet.getRow(2).height = 40;
 
       const logoWidth = 120;
       const logoHeight = logoWidth / (594 / 502); // ≈ 101
@@ -32,6 +32,26 @@ export async function exportToExcel({ stats, counts, rounds, username }) {
       worksheet.addImage(imageId, {
         tl: { col: 0, row: 0 },
         ext: { width: logoWidth, height: logoHeight },
+        editAs: 'absolute',
+      });
+    }
+
+    const campusResponse = await fetch('/images/sport-innovatie-campus.png');
+    if (campusResponse.ok) {
+      const campusBlob = await campusResponse.blob();
+      const campusBuffer = await campusBlob.arrayBuffer();
+
+      const campusId = workbook.addImage({
+        buffer: campusBuffer,
+        extension: 'png',
+      });
+
+      const campusWidth = 140;
+      const campusHeight = Math.round(campusWidth / (702 / 350));
+
+      worksheet.addImage(campusId, {
+        tl: { col: 2.8, row: 0 },
+        ext: { width: campusWidth, height: campusHeight },
         editAs: 'absolute',
       });
     }
