@@ -4,7 +4,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-#define DEVICE_COLOR "groen"
+#define DEVICE_COLOR "geel"
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
@@ -30,7 +30,7 @@ const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
 const float BATTERIJ_SPANNINGSDELER = 2.0f;
 
-const unsigned long BATTERIJ_UPDATE_INTERVAL = 600000;
+const unsigned long BATTERIJ_UPDATE_INTERVAL = 30000;
 const uint8_t BATTERIJ_KRITIEK_PERCENTAGE = 5;
 
 const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (10UL * 60UL * 1000UL);
