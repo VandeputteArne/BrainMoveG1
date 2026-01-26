@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import FilterGame from '../../components/filters/FilterGame.vue';
 import FilterDatum from '../../components/filters/FilterDatum.vue';
 import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
@@ -9,10 +9,12 @@ import { getApiUrl } from '../../config/api.js';
 import { useScrollReveal } from '../../composables/useScrollReveal.js';
 
 const selectedGame = ref(null);
+const selectedGameName = ref('');
 const selectedDifficulty = ref('2');
 const selectedDatum = ref('');
 
 const difficulties = ref([]);
+const isColorBattle = computed(() => (selectedGameName.value || '').toLowerCase().includes('battle'));
 
 const leaderboardData = ref([]);
 const boardRef = ref(null);
@@ -96,8 +98,8 @@ onMounted(() => {
     <div class="c-leaderboard__container">
       <div class="c-leaderboard__filters">
         <h1>Leaderboard</h1>
-        <FilterGame v-model="selectedGame" />
-        <div class="c-leaderboard__dif">
+        <FilterGame v-model="selectedGame" @update:gameName="selectedGameName = $event" />
+        <div v-if="!isColorBattle" class="c-leaderboard__dif">
           <p>Moeilijkheidsgraad</p>
           <div class="c-leaderboard__row">
             <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
