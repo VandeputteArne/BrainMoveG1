@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
 import { useGameTimer } from '../../composables/useGameTimer.js';
 import { useGameCountdown } from '../../composables/useGameCountdown.js';
+import { useGameDeviceGuard } from '../../composables/useGameDeviceGuard.js';
 import GameCountdown from '../../components/game/GameCountdown.vue';
 import GameHeader from '../../components/game/GameHeader.vue';
 import GameProgress from '../../components/game/GameProgress.vue';
@@ -21,6 +22,8 @@ const { countdown, showCountdown, countdownText, startCountdown } = useGameCount
     startTimer();
   },
 });
+
+useGameDeviceGuard(1);
 
 const isAnimating = ref(false);
 const prevColor = ref('');

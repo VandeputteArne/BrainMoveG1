@@ -49,7 +49,7 @@ onMounted(() => {
           <OnboardingProgressBlock :active="true" />
           <OnboardingProgressBlock :active="false" />
         </div>
-        <ButtonsNext :progress="50" :disabled="!allPotsConnected" to="/warning" />
+        <ButtonsNext :progress="50" to="/warning" />
       </div>
     </div>
   </div>

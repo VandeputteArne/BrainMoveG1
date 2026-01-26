@@ -33,7 +33,7 @@ const isPopupHiddenRoute = () => {
 
 const isMonitoringPausedRoute = () => {
   const name = route?.name;
-  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'game-falling-colors-play';
+  // return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'game-falling-colors-play';
 };
 
 const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isPopupHiddenRoute);
@@ -100,7 +100,7 @@ watch(
 </script>
 
 <template>
-  <AppLiveBanner :hidden="isPopupHiddenRoute()" :suppressed="showPopup" :onlineOnly="true" />
+  <AppLiveBanner :hidden="isOnboardingRoute()" :suppressed="showPopup && !isPopupHiddenRoute()" :onlineOnly="!isPopupHiddenRoute()" />
   <AppPopup v-if="!isPopupHiddenRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">
