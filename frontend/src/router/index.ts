@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import OnboardingStart from '../views/onboarding/OnboardingStart.vue';
 import OnboardingSetup from '../views/onboarding/OnboardingSetup.vue';
+import OnboardingPlacement from '../views/onboarding/OnboardingPlacement.vue';
 import OnboardingWarning from '../views/onboarding/OnboardingWarning.vue';
 import AppGames from '../views/games/AppGames.vue';
 import AppDetail from '../views/games/AppDetail.vue';
@@ -8,6 +9,7 @@ import AppGame from '../views/games/AppGameColor.vue';
 import AppGameMemory from '../views/games/AppGameMemory.vue';
 import AppGameNumberMatch from '../views/games/AppGameNumberMatch.vue';
 import AppGameFallingColors from '../views/games/AppGameFallingColors.vue';
+import AppGameColorBattle from '../views/games/AppGameColorBattle.vue';
 import ResultatenProficiat from '../views/resultaten/ResultatenProficiat.vue';
 import ResultatenOverzicht from '../views/resultaten/ResultatenOverzicht.vue';
 import ApparatenView from '../views/apparaten/AppApparaten.vue';
@@ -25,6 +27,12 @@ const routes = [
     path: '/setup',
     name: 'setup',
     component: OnboardingSetup,
+    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false, transition: 'slide-left' },
+  },
+  {
+    path: '/opstelling',
+    name: 'opstelling',
+    component: OnboardingPlacement,
     meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false, transition: 'slide-left' },
   },
   {
@@ -67,6 +75,12 @@ const routes = [
     path: '/games/4/play',
     name: 'game-falling-colors-play',
     component: AppGameFallingColors,
+    meta: { showTopbar: false, showNav: false, showBack: true, fullScreen: true, paddingbottom: false, paddingtop: false, transition: 'fade' },
+  },
+  {
+    path: '/games/5/play',
+    name: 'game-color-battle-play',
+    component: AppGameColorBattle,
     meta: { showTopbar: false, showNav: false, showBack: true, fullScreen: true, paddingbottom: false, paddingtop: false, transition: 'fade' },
   },
   {

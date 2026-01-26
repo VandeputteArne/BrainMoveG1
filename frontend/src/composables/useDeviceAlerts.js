@@ -6,6 +6,7 @@ export function useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameR
   const showPopup = ref(false);
   const popupDevices = ref([]);
   const popupType = ref('low');
+  let previousOfflineColors = new Set();
 
   function generatePopupKey(devices, type) {
     const deviceIds = devices
@@ -27,22 +28,32 @@ export function useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameR
   }
 
   function checkDeviceAlerts() {
-    if (isInGameRoute()) return;
-
     const online = connectedDevices.value || [];
     const offline = disconnectedDevices.value || [];
 
     const offlineDevices = offline.filter((d) => d?.kleur);
+    const offlineColors = new Set(offlineDevices.map((d) => d.kleur));
+    const hasNewOffline = offlineDevices.some((d) => !previousOfflineColors.has(d.kleur));
+
+    if (isInGameRoute()) {
+      previousOfflineColors = offlineColors;
+      return;
+    }
     if (offlineDevices.length > 0) {
-      if (!wasPopupDismissed(offlineDevices, 'offline')) {
+      if (hasNewOffline && !wasPopupDismissed(offlineDevices, 'offline')) {
         popupDevices.value = offlineDevices;
         popupType.value = 'offline';
         showPopup.value = true;
+        previousOfflineColors = offlineColors;
+        return;
       }
-      return;
     }
 
-    const lowBatteryDevices = online.filter((d) => {
+    const allDevices = [...online, ...offline];
+    const seen = new Set();
+    const lowBatteryDevices = allDevices.filter((d) => {
+      if (!d?.kleur || seen.has(d.kleur)) return false;
+      seen.add(d.kleur);
       const battery = Number(d?.batterij ?? 100);
       return battery <= LOW_BATTERY_THRESHOLD && battery > 0;
     });
@@ -59,6 +70,7 @@ export function useDeviceAlerts(connectedDevices, disconnectedDevices, isInGameR
     if (showPopup.value && offlineDevices.length === 0 && lowBatteryDevices.length === 0) {
       showPopup.value = false;
     }
+    previousOfflineColors = offlineColors;
   }
 
   function handlePopupClose() {

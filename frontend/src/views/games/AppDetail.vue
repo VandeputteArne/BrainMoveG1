@@ -20,15 +20,22 @@ const route = useRoute();
 const gameId = computed(() => route.params.id);
 
 const username = ref('');
+const username2 = ref('');
 const usernameError = ref(false);
+const username2Error = ref(false);
 const usernameInput = ref(null);
+const username2Input = ref(null);
 
 const isUsernameValid = computed(() => (username.value || '').toString().trim().length > 0);
+const isColorBattle = computed(() => (gameName.value || '').toString().toLowerCase().includes('battle'));
 
 const kleurenError = ref(false);
 
 watch(username, (v) => {
   if ((v || '').toString().trim().length > 0) usernameError.value = false;
+});
+watch(username2, (v) => {
+  if ((v || '').toString().trim().length > 0) username2Error.value = false;
 });
 
 const difficulties = ref([]);
@@ -87,6 +94,11 @@ const detailPopupTitle = ref('');
 const detailPopupMessage = ref('');
 
 onMounted(async () => {
+  try {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  } catch (e) {}
   const cachedDetails = sessionStorage.getItem(`gameDetails_${gameId.value}`);
 
   if (cachedDetails) {
@@ -239,7 +251,9 @@ function buildPayload() {
 
   return {
     game_id: parseInt(gameId.value),
-    gebruikersnaam: username.value || null,
+    ...(isColorBattle.value
+      ? { speler1_naam: username.value || null, speler2_naam: username2.value || null }
+      : { gebruikersnaam: username.value || null }),
     moeilijkheids_id: diffId,
     snelheid: diff?.snelheid ?? null,
     ronde_id: rndId,
@@ -250,17 +264,23 @@ function buildPayload() {
 
 async function startGame() {
   const name = (username.value || '').toString().trim();
+  const name2 = (username2.value || '').toString().trim();
   const colorsValid = Array.isArray(selectedColor.value) && selectedColor.value.length >= 2;
 
   usernameError.value = !name;
+  username2Error.value = isColorBattle.value && !name2;
   kleurenError.value = !colorsValid;
 
   if (usernameError.value) {
     await nextTick();
     usernameInput.value?.focus?.();
   }
+  if (!usernameError.value && username2Error.value) {
+    await nextTick();
+    username2Input.value?.focus?.();
+  }
 
-  if (usernameError.value || kleurenError.value) return;
+  if (usernameError.value || username2Error.value || kleurenError.value) return;
 
   const payload = buildPayload();
 
@@ -317,13 +337,17 @@ async function startGame() {
     <DetailPopup :show="showDetailPopup" :title="detailPopupTitle" :message="detailPopupMessage" @close="showDetailPopup = false" />
     <div class="c-game-detail__left">
       <div>
-        <InputGebruikersnaam ref="usernameInput" v-model="username" bold />
+        <InputGebruikersnaam ref="usernameInput" v-model="username" bold :inputId="'gebruikersnaam-1'" :label="isColorBattle ? 'Speler 1' : 'Gebruikersnaam'" :placeholder="isColorBattle ? 'Speler 1' : 'Gebruikersnaam'" />
         <p v-if="usernameError" class="error">Gebruikersnaam is verplicht</p>
+      </div>
+      <div v-if="isColorBattle">
+        <InputGebruikersnaam ref="username2Input" v-model="username2" bold :inputId="'gebruikersnaam-2'" :label="'Speler 2'" :placeholder="'Speler 2'" />
+        <p v-if="username2Error" class="error">Gebruikersnaam is verplicht</p>
       </div>
 
       <div class="c-game-detail__options">
         <h3>Instellingen</h3>
-        <div class="c-game-detail__dif">
+        <div v-if="!isColorBattle" class="c-game-detail__dif">
           <p>Moeilijkheidsgraad</p>
           <div class="c-game-detail__row">
             <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :snelheid="opt.snelheid" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
@@ -364,9 +388,9 @@ async function startGame() {
         <p>{{ gameDescription }}</p>
       </div>
 
-      <div class="c-game-detail__leader">
+      <div v-if="!isColorBattle" class="c-game-detail__leader">
         <h2>Leaderboard</h2>
-        <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="entry.name" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" :unit="entry.unit" />
+        <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="`${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" :unit="entry.unit" />
       </div>
     </div>
   </div>

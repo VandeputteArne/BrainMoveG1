@@ -1,17 +1,24 @@
 <script setup>
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 import FilterGame from '../../components/filters/FilterGame.vue';
+import FilterDatum from '../../components/filters/FilterDatum.vue';
 import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
 import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue';
 import LeaderboardPlayer from '../../components/leaderboard/LeaderboardPlayer.vue';
 import { getApiUrl } from '../../config/api.js';
+import { useScrollReveal } from '../../composables/useScrollReveal.js';
 
 const selectedGame = ref(null);
+const selectedGameName = ref('');
 const selectedDifficulty = ref('2');
+const selectedDatum = ref('');
 
 const difficulties = ref([]);
+const isColorBattle = computed(() => (selectedGameName.value || '').toLowerCase().includes('battle'));
 
 const leaderboardData = ref([]);
+const boardRef = ref(null);
+useScrollReveal(boardRef, leaderboardData);
 
 async function fetchDifficulties() {
   if (!selectedGame.value) {
@@ -48,7 +55,16 @@ async function fetchLeaderboard() {
   }
 
   try {
-    const res = await fetch(getApiUrl(`leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}`));
+    const params = new URLSearchParams();
+    if (selectedDatum.value) {
+      const dateObj = new Date(selectedDatum.value);
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const year = dateObj.getFullYear();
+      params.append('datum', `${day}-${month}-${year}`);
+    }
+    const queryString = params.toString();
+    const res = await fetch(getApiUrl(`leaderboard/overview/${selectedGame.value}/${selectedDifficulty.value}${queryString ? '?' + queryString : ''}`));
     if (!res.ok) throw new Error(`Request failed: ${res.status}`);
     const data = await res.json();
 
@@ -68,7 +84,7 @@ watch(selectedGame, () => {
   fetchDifficulties();
 });
 
-watch([selectedGame, selectedDifficulty], () => {
+watch([selectedGame, selectedDifficulty, selectedDatum], () => {
   fetchLeaderboard();
 });
 
@@ -82,13 +98,14 @@ onMounted(() => {
     <div class="c-leaderboard__container">
       <div class="c-leaderboard__filters">
         <h1>Leaderboard</h1>
-        <FilterGame v-model="selectedGame" />
-        <div class="c-leaderboard__dif">
+        <FilterGame v-model="selectedGame" @update:gameName="selectedGameName = $event" />
+        <div v-if="!isColorBattle" class="c-leaderboard__dif">
           <p>Moeilijkheidsgraad</p>
           <div class="c-leaderboard__row">
             <FiltersDifficulty v-for="opt in difficulties" :key="opt.id" :id="String(opt.id)" :stars="opt.stars" v-model="selectedDifficulty" name="difficulty" />
           </div>
         </div>
+        <FilterDatum v-model="selectedDatum" />
       </div>
 
       <div class="c-leaderboard__board">
@@ -100,8 +117,10 @@ onMounted(() => {
           </div>
           <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
         </div>
-        <div class="c-leaderboard__body">
-          <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" :unit="entry.unit" />
+        <div ref="boardRef" class="c-leaderboard__body">
+          <div v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" class="c-reveal" data-reveal>
+            <LeaderboardSmall :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" :unit="entry.unit" />
+          </div>
         </div>
       </div>
     </div>

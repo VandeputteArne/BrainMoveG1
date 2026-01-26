@@ -5,6 +5,7 @@ import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import AppPasswordConfirm from '../../components/AppPasswordConfirm.vue';
 import { Power } from 'lucide-vue-next';
 import { getApiUrl } from '../../config/api.js';
+import { useScrollReveal } from '../../composables/useScrollReveal.js';
 
 const connectedDevices = ref([]);
 const disconnectedDevices = ref([]);
@@ -102,6 +103,9 @@ const devices = computed(() => {
   return all;
 });
 
+const gridRef = ref(null);
+useScrollReveal(gridRef, devices);
+
 function formatBattery(b) {
   if (b === null || b === undefined) return 100;
   return b;
@@ -181,9 +185,11 @@ async function confirmAndTurnOff() {
 <template>
   <div class="c-apparaten">
     <h1>Apparaten</h1>
-    <div class="c-apparaten__grid">
+    <div ref="gridRef" class="c-apparaten__grid">
       <template v-if="devices.length">
-        <CardPotjes v-for="d in devices" :key="d.kleur" :kleur="d.kleur" :status="d.status === 'online'" :label="labelForColor(d.kleur)" :batterij="formatBattery(d.batterij)" />
+        <div v-for="d in devices" :key="d.kleur" class="c-reveal" data-reveal>
+          <CardPotjes :kleur="d.kleur" :status="d.status === 'online'" :label="labelForColor(d.kleur)" :batterij="formatBattery(d.batterij)" />
+        </div>
       </template>
       <template v-else>
         <p>Geen apparaten gevonden.</p>

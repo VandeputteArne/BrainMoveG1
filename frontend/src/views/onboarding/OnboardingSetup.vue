@@ -32,7 +32,7 @@ onMounted(() => {
     <div class="c-setup" :class="{ 'is-loaded': isLoaded }">
       <div class="c-setup__text">
         <h1>Potjes aanzetten</h1>
-        <p>Tik op het fysieke knopje onder een potje om het aan te zetten. Op het scherm en via geluid hoor je of het gelukt is.</p>
+        <p>Klik op het groene knopje op het potje om hem aan te zetten. Op het scherm en via geluid hoor je of het gelukt is.</p>
       </div>
       <div class="c-setup__potjes">
         <CardPotjes kleur="rood" :status="isDeviceConnected('rood')" />
@@ -48,8 +48,9 @@ onMounted(() => {
           <OnboardingProgressBlock :active="false" />
           <OnboardingProgressBlock :active="true" />
           <OnboardingProgressBlock :active="false" />
+          <OnboardingProgressBlock :active="false" />
         </div>
-        <ButtonsNext :progress="50" :disabled="!allPotsConnected" to="/warning" />
+        <ButtonsNext :progress="50" to="/opstelling" />
       </div>
     </div>
   </div>

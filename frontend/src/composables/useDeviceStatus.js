@@ -47,11 +47,18 @@ export function useDeviceStatus() {
   function normalizeDevice(d) {
     if (!d || typeof d !== 'object') return d;
     const copy = { ...d };
+    if (copy.kleur || copy.color) {
+      copy.kleur = String(copy.kleur ?? copy.color).toLowerCase();
+    }
+    if (typeof copy.status === 'string' && copy.status.toLowerCase() === 'sleeping') {
+      copy.status = 'offline';
+    }
     const nested = copy.status && (copy.status.batterij ?? copy.status.battery);
     const rawBattery = copy.batterij ?? copy.battery ?? nested;
-    const batteryUnknown = rawBattery === null || rawBattery === undefined;
+    const batteryValue = typeof rawBattery === 'string' ? Number.parseFloat(rawBattery) : Number(rawBattery);
+    const batteryUnknown = rawBattery === null || rawBattery === undefined || Number.isNaN(batteryValue);
     copy._batterijUnknown = batteryUnknown;
-    copy.batterij = batteryUnknown ? 100 : rawBattery;
+    copy.batterij = batteryUnknown ? 100 : batteryValue;
     return copy;
   }
 
@@ -90,6 +97,34 @@ export function useDeviceStatus() {
     } catch (error) {
       console.error('[useDeviceStatus] Failed to fetch device status:', error);
     }
+  }
+
+  function applyBatteryUpdate(payload) {
+    if (!payload) return false;
+    const items = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload.apparaten)
+        ? payload.apparaten
+        : [payload];
+    let didUpdate = false;
+
+    items.forEach((item) => {
+      const update = normalizeDevice(item);
+      if (!update?.kleur) return;
+
+      const updateList = (list) => {
+        const idx = list.value.findIndex((d) => d.kleur === update.kleur);
+        if (idx < 0) return false;
+        list.value = list.value.map((d, i) => (i === idx ? { ...d, ...update } : d));
+        return true;
+      };
+
+      if (updateList(connectedDevices) || updateList(disconnectedDevices)) {
+        didUpdate = true;
+      }
+    });
+
+    return didUpdate;
   }
 
   function setupListeners() {
@@ -138,6 +173,13 @@ export function useDeviceStatus() {
       saveToSessionStorage();
     });
 
+    socket.on('device_battery_update', (data) => {
+      if (monitoringPaused.value) return;
+      console.log('[useDeviceStatus] device_battery_update:', data);
+      const updated = applyBatteryUpdate(data);
+      if (updated) saveToSessionStorage();
+    });
+
     isActive.value = true;
     listenerCount++;
   }
@@ -151,6 +193,7 @@ export function useDeviceStatus() {
       socket.off('all_devices_connected');
       socket.off('device_connected');
       socket.off('device_disconnected');
+      socket.off('device_battery_update');
       disconnectSocket();
       socket = null;
       isActive.value = false;

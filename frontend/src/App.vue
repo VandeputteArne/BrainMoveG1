@@ -6,6 +6,7 @@ import AppNav from './components/AppNavbar.vue';
 import { useDeviceStatus } from './composables/useDeviceStatus';
 import { useDeviceAlerts } from './composables/useDeviceAlerts';
 import AppPopup from './components/AppPopup.vue';
+import AppLiveBanner from './components/AppLiveBanner.vue';
 
 const route = useRoute();
 const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus, connectedDevices, disconnectedDevices } = useDeviceStatus();
@@ -17,7 +18,7 @@ const isInGameRoute = () => {
 
 const isOnboardingRoute = () => {
   const name = route?.name;
-  return name === 'onboarding' || name === 'setup' || name === 'warning';
+  return name === 'onboarding' || name === 'setup' || name === 'opstelling' || name === 'warning';
 };
 
 const isDetailRoute = () => {
@@ -27,12 +28,12 @@ const isDetailRoute = () => {
 
 const isPopupHiddenRoute = () => {
   const name = route?.name;
-  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'game-detail' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'onboarding' || name === 'apparaten' || name === 'setup' || name === 'warning';
+  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'game-detail' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'onboarding' || name === 'apparaten' || name === 'setup' || name === 'opstelling' || name === 'warning';
 };
 
 const isMonitoringPausedRoute = () => {
   const name = route?.name;
-  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'game-falling-colors-play';
+  // return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'game-falling-colors-play';
 };
 
 const { showPopup, popupDevices, popupType, checkDeviceAlerts, handlePopupClose } = useDeviceAlerts(connectedDevices, disconnectedDevices, isPopupHiddenRoute);
@@ -99,6 +100,7 @@ watch(
 </script>
 
 <template>
+  <AppLiveBanner :hidden="isOnboardingRoute()" :suppressed="showPopup && !isPopupHiddenRoute()" :onlineOnly="!isPopupHiddenRoute()" />
   <AppPopup v-if="!isPopupHiddenRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">

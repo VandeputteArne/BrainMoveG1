@@ -22,6 +22,7 @@ onMounted(() => {
         <div class="c-warning__progess-blocks">
           <OnboardingProgressBlock :active="false" />
           <OnboardingProgressBlock :active="false" />
+          <OnboardingProgressBlock :active="false" />
           <OnboardingProgressBlock :active="true" />
         </div>
         <buttons-primary url="/games" title="Begin met trainen" />

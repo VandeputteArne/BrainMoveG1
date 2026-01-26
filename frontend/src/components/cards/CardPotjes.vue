@@ -1,5 +1,6 @@
 <script setup>
 import { BatteryFull, BatteryMedium, BatteryLow } from 'lucide-vue-next';
+import { computed } from 'vue';
 
 const props = defineProps({
   kleur: {
@@ -19,6 +20,15 @@ const props = defineProps({
     required: false,
   },
 });
+
+const LOW_BATTERY_THRESHOLD = 10;
+const isLowBattery = computed(() => {
+  if (props.batterij === null || props.batterij === undefined) return false;
+  return Number(props.batterij) <= LOW_BATTERY_THRESHOLD;
+});
+
+const showBattery = computed(() => props.status && props.batterij !== undefined && props.batterij !== null);
+const isOffline = computed(() => !props.status);
 </script>
 
 <template>
@@ -26,7 +36,7 @@ const props = defineProps({
     <img :src="`/images/potjes/${props.kleur}.png`" :alt="`Potje ${props.kleur}`" class="c-potje__image" />
     <div class="c-potje__header">
       <p class="c-potje__label">{{ props.label }}</p>
-      <div class="c-potje__batterij" v-if="props.status && props.batterij !== undefined && props.batterij !== null">
+      <div v-if="showBattery" class="c-potje__batterij">
         <p class="c-potje__label">{{ props.batterij }}%</p>
         <div class="c-potje__batterijen">
           <BatteryFull class="c-potje__batterij-icon" v-if="props.batterij > 66" size="16" />
@@ -35,8 +45,8 @@ const props = defineProps({
         </div>
       </div>
     </div>
-    <div class="c-potje__status-balk">
-      <div :class="`c-potje__status ${props.status ? 'c-potje__status--online' : 'c-potje__status--offline'}`"></div>
+    <div class="c-potje__status-balk" :class="{ 'c-potje__status-balk--spaced': isOffline }">
+      <div :class="['c-potje__status', props.status ? 'c-potje__status--online' : 'c-potje__status--offline', { 'c-potje__status--pulse': props.status, 'c-potje__status--low': props.status && isLowBattery }]"></div>
       <h3 v-if="props.status">Online</h3>
       <h3 v-else>Offline</h3>
     </div>
@@ -52,6 +62,7 @@ const props = defineProps({
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  height: 100%;
   border-radius: var(--radius-20);
   border: solid 1px var(--blue-50);
 
@@ -75,6 +86,15 @@ const props = defineProps({
 
   .c-potje__status--offline {
     background-color: var(--color-red);
+  }
+
+  .c-potje__status--pulse {
+    animation: status-pulse 1.8s ease-in-out infinite;
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+
+  .c-potje__status--low {
+    animation: status-pulse-low 1.4s ease-in-out infinite;
   }
 
   .c-potje__image {
@@ -120,6 +140,30 @@ const props = defineProps({
     display: flex;
     align-items: center;
     justify-content: center;
+  }
+}
+
+@keyframes status-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(38, 197, 120, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(38, 197, 120, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(38, 197, 120, 0);
+  }
+}
+
+@keyframes status-pulse-low {
+  0% {
+    box-shadow: 0 0 0 0 rgba(230, 62, 62, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(230, 62, 62, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(230, 62, 62, 0);
   }
 }
 </style>

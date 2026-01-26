@@ -5,9 +5,11 @@ import { useRouter } from 'vue-router';
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
 import { useGameTimer } from '../../composables/useGameTimer.js';
 import { useGameCountdown } from '../../composables/useGameCountdown.js';
+import { useGameDeviceGuard } from '../../composables/useGameDeviceGuard.js';
 import GameCountdown from '../../components/game/GameCountdown.vue';
 import GameHeader from '../../components/game/GameHeader.vue';
 import GameProgress from '../../components/game/GameProgress.vue';
+import IntroOverlay from '../../components/game/IntroOverlay.vue';
 
 const bgColor = ref('');
 const currentRound = ref(1);
@@ -21,6 +23,20 @@ const { countdown, showCountdown, countdownText, startCountdown } = useGameCount
     startTimer();
   },
 });
+
+useGameDeviceGuard(1);
+
+const showIntro = ref(true);
+
+function beginGame() {
+  // overlay done
+}
+
+function onOverlayExiting() {
+  try {
+    startCountdown();
+  } catch (e) {}
+}
 
 const isAnimating = ref(false);
 const prevColor = ref('');
@@ -90,7 +106,7 @@ onMounted(async () => {
     // socket connect may fail (CORS, network) — ignore here
   }
 
-  await startCountdown();
+  // countdown starts when intro overlay exits
 });
 
 onUnmounted(() => {
@@ -113,16 +129,20 @@ function goBack() {
 </script>
 
 <template>
-  <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
+  <div class="c-game-root">
+    <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-  <div v-else class="c-game">
-    <GameHeader :formatted-time="formattedTime" @stop="goBack" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Color Game" text="Wacht op het startsignaal en reageer zo snel mogelijk." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
 
-    <div class="c-game__content">
-      <div class="c-game__background"></div>
-      <div class="c-game__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
+    <div v-if="!showIntro" class="c-game">
+      <GameHeader :formatted-time="formattedTime" @stop="goBack" />
 
-      <GameProgress :current-round="currentRound" :total-rounds="totalRounds" />
+      <div class="c-game__content">
+        <div class="c-game__background"></div>
+        <div class="c-game__color" :class="{ 'is-animating': isAnimating }" :style="{ backgroundColor: bgColor }"></div>
+
+        <GameProgress :current-round="currentRound" :total-rounds="totalRounds" />
+      </div>
     </div>
   </div>
 </template>
