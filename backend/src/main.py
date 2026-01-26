@@ -21,16 +21,16 @@ from backend.src.routers.leaderboard_router import router as leaderboard_router
 from backend.src.routers.trainingen_router import router as trainingen_router
 from backend.src.routers.games_router import router as games_router
 from backend.src.routers import devices_router
-from backend.src.services.GameService import GameService
+from backend.src.services.game_service import GameService
 from backend.src.services.game_manager import GameManager
-from backend.src.models.models import Instellingen
+from backend.src.models.models import Instellingen, ColorBattleInstellingen, AlgemeneInstellingen
 
 # Configure logging
 log_dir = os.path.join(os.path.dirname(__file__), '..', 'logs')
 os.makedirs(log_dir, exist_ok=True)
 
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler(os.path.join(log_dir, 'brainmove.log')),
@@ -80,7 +80,32 @@ async def lifespan(app: FastAPI):
         logger.info("Lifespan cleanup complete, powering off...")
         subprocess.run(["sudo", "poweroff"])
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    title="BrainMove API",
+    description="""
+## BrainMove - Interactieve Bewegingsspellen API
+
+Deze API beheert alle functionaliteit voor het BrainMove systeem, inclusief:
+
+* **Spellen** - Beheer van verschillende cognitieve en reactiespellen
+* **Trainingen** - Opslaan en ophalen van trainingsresultaten
+* **Leaderboards** - Ranglijsten per spel en moeilijkheidsgraad
+* **Apparaten** - MQTT-verbindingen met kleurenkegels
+* **Multiplayer** - Color Battle 1v1 wedstrijden
+
+### Hardware Integratie
+Het systeem communiceert via MQTT met ESP32-gebaseerde kleurenkegels die spelers moeten aanraken.
+
+### Spellen
+1. **Color Sprint** - Reageer zo snel mogelijk op kleuren
+2. **Memory** - Onthoud en herhaal kleursequenties  
+3. **Number Match** - Match nummers met kleuren
+4. **Falling Color** - Timing-gebaseerd kleurenspel
+5. **Color Battle** - 1-tegen-1 multiplayer duel
+    """,
+    version="1.0.0",
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -99,13 +124,44 @@ app.include_router(devices_router.router)
 sio_app = socketio.ASGIApp(sio, app)
 
 # Game Endpoints
-@app.post("/games/{game_id}/instellingen", response_model=Instellingen, tags=["Spelletjes"])
-async def get_game_instellingen(json: Instellingen):
-    """Sla game instellingen op in GameManager"""
-    game_manager.set_instellingen(json)
+@app.post("/games/{game_id}/instellingen", tags=["Games"])
+async def get_game_instellingen(json: AlgemeneInstellingen):
+    """Sla game instellingen op in GameManager (single-player of multiplayer)"""
+    # Voor multiplayer games (game_id 5)
+    if json.game_id == 5 and json.speler1_naam and json.speler2_naam:
+        colorbattle_json = ColorBattleInstellingen(
+            game_id=json.game_id,
+            speler1_naam=json.speler1_naam,
+            speler2_naam=json.speler2_naam,
+            moeilijkheids_id=json.moeilijkheids_id,
+            snelheid=json.snelheid,
+            ronde_id=json.ronde_id,
+            rondes=json.rondes,
+            kleuren=json.kleuren
+        )
+        game_manager.set_colorbattle_instellingen(colorbattle_json)
+        return colorbattle_json
+    
+    # Voor single-player games
+    single_json = Instellingen(
+        game_id=json.game_id,
+        gebruikersnaam=json.gebruikersnaam or "Speler",
+        moeilijkheids_id=json.moeilijkheids_id,
+        snelheid=json.snelheid,
+        ronde_id=json.ronde_id,
+        rondes=json.rondes,
+        kleuren=json.kleuren
+    )
+    game_manager.set_instellingen(single_json)
+    return single_json
+
+@app.post("/games/colorbattle/instellingen", response_model=ColorBattleInstellingen, tags=["Games"])
+async def set_colorbattle_instellingen(json: ColorBattleInstellingen):
+    """Sla Color Battle instellingen op (2 spelers)"""
+    game_manager.set_colorbattle_instellingen(json)
     return json
 
-@app.get("/games/{game_id}/play", tags=["Spelletjes"])
+@app.get("/games/{game_id}/play", tags=["Games"])
 async def play_game(game_id: int):
     """Start een game via GameManager"""
     result = await game_manager.play_game(game_id)
@@ -130,7 +186,7 @@ async def play_game(game_id: int):
     
     return result
 
-@app.get("/games/stop", tags=["Spelletjes"])
+@app.get("/games/stop", tags=["Games"])
 async def stop_game():
     """Stop de actieve game"""
     result = await game_manager.stop_game()

@@ -284,6 +284,8 @@ class DataRepository:
                     game_naam=row['GameNaam']
                 )
                 games.append(game)
+        #we halen de gameid 5 (colorbattle) eruit
+        games = [game for game in games if game.game_id != 5]
         
         return games
     
@@ -291,9 +293,23 @@ class DataRepository:
     def get_trainingen_with_filters(game_id: int, datum: Optional[str], gebruikersnaam: Optional[str]) -> List['TrainingVoorHistorie']:
         """Haal trainingen op met optionele filters voor datum en gebruikersnaam"""
         
+        # Voor Color Battle (game_id = 5): haal beide spelers op
+        if game_id == 5:
+            sql_query = """
+            SELECT 
+                t.TrainingsId, 
+                t.Start, 
+                g.Gebruikersnaam,
+                ROUND(AVG(rv.Waarde), 2) as waarde,
+                ga.Eenheid
+            FROM Trainingen t
+            JOIN Gebruikers g ON t.GebruikersId = g.GebruikersId
+            JOIN RondeWaarden rv ON t.TrainingsId = rv.TrainingsId
+            JOIN Games ga ON t.GameId = ga.GameId
+            WHERE t.GameId = ?
+            """
         # Voor Memory (game_id = 2): gebruik AantalKleuren
-        # Voor andere games: gebruik gemiddelde van Waarde
-        if game_id == 2:
+        elif game_id == 2:
             sql_query = """
             SELECT 
                 t.TrainingsId, 
@@ -363,10 +379,17 @@ class DataRepository:
         if rows:
             from backend.src.models.models import TrainingVoorHistorie
             for row in rows:
+                # Voor Color Battle: combineer beide spelernamen
+                if game_id == 5:
+                    speler1_naam, speler2_naam = DataRepository.get_colorbattle_spelernamen_by_trainingid(row['TrainingsId'])
+                    gebruikersnaam_display = f"{speler1_naam} vs {speler2_naam}" if speler1_naam and speler2_naam else row['Gebruikersnaam']
+                else:
+                    gebruikersnaam_display = row['Gebruikersnaam']
+                
                 training = TrainingVoorHistorie(
                     training_id=row['TrainingsId'],
                     start_tijd=row['Start'],
-                    gebruikersnaam=row['Gebruikersnaam'],
+                    gebruikersnaam=gebruikersnaam_display,
                     waarde=float(row['waarde']),
                     eenheid=row['Eenheid']
                 )
@@ -413,21 +436,103 @@ class DataRepository:
     
 
     @staticmethod
-    def get_leaderboard_with_filters(game_id: int, moeilijkheids_id: Optional[int] = None) -> List[LeaderboardItem]:
-        """Haal de leaderboard op voor een specifieke game met optionele moeilijkheidsfilter"""
+    def get_leaderboard_with_filters(game_id: int, moeilijkheids_id: Optional[int] = None, datum: Optional[str] = None) -> List[LeaderboardItem]:
+        """Haal de leaderboard op voor een specifieke game met optionele moeilijkheidsfilter en datum filter"""
+        
+        # Converteer datum van dd-mm-yyyy naar yyyy-mm-dd voor database vergelijking
+        if datum:
+            parts = datum.split('-')
+            if len(parts) == 3:
+                datum = f"{parts[2]}-{parts[1]}-{parts[0]}"  # yyyy-mm-dd
         
         # Haal eenheid op voor deze game
         sql_eenheid = "SELECT Eenheid FROM Games WHERE GameId = ?"
         eenheid_row = Database.get_one_row(sql_eenheid, (game_id,))
         eenheid = eenheid_row.get('Eenheid', '') if eenheid_row else ''
         
+        # Voor Color Battle (game_id = 5): speciale behandeling voor beide spelers
+        if game_id == 5:
+            sql_query = """
+            SELECT TrainingsId, Start
+            FROM Trainingen
+            WHERE GameId = ?
+            """
+            params = [game_id]
+            
+            if datum:
+                sql_query += " AND DATE(Start) = ?"
+                params.append(datum)
+            
+            trainingen_rows = Database.get_rows(sql_query, tuple(params))
+            
+            # Verzamel scores per speler
+            speler_scores = {}  # {gebruikersnaam: [scores]}
+            
+            if trainingen_rows:
+                for training_row in trainingen_rows:
+                    training_id = training_row['TrainingsId']
+                    speler1_naam, speler2_naam = DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)
+                    
+                    if not speler1_naam or not speler2_naam:
+                        continue
+                    
+                    # Haal rondewaarden op
+                    rondewaarden = DataRepository.get_allerondewaarden_by_trainingsId(training_id)
+                    
+                    if not rondewaarden:
+                        continue
+                    
+                    # Split waarden per speler
+                    speler1_waarden = [rondewaarden[i].waarde for i in range(0, len(rondewaarden), 2)]
+                    speler2_waarden = [rondewaarden[i].waarde for i in range(1, len(rondewaarden), 2)]
+                    
+                    # Bereken gemiddelde per speler
+                    if speler1_waarden:
+                        speler1_avg = sum(speler1_waarden) / len(speler1_waarden)
+                        if speler1_naam not in speler_scores:
+                            speler_scores[speler1_naam] = []
+                        speler_scores[speler1_naam].append(speler1_avg)
+                    
+                    if speler2_waarden:
+                        speler2_avg = sum(speler2_waarden) / len(speler2_waarden)
+                        if speler2_naam not in speler_scores:
+                            speler_scores[speler2_naam] = []
+                        speler_scores[speler2_naam].append(speler2_avg)
+            
+            # Bereken overall gemiddelde per speler en sorteer
+            speler_gemiddelden = []
+            for gebruikersnaam, scores in speler_scores.items():
+                if scores:
+                    overall_avg = sum(scores) / len(scores)
+                    speler_gemiddelden.append((gebruikersnaam, overall_avg))
+            
+            # Sorteer op gemiddelde (laagste eerst)
+            speler_gemiddelden.sort(key=lambda x: x[1])
+            
+            # Maak leaderboard items
+            leaderboard = []
+            for plaats, (gebruikersnaam, waarde) in enumerate(speler_gemiddelden[:10], start=1):
+                item = LeaderboardItem(
+                    plaats=plaats,
+                    gebruikersnaam=gebruikersnaam,
+                    waarde=round(waarde, 2),
+                    eenheid=eenheid
+                )
+                leaderboard.append(item)
+            
+            return leaderboard
+        
         # Voor Memory (game_id = 2): sorteer eerst op hoogste RondeNummer (DESC), dan op gemiddelde waarde (ASC)
-        if game_id == 2:
+        elif game_id == 2:
             moeilijkheids_filter = ""
             params = [game_id]
             if moeilijkheids_id is not None:
                 moeilijkheids_filter = " AND t.MoeilijkheidsId = ?"
                 params.append(moeilijkheids_id)
+            if datum:
+                moeilijkheids_filter += " AND DATE(t.Start) = ?"
+                params.append(datum)
+                
             
             sql_query = f"""
             SELECT 
@@ -471,6 +576,10 @@ class DataRepository:
             if moeilijkheids_id is not None:
                 sql_query += " AND t.MoeilijkheidsId = ?"
                 params.append(moeilijkheids_id)
+            
+            if datum:
+                sql_query += " AND DATE(t.Start) = ?"
+                params.append(datum)
             
             sql_query += """
             GROUP BY g.GebruikersId, g.Gebruikersnaam
@@ -542,3 +651,80 @@ class DataRepository:
         if row and 'Gebruikersnaam' in row:
             return row['Gebruikersnaam']
         return None
+    
+    @staticmethod
+    def get_colorbattle_spelernamen_by_trainingid(training_id: int) -> tuple[Optional[str], Optional[str]]:
+        """Haal beide spelernamen op voor een Color Battle training"""
+        # Haal de primaire gebruiker op (gekoppeld aan de training)
+        speler1_query = """
+            SELECT g.Gebruikersnaam 
+            FROM Gebruikers g
+            INNER JOIN Trainingen t ON t.GebruikersId = g.GebruikersId
+            WHERE t.TrainingsId = ?
+        """
+        speler1_row = Database.get_one_row(speler1_query, (training_id,))
+        speler1_naam = speler1_row['Gebruikersnaam'] if speler1_row and 'Gebruikersnaam' in speler1_row else None
+        
+        if not speler1_naam:
+            return None, None
+        
+        # Voor speler 2: haal de laatst toegevoegde gebruiker op die NIET speler 1 is
+        # Dit werkt omdat beide spelers kort na elkaar worden toegevoegd
+        speler2_query = """
+            SELECT Gebruikersnaam 
+            FROM Gebruikers 
+            WHERE GebruikersId = (
+                SELECT MAX(GebruikersId) 
+                FROM Gebruikers 
+                WHERE Gebruikersnaam != ?
+            )
+        """
+        speler2_row = Database.get_one_row(speler2_query, (speler1_naam,))
+        speler2_naam = speler2_row['Gebruikersnaam'] if speler2_row and 'Gebruikersnaam' in speler2_row else None
+        
+        return speler1_naam, speler2_naam
+    
+    @staticmethod
+    def get_colorbattle_winnaar_by_trainingid(training_id: int) -> Optional[str]:
+        """Bepaal de winnaar van een Color Battle training op basis van aantal correct en totale tijd"""
+        # Haal spelernamen op
+        speler1_naam, speler2_naam = DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)
+        
+        if not speler1_naam or not speler2_naam:
+            return None
+        
+        sql_query = """
+            SELECT RondeNummer, Waarde, Uitkomst
+            FROM RondeWaarden
+            WHERE TrainingsId = ?
+            ORDER BY RondeWaardeId ASC
+        """
+        rows = Database.get_rows(sql_query, (training_id,))
+        
+        if not rows or len(rows) == 0:
+            return None
+        
+        # Split rondewaarden per speler (even indices = speler1, oneven = speler2)
+        speler1_waarden = [rows[i] for i in range(0, len(rows), 2)]
+        speler2_waarden = [rows[i] for i in range(1, len(rows), 2)]
+        
+        # Tel correcte antwoorden per speler
+        speler1_correct = len([r for r in speler1_waarden if r['Uitkomst'].lower() == 'correct'])
+        speler2_correct = len([r for r in speler2_waarden if r['Uitkomst'].lower() == 'correct'])
+        
+        # Eerst vergelijken op aantal correct
+        if speler1_correct > speler2_correct:
+            return speler1_naam
+        elif speler2_correct > speler1_correct:
+            return speler2_naam
+        
+        # Bij gelijkspel: vergelijk totale tijd
+        speler1_totaal_tijd = sum(float(r['Waarde']) for r in speler1_waarden)
+        speler2_totaal_tijd = sum(float(r['Waarde']) for r in speler2_waarden)
+        
+        if speler1_totaal_tijd < speler2_totaal_tijd:
+            return speler1_naam
+        elif speler2_totaal_tijd < speler1_totaal_tijd:
+            return speler2_naam
+        else:
+            return None  # Complete gelijkspel

@@ -4,8 +4,7 @@
 #include <Wire.h>
 #include <VL53L0X.h>
 
-// PAS DIT AAN PER APPARAAT ("rood", "blauw", "geel", "groen")
-#define DEVICE_COLOR "blauw"
+#define DEVICE_COLOR "geel"
 
 const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure1998";
@@ -14,7 +13,6 @@ const char* MQTT_BROKER = "10.42.0.1";
 const int MQTT_PORT = 1883;
 const int MQTT_KEEPALIVE_DURATION = 5; 
 
-// ==================== PIN DEFINITIES ====================
 const int PIN_BATTERIJ_ADC = 2;
 const int PIN_KNOP = 3;
 const int PIN_TOF_XSHUT = 4;
@@ -26,19 +24,18 @@ const int PIN_I2C_SCL = 7;
 const uint16_t TOF_DETECTIE_MIN_MM = 50;
 const uint16_t TOF_DETECTIE_MAX_MM = 1000;
 const uint16_t TOF_POLL_INTERVAL_MS = 40;
-const uint16_t TOF_DETECTIE_AFKOELING_MS = 500;
+const uint16_t TOF_DETECTIE_AFKOELING_MS = 400;
 
 const float BATTERIJ_VOL_SPANNING = 4.2f;
 const float BATTERIJ_LEEG_SPANNING = 3.0f;
 const float BATTERIJ_SPANNINGSDELER = 2.0f;
 
-// Update elke 10 minuten
-const unsigned long BATTERIJ_UPDATE_INTERVAL = 600000;
+const unsigned long BATTERIJ_UPDATE_INTERVAL = 30000;
 const uint8_t BATTERIJ_KRITIEK_PERCENTAGE = 5;
 
-const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (10UL * 60UL * 1000UL); // 10 min
+const unsigned long GLOBALE_INACTIEF_TIMEOUT_MS = (10UL * 60UL * 1000UL);
 const unsigned long KNOP_DEBOUNCE_MS = 150;
-const unsigned long VERBINDING_PIEP_INTERVAL_MS = 10000; // Piep elke 10 sec tijdens verbinden
+const unsigned long VERBINDING_PIEP_INTERVAL_MS = 10000;
 
 const int ZOEMER_KANAAL = 0;
 const int ZOEMER_RESOLUTIE = 8;
@@ -101,8 +98,7 @@ void setup() {
   
   laatsteActiviteitTijd = millis();
 
-    // Serial write battery % on boot
-    uint8_t batterijPercentageBoot = leesBatterijPercentage();
+  uint8_t batterijPercentageBoot = leesBatterijPercentage();
     Serial.print("Battery % on boot: ");
     Serial.println(batterijPercentageBoot);
 }
@@ -125,11 +121,8 @@ void loop() {
     String payload = String(batterijPercentage);
     mqttClient.publish(topic_battery.c_str(), payload.c_str(), false);
 
-      // Serial write battery % every time it is sent
-      Serial.print("Battery % sent: ");
-      Serial.println(batterijPercentage);
-
-    // Controleer op kritiek batterijniveau
+    Serial.print("Battery % sent: ");
+    Serial.println(batterijPercentage);
     if (batterijPercentage <= BATTERIJ_KRITIEK_PERCENTAGE) {
       Serial.println("Kritieke batterij - ga slapen...");
       speelBatterijLeegGeluid();
@@ -145,7 +138,6 @@ void verbindGeforceerd() {
   static unsigned long verbindingStartTijd = 0;
   static unsigned long laatstePiepTijd = 0;
 
-  // Start timer bij eerste verbindingspoging
   if (verbindingStartTijd == 0) {
     verbindingStartTijd = millis();
     laatstePiepTijd = 0;
@@ -159,11 +151,10 @@ void verbindGeforceerd() {
     Serial.print("WiFi: "); Serial.println(WIFI_SSID);
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);
-    WiFi.setSleep(false);
+    WiFi.setSleep(true);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     while (WiFi.status() != WL_CONNECTED) {
-      // Full button handling during connection
       if (knopIngedrukt) {
         knopIngedrukt = false;
         verwerkKnopTijdensVerbinden();
@@ -182,7 +173,6 @@ void verbindGeforceerd() {
   }
 
   while (!mqttClient.connected()) {
-    // Full button handling during connection
     if (knopIngedrukt) {
       knopIngedrukt = false;
       verwerkKnopTijdensVerbinden();
@@ -200,30 +190,25 @@ void verbindGeforceerd() {
 
     String clientId = String("BM-") + DEVICE_COLOR + "-" + String(ESP.getEfuseMac(), HEX);
 
-    // Connect met Last Will "offline"
     if (mqttClient.connect(clientId.c_str(), topic_status.c_str(), 1, true, "offline")) {
       Serial.println("MQTT OK!");
 
       mqttClient.subscribe(topic_cmd.c_str());
       mqttClient.subscribe(topic_cmd_all.c_str());
 
-      // Gewoon "online" sturen (zonder MAC)
       mqttClient.publish(topic_status.c_str(), "online", true);
 
-      // Direct batterij sturen
       uint8_t batterijPercentage = leesBatterijPercentage();
       String battPayload = String(batterijPercentage);
       mqttClient.publish(topic_battery.c_str(), battPayload.c_str(), false);
 
-        // Serial write battery % when sent on reconnect
-        Serial.print("Battery % sent: ");
-        Serial.println(batterijPercentage);
+      Serial.print("Battery % sent: ");
+      Serial.println(batterijPercentage);
 
       laatsteBatterijUpdateTijd = millis();
       speelVerbindingGeluid();
       laatsteActiviteitTijd = millis();
 
-      // Reset verbinding timer na succesvolle verbinding
       verbindingStartTijd = 0;
 
     } else {
@@ -233,16 +218,24 @@ void verbindGeforceerd() {
   }
 }
 
-// ... Hieronder dezelfde functies als altijd (mqttCallback, initHardware, etc.) ...
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
   String message = "";
   for (unsigned int i = 0; i < length; i++) message += (char)payload[i];
   laatsteActiviteitTijd = millis();
-  if (message == "start") isPolling = true;
-  else if (message == "stop") isPolling = false;
+  if (message == "start") {
+    isPolling = true;
+    WiFi.setSleep(false);
+  }
+  else if (message == "stop") {
+    isPolling = false;
+    WiFi.setSleep(true);
+  }
   else if (message == "correct") isCorrectTarget = true;
   else if (message == "incorrect") isCorrectTarget = false;
-  else if (message == "sleep") gaaDiepeSlaap();
+  else if (message == "sleep") {
+    zoemerToon(800, 100); delay(50); zoemerToon(500, 150);
+    gaaDiepeSlaap();
+  }
   else if (message == "sound_ok") speelCorrectGeluid();
   else if (message == "sound_fail") speelIncorrectGeluid();
 }
@@ -255,7 +248,6 @@ void initHardware() {
   analogReadResolution(12);
   analogSetAttenuation(ADC_11db);
 
-  // Reset ToF sensor via XSHUT before I2C init
   pinMode(PIN_TOF_XSHUT, OUTPUT);
   digitalWrite(PIN_TOF_XSHUT, LOW);
   delay(10);
@@ -275,26 +267,21 @@ void initHardware() {
   }
 }
 
-// Shared button hold detection logic
 void verwerkKnopHold(bool tijdensVerbinden) {
-    // Thresholds for button hold detection
-    const unsigned long HOLD_RESTART_MS = 1500;  // 1.5s+ = restart zone
-    const unsigned long HOLD_CANCEL_MS = 3000;   // 3s+ = cancel
+    const unsigned long HOLD_RESTART_MS = 1500;
+    const unsigned long HOLD_CANCEL_MS = 3000;
 
     unsigned long pressStart = millis();
     bool restartBeeped = false;
 
-    // Wait for button release, measure hold duration
     while (digitalRead(PIN_KNOP) == LOW) {
         unsigned long holdTime = millis() - pressStart;
 
-        // Audio feedback when restart threshold reached
         if (!restartBeeped && holdTime >= HOLD_RESTART_MS) {
-            zoemerToon(1500, 80);  // Higher beep = restart armed
+            zoemerToon(1500, 80);
             restartBeeped = true;
         }
 
-        // Safety timeout to avoid infinite loop
         if (holdTime >= HOLD_CANCEL_MS + 1000) break;
 
         delay(10);
@@ -302,22 +289,18 @@ void verwerkKnopHold(bool tijdensVerbinden) {
 
     unsigned long holdDuration = millis() - pressStart;
 
-    // Determine action based on hold duration
     if (holdDuration >= HOLD_CANCEL_MS) {
-        // Too long = cancelled
         Serial.println("Knop te lang ingedrukt - geannuleerd");
-        zoemerToon(300, 200);  // Low tone = cancelled
+        zoemerToon(300, 200);
 
-        // Wait for full button release + cooldown to prevent immediate re-trigger
         while (digitalRead(PIN_KNOP) == LOW) delay(10);
-        delay(500);  // Cooldown after release
-        knopIngedrukt = false;  // Clear any pending ISR trigger
+        delay(500);
+        knopIngedrukt = false;
         return;
 
     } else if (holdDuration >= HOLD_RESTART_MS) {
-        // Long hold (1.5s - 3s) = restart
         Serial.println("Knop lang ingedrukt - herstart ESP...");
-        zoemerToon(1000, 100); delay(50); zoemerToon(1500, 100);  // Rising tone = restarting
+        zoemerToon(1000, 100); delay(50); zoemerToon(1500, 100);
         if (!tijdensVerbinden && mqttClient.connected()) {
             mqttClient.publish(topic_status.c_str(), "restarting", true);
             mqttClient.disconnect();
@@ -326,9 +309,8 @@ void verwerkKnopHold(bool tijdensVerbinden) {
         ESP.restart();
 
     } else {
-        // Short press (150ms - 1.5s) = sleep
         Serial.println("Knop kort ingedrukt - ga slapen...");
-        zoemerToon(800, 100); delay(50); zoemerToon(500, 150);  // Falling tone = going to sleep
+        zoemerToon(800, 100); delay(50); zoemerToon(500, 150);
         gaaDiepeSlaap();
     }
 }
@@ -365,7 +347,6 @@ void verwerkToF() {
 }
 
 uint8_t leesBatterijPercentage() {
-    // Gemiddelde van meerdere metingen voor stabielere waarde
     long totaal = 0;
     for (int i = 0; i < 16; i++) {
         totaal += analogRead(PIN_BATTERIJ_ADC);
@@ -373,11 +354,8 @@ uint8_t leesBatterijPercentage() {
     }
     int adcWaarde = totaal / 16;
 
-    // Bereken spanning (ADC 12-bit, 3.3V ref, spanningsdeler 1:2)
     float spanning = (adcWaarde / 4095.0f) * 3.3f * BATTERIJ_SPANNINGSDELER;
 
-    // LiPo ontlaadcurve lookup table (spanning -> percentage)
-    // LiPo ontlaadt niet lineair: snel van 4.2->3.9V, stabiel rond 3.7V, snel onder 3.5V
     const float lipoTabel[][2] = {
         {4.20f, 100.0f},
         {4.10f,  90.0f},
@@ -393,12 +371,9 @@ uint8_t leesBatterijPercentage() {
     };
     const int tabelGrootte = sizeof(lipoTabel) / sizeof(lipoTabel[0]);
 
-    // Boven maximum
     if (spanning >= lipoTabel[0][0]) return 100;
-    // Onder minimum
     if (spanning <= lipoTabel[tabelGrootte - 1][0]) return 0;
 
-    // Lineaire interpolatie tussen tabel punten
     for (int i = 0; i < tabelGrootte - 1; i++) {
         if (spanning >= lipoTabel[i + 1][0]) {
             float spanHoog = lipoTabel[i][0];
@@ -432,7 +407,6 @@ void gaaDiepeSlaap() {
     delay(100); zoemerUit();
     if (tofGeinitialiseerd) tofSensor.stopContinuous();
 
-    // Shut down ToF sensor before sleep
     digitalWrite(PIN_TOF_XSHUT, LOW);
 
     esp_deep_sleep_enable_gpio_wakeup(BIT(PIN_KNOP), ESP_GPIO_WAKEUP_GPIO_LOW);

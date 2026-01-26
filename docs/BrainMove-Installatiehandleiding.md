@@ -1,7 +1,7 @@
 # BrainMoveAJM: Installatiegids
 
 > **Snelle Start:** Wil je alle stappen overslaan? Vraag een kant-en-klare SD-kaart image aan!
-> Neem contact op via michiel.gekiere@student.howest.be om de vooraf geconfigureerde RPi image te ontvangen.
+> Neem contact op via arne.vandeputte@student.howest.be, jonathan.matthys@student.howest.be, michiel.gekiere@student.howest.be om de vooraf geconfigureerde RPi image te ontvangen.
 > Je hoeft dan alleen de image te flashen en de ESP32's te programmeren (Fase 10).
 
 ---
@@ -10,11 +10,11 @@
 
 * **Hostnaam:** `BrainMoveAJM`
 * **Gebruiker:** `bmajm`
-* **Wachtwoord:** `YOUR_SECURE_PASSWORD`
+* **Wachtwoord:** `secureajm5!`
 * **OS:** Debian Trixie (via RPi Imager)
 * **Netwerk:** Hotspot `10.42.0.1`, Ethernet `192.168.137.50`
-* **Frontend URL:** `http://10.42.0.1:3000`
-* **Backend URL:** `http://10.42.0.1:8000`
+* **Frontend URL:** `http://brainmove.local:3000`
+* **Backend URL:** `http://brainmove.local:8000`
 * **SSID:** `BrainMoveG1`
 * **Communicatie:** MQTT (Mosquitto broker)
 
@@ -25,13 +25,13 @@
 ```
 Client Device (Telefoon/Laptop)
     │
-    ├── http://10.42.0.1:3000  ──►  Frontend (serve)
+    ├── http://brainmove.local:3000  ──►  Frontend (serve)
     │
-    └── http://10.42.0.1:8000  ──►  Backend (uvicorn + Socket.IO)
+    └── http://brainmove.local:8000  ──►  Backend (uvicorn + Socket.IO)
 
 ESP32 Devices (4x: rood, blauw, geel, groen)
     │
-    └── 10.42.0.1:1883  ──►  MQTT Broker (mosquitto)
+    └── brainmove.local:1883  ──►  MQTT Broker (mosquitto)
 ```
 
 **Opmerking:** Deze setup gebruikt GEEN nginx. Frontend en backend worden direct benaderd op hun respectievelijke poorten voor minimale latency bij real-time Socket.IO communicatie.
@@ -46,14 +46,14 @@ ESP32 Devices (4x: rood, blauw, geel, groen)
 2. Steek de MicroSD-kaart in je PC.
 3. Open Imager en kies:
    * **Device:** Raspberry Pi 5.
-   * **OS:** Kies "Use Custom" -> Selecteer je **Debian Trixie** image bestand.
+   * **OS:** Selecteer de **Debian Trixie** image.
    * **Storage:** Selecteer je SD-kaart.
 
 4. Klik op **Next** en kies **EDIT SETTINGS** (OS Customisation):
    * **General:**
      * Hostname: `BrainMoveAJM`
      * Username: `bmajm`
-     * Password: `YOUR_SECURE_PASSWORD`
+     * Password: `secureajm5!`
      * Wireless LAN: **Uitvinken** (We gebruiken eerst de kabel).
 
    * **Services:**
@@ -69,8 +69,7 @@ ESP32 Devices (4x: rood, blauw, geel, groen)
 
 1. Haal de SD-kaart uit de PC en steek deze in de Raspberry Pi.
 2. Sluit de **Ethernetkabel** aan tussen de RPi en je Windows PC.
-3. Sluit de **USB WiFi Dongle** aan (voor de Hotspot).
-4. **⚠️ WACHT:** Sluit de stroom (USB-C) nog **niet** aan.
+3. **⚠️ WACHT:** Sluit de stroom (USB-C) nog **niet** aan.
 
 ---
 
@@ -94,7 +93,7 @@ ESP32 Devices (4x: rood, blauw, geel, groen)
 2. Open PowerShell op Windows en log in:
    ```powershell
    ssh bmajm@192.168.137.50
-   # Wachtwoord: YOUR_SECURE_PASSWORD
+   # Wachtwoord: secureajm5!
    ```
 
    *(Werkt het IP niet? Probeer `ssh bmajm@BrainMoveAJM.local`)*
@@ -167,7 +166,7 @@ ESP32 Devices (4x: rood, blauw, geel, groen)
 1. **Clone Repository:**
    ```bash
    mkdir -p ~/BrainMove && cd ~/BrainMove
-   # Vervang <URL> met jouw repo
+   # Vervang <URL> met de juiste repository URL
    git clone <JOUW_REPO_URL> BrainMoveG1
    ```
 
@@ -236,7 +235,7 @@ ESP32 Devices (4x: rood, blauw, geel, groen)
 
    Moet bevatten:
    ```env
-   VITE_API_BASE_URL=http://10.42.0.1:8000
+   VITE_API_BASE_URL=http://brainmove.local:8000
    ```
 
 2. **Builden:**
@@ -326,10 +325,10 @@ De ESP32 firmware staat in `esp32/brainmove_mqtt/brainmove_mqtt.ino`.
 ```cpp
 // WiFi credentials
 const char* WIFI_SSID = "BrainMoveG1";
-const char* WIFI_PASSWORD = "YOUR_SECURE_PASSWORD";
+const char* WIFI_PASSWORD = "bmSecure5!";
 
-// MQTT broker (Raspberry Pi IP)
-const char* MQTT_HOST = "10.42.0.1";
+// MQTT broker (Raspberry Pi)
+const char* MQTT_HOST = "brainmove.local";
 const int MQTT_PORT = 1883;
 
 // Device color (uniek per ESP32)
@@ -400,27 +399,10 @@ Dit is optioneel - het IP-adres blijft altijd werken als fallback.
 Print deze twee QR-codes uit voor op het apparaat:
 
 1. **Sticker 1: "Verbind met WiFi"**
-   * Code: `WIFI:T:WPA;S:BrainMoveG1;P:<YOUR_PASSWORD_HERE>;;`
+   * Code: `WIFI:T:WPA;S:BrainMoveG1;P:bmSecure5!;;`
 
 2. **Sticker 2: "Speel het spel"**
    * Code: `http://brainmove.local:3000`
-
----
-
-## Handige Scripts
-
-De repository bevat helper scripts in `scripts/`:
-
-```bash
-# Alles starten
-./scripts/start_all.sh
-
-# Alles stoppen
-./scripts/stop_all.sh
-
-# Alles herstarten
-./scripts/restart_all.sh
-```
 
 ---
 
