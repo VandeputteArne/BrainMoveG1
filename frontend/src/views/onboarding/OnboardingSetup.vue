@@ -48,8 +48,9 @@ onMounted(() => {
           <OnboardingProgressBlock :active="false" />
           <OnboardingProgressBlock :active="true" />
           <OnboardingProgressBlock :active="false" />
+          <OnboardingProgressBlock :active="false" />
         </div>
-        <ButtonsNext :progress="50" to="/warning" />
+        <ButtonsNext :progress="50" to="/opstelling" />
       </div>
     </div>
   </div>

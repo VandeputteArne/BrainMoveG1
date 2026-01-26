@@ -18,7 +18,7 @@ const isInGameRoute = () => {
 
 const isOnboardingRoute = () => {
   const name = route?.name;
-  return name === 'onboarding' || name === 'setup' || name === 'warning';
+  return name === 'onboarding' || name === 'setup' || name === 'opstelling' || name === 'warning';
 };
 
 const isDetailRoute = () => {
@@ -28,7 +28,7 @@ const isDetailRoute = () => {
 
 const isPopupHiddenRoute = () => {
   const name = route?.name;
-  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'game-detail' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'onboarding' || name === 'apparaten' || name === 'setup' || name === 'warning';
+  return name === 'game-play' || name === 'game-memory-play' || name === 'game-number-match-play' || name === 'game-detail' || name === 'resultaten-proficiat' || name === 'resultaten-overzicht' || name === 'resultaten-overzicht-detail' || name === 'onboarding' || name === 'apparaten' || name === 'setup' || name === 'opstelling' || name === 'warning';
 };
 
 const isMonitoringPausedRoute = () => {

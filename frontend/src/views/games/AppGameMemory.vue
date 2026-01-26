@@ -203,8 +203,7 @@ onUnmounted(() => {
         <!-- Waiting screen overlay -->
         <div v-if="showWaitingScreen" class="c-game-memory__waiting">
           <div class="c-game-memory__waiting-content">
-            <h2>Doe maar!</h2>
-            <p>Wachten op volgende ronde...</p>
+            <h2>Start maar!</h2>
           </div>
         </div>
 

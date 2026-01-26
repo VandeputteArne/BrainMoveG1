@@ -26,6 +26,7 @@ onMounted(() => {
         <OnboardingProgressBlock :active="true" />
         <OnboardingProgressBlock :active="false" />
         <OnboardingProgressBlock :active="false" />
+        <OnboardingProgressBlock :active="false" />
       </div>
       <ButtonsNext :progress="25" to="/setup" />
     </div>

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import OnboardingStart from '../views/onboarding/OnboardingStart.vue';
 import OnboardingSetup from '../views/onboarding/OnboardingSetup.vue';
+import OnboardingPlacement from '../views/onboarding/OnboardingPlacement.vue';
 import OnboardingWarning from '../views/onboarding/OnboardingWarning.vue';
 import AppGames from '../views/games/AppGames.vue';
 import AppDetail from '../views/games/AppDetail.vue';
@@ -26,6 +27,12 @@ const routes = [
     path: '/setup',
     name: 'setup',
     component: OnboardingSetup,
+    meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false, transition: 'slide-left' },
+  },
+  {
+    path: '/opstelling',
+    name: 'opstelling',
+    component: OnboardingPlacement,
     meta: { showTopbar: false, showNav: false, showBack: false, fullScreen: false, paddingbottom: false, paddingtop: false, transition: 'slide-left' },
   },
   {
