@@ -129,10 +129,45 @@ onUnmounted(() => {
   margin: 0;
   margin-bottom: 1rem;
   font-size: 2rem;
+  opacity: 0;
+  transform: translateY(10px);
 }
 
 .c-intro__text {
   margin: 0;
   font-size: 1.2rem;
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.c-game__intro.is-visible .c-intro__title,
+.c-game-memory__intro.is-visible .c-intro__title {
+  animation: intro-rise 420ms ease-out forwards;
+}
+
+.c-game__intro.is-visible .c-intro__text,
+.c-game-memory__intro.is-visible .c-intro__text {
+  animation: intro-rise 520ms ease-out forwards;
+  animation-delay: 80ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-intro__title,
+  .c-intro__text {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes intro-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

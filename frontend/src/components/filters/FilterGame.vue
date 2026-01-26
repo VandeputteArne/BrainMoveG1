@@ -79,17 +79,19 @@ onUnmounted(() => {
 <template>
   <div class="c-filter-game">
     <p>Gametype</p>
-    <div ref="dropdownRef" class="c-filter-game__filter">
+    <div ref="dropdownRef" class="c-filter-game__filter" @click="toggleDropdown">
       <Gamepad2 class="c-filter-game__icon" />
-      <button type="button" class="c-filter-game__trigger" :aria-expanded="isOpen" aria-haspopup="listbox" @click="toggleDropdown" @keydown.escape="closeDropdown">
+      <button type="button" class="c-filter-game__trigger" :aria-expanded="isOpen" aria-haspopup="listbox" @click.stop="toggleDropdown" @keydown.escape="closeDropdown">
         <span class="c-filter-game__label">{{ selectedLabel }}</span>
         <ChevronDown class="c-filter-game__chevron" :class="{ 'is-open': isOpen }" />
       </button>
-      <div v-if="isOpen" class="c-filter-game__menu" role="listbox" aria-label="Gametype">
-        <button v-for="option in gameoptions" :key="option.id" type="button" class="c-filter-game__option" role="option" :aria-selected="String(option.id) === String(modelValue)" @click="selectOption(option)">
-          {{ option.gametype }}
-        </button>
-      </div>
+      <transition name="c-dropdown">
+        <div v-if="isOpen" class="c-filter-game__menu" role="listbox" aria-label="Gametype">
+          <button v-for="option in gameoptions" :key="option.id" type="button" class="c-filter-game__option" role="option" :aria-selected="String(option.id) === String(modelValue)" @click="selectOption(option)">
+            {{ option.gametype }}
+          </button>
+        </div>
+      </transition>
     </div>
   </div>
 </template>
@@ -159,6 +161,25 @@ onUnmounted(() => {
     display: grid;
     gap: 0.25rem;
     z-index: 10;
+  }
+
+  .c-dropdown-enter-active,
+  .c-dropdown-leave-active {
+    transition:
+      opacity 180ms ease,
+      transform 180ms ease;
+  }
+
+  .c-dropdown-enter-from,
+  .c-dropdown-leave-to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+
+  .c-dropdown-enter-to,
+  .c-dropdown-leave-from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 
   .c-filter-game__option {

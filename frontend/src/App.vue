@@ -6,6 +6,7 @@ import AppNav from './components/AppNavbar.vue';
 import { useDeviceStatus } from './composables/useDeviceStatus';
 import { useDeviceAlerts } from './composables/useDeviceAlerts';
 import AppPopup from './components/AppPopup.vue';
+import AppLiveBanner from './components/AppLiveBanner.vue';
 
 const route = useRoute();
 const { pauseMonitoring, resumeMonitoring, fetchDeviceStatus, connectedDevices, disconnectedDevices } = useDeviceStatus();
@@ -99,6 +100,7 @@ watch(
 </script>
 
 <template>
+  <AppLiveBanner :hidden="isPopupHiddenRoute()" :suppressed="showPopup" :onlineOnly="true" />
   <AppPopup v-if="!isPopupHiddenRoute()" :show="showPopup" :devices="popupDevices" :type="popupType" :customTitle="popupCustomTitle" :customMessage="popupCustomMessage" @close="handleGlobalClose" />
   <AppTopbar v-if="showTopbar" :showBack="showBack" />
   <div :class="{ 'c-body': !fullScreen, 'c-body--no-padding-bottom': !paddingbottom, 'c-body--no-padding-top': !paddingtop }">

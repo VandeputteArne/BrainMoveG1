@@ -5,6 +5,7 @@ import FiltersDifficulty from '../../components/filters/FiltersDifficulty.vue';
 import LeaderboardSmall from '../../components/leaderboard/LeaderboardSmall.vue';
 import LeaderboardPlayer from '../../components/leaderboard/LeaderboardPlayer.vue';
 import { getApiUrl } from '../../config/api.js';
+import { useScrollReveal } from '../../composables/useScrollReveal.js';
 
 const selectedGame = ref(null);
 const selectedDifficulty = ref('2');
@@ -12,6 +13,8 @@ const selectedDifficulty = ref('2');
 const difficulties = ref([]);
 
 const leaderboardData = ref([]);
+const boardRef = ref(null);
+useScrollReveal(boardRef, leaderboardData);
 
 async function fetchDifficulties() {
   if (!selectedGame.value) {
@@ -100,8 +103,10 @@ onMounted(() => {
           </div>
           <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
         </div>
-        <div class="c-leaderboard__body">
-          <LeaderboardSmall v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" :unit="entry.unit" />
+        <div ref="boardRef" class="c-leaderboard__body">
+          <div v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" class="c-reveal" data-reveal>
+            <LeaderboardSmall :name="entry.name" :time="entry.time" :count="entry.rank" :full="true" :borderDark="true" :total="leaderboardData.length" :unit="entry.unit" />
+          </div>
         </div>
       </div>
     </div>

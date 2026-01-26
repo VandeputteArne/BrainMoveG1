@@ -50,6 +50,9 @@ export function useDeviceStatus() {
     if (copy.kleur || copy.color) {
       copy.kleur = String(copy.kleur ?? copy.color).toLowerCase();
     }
+    if (typeof copy.status === 'string' && copy.status.toLowerCase() === 'sleeping') {
+      copy.status = 'offline';
+    }
     const nested = copy.status && (copy.status.batterij ?? copy.status.battery);
     const rawBattery = copy.batterij ?? copy.battery ?? nested;
     const batteryValue = typeof rawBattery === 'string' ? Number.parseFloat(rawBattery) : Number(rawBattery);

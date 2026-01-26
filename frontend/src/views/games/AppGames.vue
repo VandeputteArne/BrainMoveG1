@@ -58,7 +58,9 @@ onUnmounted(() => {
       </button>
     </div>
     <div class="c-games" :class="`c-games--${viewMode}`">
-      <GameCard v-for="g in games" :key="g.id" :id="g.id" :title="g.title" :tag="g.tag" :best-time="g.bestTime" :unit="g.unit" :image="g.image" :view="viewMode" />
+      <div v-for="(g, index) in games" :key="g.id" class="c-games__item" :style="{ '--delay': `${Math.min(index * 80, 560)}ms` }">
+        <GameCard :id="g.id" :title="g.title" :tag="g.tag" :best-time="g.bestTime" :unit="g.unit" :image="g.image" :view="viewMode" />
+      </div>
     </div>
   </div>
 </template>
@@ -124,6 +126,33 @@ onUnmounted(() => {
     display: flex;
     flex-direction: column;
     gap: 2rem;
+  }
+}
+
+.c-games__item {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+  animation: games-reveal 520ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  animation-delay: var(--delay, 0ms);
+  width: 100%;
+}
+
+@keyframes games-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-games__item {
+    animation: none;
+    opacity: 1;
+    transform: none;
   }
 }
 </style>

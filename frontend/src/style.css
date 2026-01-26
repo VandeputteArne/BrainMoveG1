@@ -184,3 +184,26 @@ p {
     padding: 0 1.25rem;
   }
 }
+
+.c-reveal {
+  width: 100%;
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 420ms ease,
+    transform 420ms ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.c-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
