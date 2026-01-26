@@ -7,7 +7,7 @@
 
 BrainMove is een interactief trainingssysteem met cognitieve en motorische oefeningen. Het systeem bestaat uit:
 
-- **4 gekleurde potjes** (rood, blauw, geel, groen) met aanraaksensoren
+- **4 gekleurde potjes** (rood, blauw, geel, groen) met ingebouwde sensoren
 - **Een centrale hub** (Raspberry Pi) die alles verbindt
 - **Een webapp** om spellen te spelen en resultaten te bekijken
 
@@ -17,7 +17,7 @@ BrainMove is een interactief trainingssysteem met cognitieve en motorische oefen
 
 ### Stap 1: Hub Inschakelen
 
-1. **Sluit de USB-C voeding aan** op de Raspberry Pi (de witte box).
+1. **Sluit de USB-C voeding aan** op de Raspberry Pi of steek de stekker in het stopcontact.
 2. Wacht **2 minuten** tot het systeem volledig is opgestart.
 3. Het WiFi-netwerk `BrainMoveG1` wordt automatisch actief.
 
@@ -26,9 +26,10 @@ BrainMove is een interactief trainingssysteem met cognitieve en motorische oefen
 ### Stap 2: Potjes Activeren
 
 1. **Druk op de knop** op elk potje om deze te activeren (wakker maken uit slaapstand).
-2. Wacht **circa 2 seconden** - het potje start op uit slaapstand.
-3. Het potje maakt een **verbindingsgeluid** wanneer deze succesvol verbindt.
-4. Herhaal voor alle 4 de potjes (rood, blauw, geel, groen).
+2. Wacht **circa 3 seconden** - het potje start op uit slaapstand, als het gelukt is zal je een geluid horen.
+3. Hierna biept het potje enkele keren terwijl het verbinding maakt met de hub.
+4. Wanneer dit lukt hoor je een **verbindingsgeluid**.
+5. Herhaal voor alle 4 de potjes (rood, blauw, geel, groen).
 
 **Als een potje niet verbindt:**
 - **Houd de knop 1,5-3 seconden ingedrukt** om te herstarten (je hoort een piepje bij 1,5s)
@@ -49,7 +50,7 @@ Scan deze QR-code met je telefoon camera om automatisch te verbinden.
 
 1. Open **WiFi-instellingen** op je telefoon, tablet of laptop
 2. Verbind met netwerk: **`BrainMoveG1`**
-3. Voer het wachtwoord in (vraag dit aan de beheerder)
+3. Voer het wachtwoord in **`bmSecure1998`**
 
 Wacht tot je apparaat verbonden is met het WiFi-netwerk.
 
@@ -82,17 +83,15 @@ Bij het openen van de app zie je het welkomstscherm met:
 
 Tik op de pijl-knop om naar het volgende scherm te gaan.
 
-### Scherm 2: Potjes Aanzetten
+### Scherm 2: Potjes Aanzetten (indien nog niet gedaan)
 
 Op dit scherm zie je de 4 gekleurde potjes (rood, blauw, groen, geel) met hun verbindingsstatus.
 
 **Wat te doen:**
-1. **Druk op de fysieke knop** onder elk potje om het aan te zetten
+1. **Druk op de groene knop** op elk potje om het aan te zetten
 2. Op het scherm zie je de status veranderen van **offline** naar **online**
 3. Je hoort een **geluid** wanneer een potje succesvol verbindt
-4. Herhaal voor alle 4 de potjes
-
-> **Let op:** Je kunt pas verder als **alle 4 potjes verbonden** zijn. De pijl-knop is uitgeschakeld zolang er potjes offline zijn.
+4. Herhaal voor alle 4 de potjes (rood, blauw, geel, groen)
 
 ### Scherm 3: Waarschuwing
 
@@ -132,7 +131,7 @@ Op de **detailpagina** configureer je het spel:
 
 1. **Gebruikersnaam**: Voer je naam in (verplicht voor de ranglijst)
 2. **Moeilijkheidsgraad**: Kies Makkelijk, Gemiddeld of Moeilijk
-3. **Aantal rondes**: Kies 5, 10, 15 of 20 rondes
+3. **Aantal rondes**: Kies het aantal rondes van de vooraf ingestelde opties
 4. **Kleuren**: Selecteer welke potjes je wilt gebruiken (minimaal 2)
 
 Er is ook een **beschrijving** van het spel en de regels.
@@ -142,7 +141,7 @@ Je ziet daar onder een **mini-ranglijst** met de top 3 spelers voor dit spel.
 
 Tik op **"Start het spel"** om te beginnen.
 
-> **Let op:** De startknop is uitgeschakeld als:
+> **Let op:** Je kan geen spel starten als:
 > - Je geen gebruikersnaam hebt ingevuld
 > - Er minder dan 2 kleuren geselecteerd zijn
 > - Er minder dan 2 potjes online zijn
@@ -197,7 +196,6 @@ BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 1. Je ziet een nummer-kleur mapping (bijv. 1=Rood, 2=Blauw, etc.)
 2. Een nummer verschijnt op het scherm
 3. Tik op het potje met de bijbehorende kleur
-4. De mapping kan veranderen, blijf opletten!
 
 **Score:** Gemiddelde reactietijd + nauwkeurigheid
 
@@ -298,11 +296,11 @@ Tik op **"Apparaten"** in de navigatiebalk om te zien:
 
 ### Potjes Uitschakelen
 
-Om alle potjes uit te schakelen (bijv. aan het einde van de dag):
+Om alle potjes en de Raspberry uit te schakelen (bijv. aan het einde van de dag):
 
 1. Ga naar **"Apparaten"**
 2. Tik op **"Alles uitschakelen"**
-3. Voer het **beheerderswachtwoord** in
+3. Voer het **beheerderswachtwoord** in **`debestebrainmove`**
 4. Alle potjes gaan in slaapstand
 
 ---
@@ -356,8 +354,8 @@ Om alle potjes uit te schakelen (bijv. aan het einde van de dag):
 
 **Oplossingen:**
 1. Controleer of de **voeding** correct is aangesloten
-2. Controleer of het **LED-lampje** brandt op de Raspberry Pi
-3. Houd het witte knopje ingedrukt en wacht tot het lampje op de Raspberry Pi rood wordt. Trek de stekker eruit, en sluit opnieuw aan
+2. Controleer of het **LED-lampje** brandt op de Raspberry Pi, deze moet groen zijn
+3. **Herstart de Raspberry Pi** door het witte knopje ingedrukt te houden en te wachten tot het lampje op de Raspberry Pi rood wordt. Trek de stekker eruit, en sluit opnieuw aan
 4. Neem contact op met de technische beheerder
 
 ---
@@ -371,7 +369,7 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 |-------|-----------|
 | Kort drukken | Potje wordt wakker en verbindt |
 
-> **Let op:** Na het indrukken duurt het circa **2 seconden** voordat je een geluid hoort. Dit is normaal - het potje start op uit slaapstand.
+> **Let op:** Na het indrukken duurt het circa **3 seconden** voordat je een geluid hoort. Dit is normaal - het potje start op uit slaapstand.
 
 ### Wanneer Actief (verbonden of verbindend)
 | Indrukduur | Resultaat | Geluidssignaal |
@@ -413,6 +411,7 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 2. Tik op **"Alles uitschakelen"** om potjes in slaapstand te zetten
 3. Moest de webapp niet meer toehankelijk zijn, draai de hub open en **houd het witte knopje ingedrukt** tot de LED rood wordt
 4. Ontkoppel de **voeding** van de Raspberry Pi
+5. Druk op de knop van elk potje om ze in slaapstand te zetten (kort indrukken)
 
 ---
 
@@ -427,7 +426,7 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 ### Tijdens de Training
 
-- Beweeg **duidelijk en tussen de 10 - 100cm** boven de potjes
+- Beweeg **duidelijk en tussen de 5 - 80cm** boven de potjes
 - Kijk naar het scherm voor de **volgende instructie**
 - Neem **pauze** indien nodig
 - Begin met **makkelijk** en verhoog geleidelijk
@@ -472,7 +471,10 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 Bij technische problemen of vragen, neem contact op met:
 
-- **Email:** arne.vandeputte@student.howest.be, michiel.gekiere@student.howest.be, Jonathan.matthys@student.howest.be
-- **GitHub:** [BrainMoveG1 Repository](https://github.com/VandeputteArne/BrainMoveG1)
+- **Email:** 
+   - arne.vandeputte@student.howest.be
+   - jonathan.matthys@student.howest.be
+   - michiel.gekiere@student.howest.be
+- **GitHub:** https://github.com/VandeputteArne/BrainMoveG1
 
 ---
