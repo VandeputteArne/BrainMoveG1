@@ -69,7 +69,7 @@ Scan deze QR-code om direct naar de webapp te gaan.
 
 ---
 
-## De Webapp Gebruiken
+## Onboarding
 
 De webapp begeleidt je door 3 schermen voordat je kunt beginnen met trainen.
 
@@ -101,7 +101,9 @@ Dit scherm toont een belangrijke waarschuwing:
 
 Tik op **"Begin met trainen"** om naar het spellenvenster te gaan.
 
-### Navigatie
+---
+
+## Navigatie
 
 Na de onboarding kom je in het hoofdmenu. Onderaan het scherm vind je de navigatiebalk met 4 opties:
 
@@ -114,9 +116,9 @@ Na de onboarding kom je in het hoofdmenu. Onderaan het scherm vind je de navigat
 
 ---
 
-## Een Spel Starten
+## Spellen
 
-### Stap 1: Kies een spel
+### Spellenvenster
 
 In het **Spellenvenster** zie je alle 5 de spellen. Elk spel toont:
 - De **naam** van het spel
@@ -125,7 +127,7 @@ In het **Spellenvenster** zie je alle 5 de spellen. Elk spel toont:
 
 Tik op een spel om naar de detailpagina te gaan.
 
-### Stap 2: Configureer het spel
+### Speldetails & Configuratie
 
 Op de **detailpagina** configureer je het spel:
 
@@ -137,7 +139,7 @@ Op de **detailpagina** configureer je het spel:
 Er is ook een **beschrijving** van het spel en de regels.
 Je ziet daar onder een **mini-ranglijst** met de top 3 spelers voor dit spel.
 
-### Stap 3: Start het spel
+### Spel Starten
 
 Tik op **"Start het spel"** om te beginnen.
 
@@ -146,20 +148,11 @@ Tik op **"Start het spel"** om te beginnen.
 > - Er minder dan 2 kleuren geselecteerd zijn
 > - Er minder dan 2 potjes online zijn
 
-### Na het Spel
-
-Na afloop van het spel zie je:
-
-1. **Proficiat-scherm**: Felicitatie met confetti!
-2. Tik op **"Bekijk je resultaten"** voor gedetailleerde statistieken
-
----
-
-## De Spellen
+### De 5 Spellen
 
 BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
-### Spel 1: Kleur Sprint (Reactiesnelheid)
+#### Spel 1: Kleur Sprint (Reactiesnelheid)
 
 **Doel:** Tik zo snel mogelijk op het potje met de getoonde kleur.
 
@@ -171,9 +164,7 @@ BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
 **Score:** Gemiddelde reactietijd (lager = beter)
 
----
-
-### Spel 2: Geheugen (Onthouden)
+#### Spel 2: Geheugen (Onthouden)
 
 **Doel:** Onthoud en herhaal steeds langere kleurenreeksen.
 
@@ -186,9 +177,7 @@ BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
 **Score:** Hoogste niveau bereikt + gemiddelde reactietijd
 
----
-
-### Spel 3: Nummer Match (Cognitief)
+#### Spel 3: Nummer Match (Cognitief)
 
 **Doel:** Koppel nummers aan kleuren en tik het juiste potje aan.
 
@@ -199,9 +188,7 @@ BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
 **Score:** Gemiddelde reactietijd + nauwkeurigheid
 
----
-
-### Spel 4: Vallende Kleuren (Precisie)
+#### Spel 4: Vallende Kleuren (Precisie)
 
 **Doel:** Tik op de kleur voordat deze "valt" naar de onderkant.
 
@@ -213,9 +200,7 @@ BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
 **Score:** Aantal succesvol gevangen kleuren
 
----
-
-### Spel 5: Color Battle (2 Spelers)
+#### Spel 5: Color Battle (2 Spelers)
 
 **Doel:** Versla je tegenstander door sneller te reageren op jouw kleur.
 
@@ -228,10 +213,7 @@ BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
 
 **Score:** Aantal gewonnen rondes (bij gelijkstand telt de totale reactietijd)
 
-
----
-
-## Moeilijkheidsgraden
+### Moeilijkheidsgraden
 
 Elk spel heeft 3 moeilijkheidsgraden:
 
@@ -243,11 +225,14 @@ Elk spel heeft 3 moeilijkheidsgraden:
 
 > **Tip:** Begin met "Makkelijk" om het spel te leren kennen, en verhoog de moeilijkheid naarmate je verbetert.
 
----
+### Na het Spel
 
-## Resultaten Bekijken
+Na afloop van het spel zie je:
 
-### Na Elk Spel
+1. **Proficiat-scherm**: Felicitatie met confetti!
+2. Tik op **"Bekijk je resultaten"** voor gedetailleerde statistieken
+
+### Resultaten
 
 Na afloop van een spel zie je het **Proficiat-scherm** met confetti. Tik op **"Bekijk je resultaten"** om je statistieken te zien:
 
@@ -256,7 +241,9 @@ Na afloop van een spel zie je het **Proficiat-scherm** met confetti. Tik op **"B
 - **Je ranking** vergeleken met andere spelers
 - **Grafiek** van je prestaties per ronde
 
-### Geschiedenis
+---
+
+## Geschiedenis
 
 Bekijk al je eerdere trainingen:
 
@@ -265,18 +252,20 @@ Bekijk al je eerdere trainingen:
 3. Tik op een training voor gedetailleerde statistieken
 4. **Exporteer** naar Excel voor verdere analyse
 
-### Ranglijst
+---
+
+## Ranglijst (Leaderboard)
 
 Vergelijk je scores met andere spelers:
 
-1. Tik op **"Ranglijst"** in de navigatiebalk
+1. Tik op **"Ranglijst (Leaderboard)"** in de navigatiebalk
 2. Selecteer een **spel**
 3. Filter op **moeilijkheidsgraad**
 4. Bekijk de **Top 10** spelers
 
 ---
 
-## Apparaten Beheren
+## Apparaten
 
 ### Status Controleren
 
@@ -284,7 +273,7 @@ Tik op **"Apparaten"** in de navigatiebalk om te zien:
 
 - **Online/Offline status** van elk potje
 - **Batterijpercentage** per potje
-- **Laatst gezien** tijdstempel
+- **Laatst gezien** tijdstamp
 
 ### Status Indicatoren
 
@@ -471,7 +460,7 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 Bij technische problemen of vragen, neem contact op met:
 
-- **Email:** 
+- **Email:**
    - arne.vandeputte@student.howest.be
    - jonathan.matthys@student.howest.be
    - michiel.gekiere@student.howest.be
