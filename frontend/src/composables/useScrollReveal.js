@@ -28,7 +28,7 @@ export function useScrollReveal(containerRef, watchSource) {
     );
 
     items.forEach((el, index) => {
-      const delay = Math.min(index * 70, 420);
+      const delay = Math.min(index * 40, 200);
       el.style.setProperty('--reveal-delay', `${delay}ms`);
       observer.observe(el);
     });

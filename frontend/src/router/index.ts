@@ -8,6 +8,7 @@ import AppGame from '../views/games/AppGameColor.vue';
 import AppGameMemory from '../views/games/AppGameMemory.vue';
 import AppGameNumberMatch from '../views/games/AppGameNumberMatch.vue';
 import AppGameFallingColors from '../views/games/AppGameFallingColors.vue';
+import AppGameColorBattle from '../views/games/AppGameColorBattle.vue';
 import ResultatenProficiat from '../views/resultaten/ResultatenProficiat.vue';
 import ResultatenOverzicht from '../views/resultaten/ResultatenOverzicht.vue';
 import ApparatenView from '../views/apparaten/AppApparaten.vue';
@@ -67,6 +68,12 @@ const routes = [
     path: '/games/4/play',
     name: 'game-falling-colors-play',
     component: AppGameFallingColors,
+    meta: { showTopbar: false, showNav: false, showBack: true, fullScreen: true, paddingbottom: false, paddingtop: false, transition: 'fade' },
+  },
+  {
+    path: '/games/5/play',
+    name: 'game-color-battle-play',
+    component: AppGameColorBattle,
     meta: { showTopbar: false, showNav: false, showBack: true, fullScreen: true, paddingbottom: false, paddingtop: false, transition: 'fade' },
   },
   {

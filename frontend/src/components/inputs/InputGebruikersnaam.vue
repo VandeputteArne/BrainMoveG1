@@ -6,6 +6,9 @@ import { defineProps, defineEmits, ref, defineExpose } from 'vue';
 const props = defineProps({
   modelValue: { type: String, default: '' },
   bold: { type: Boolean, default: false },
+  label: { type: String, default: 'Gebruikersnaam' },
+  placeholder: { type: String, default: 'Gebruikersnaam' },
+  inputId: { type: String, default: 'gebruikersnaam' },
 });
 
 const emit = defineEmits(['update:modelValue']);
@@ -25,11 +28,11 @@ defineExpose({ focus });
 
 <template>
   <div>
-    <h3 v-if="props.bold">Gebruikersnaam</h3>
-    <p v-else>Gebruikersnaam</p>
+    <h3 v-if="props.bold">{{ props.label }}</h3>
+    <p v-else>{{ props.label }}</p>
     <div class="c-input-gebruiker">
-      <label for="gebruikersnaam" class="c-input-gebruiker__label"><User :class="!props.bold ? 'c-input-gebruiker__icon' : ''" /></label>
-      <input ref="inputRef" id="gebruikersnaam" type="text" :value="props.modelValue" @input="onInput" placeholder="Gebruikersnaam" class="c-input-gebruiker__input" />
+      <label :for="props.inputId" class="c-input-gebruiker__label"><User :class="!props.bold ? 'c-input-gebruiker__icon' : ''" /></label>
+      <input ref="inputRef" :id="props.inputId" type="text" :value="props.modelValue" @input="onInput" :placeholder="props.placeholder" class="c-input-gebruiker__input" />
     </div>
   </div>
 </template>

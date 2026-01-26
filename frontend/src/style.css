@@ -190,8 +190,8 @@ p {
   opacity: 0;
   transform: translateY(16px);
   transition:
-    opacity 420ms ease,
-    transform 420ms ease;
+    opacity 220ms ease,
+    transform 220ms ease;
   transition-delay: var(--reveal-delay, 0ms);
 }
 
