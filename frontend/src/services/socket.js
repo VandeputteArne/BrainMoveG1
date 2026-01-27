@@ -10,7 +10,6 @@ export function getSocket() {
       upgrade: false,
       autoConnect: false,
       reconnection: true,
-      reconnectionAttempts: 5,
       reconnectionDelay: 500,
       timeout: 5000,
     });
