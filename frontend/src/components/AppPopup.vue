@@ -151,11 +151,11 @@ function onInput(e) {
 
           <template v-else>
             <div v-if="deviceList.length === 1" class="c-popup__single-device">
-              <img :src="deviceList[0].image" :alt="`${deviceList[0].colorName} potje`" class="c-popup__image" />
+              <img :src="deviceList[0].image" :alt="`${deviceList[0].colorName} potje`" class="c-popup__image" loading="lazy" decoding="async" />
             </div>
             <div v-else-if="deviceList.length > 1" class="c-popup__devices-grid">
               <div v-for="device in deviceList" :key="device.kleur" class="c-popup__device-item">
-                <img :src="device.image" :alt="`${device.colorName} potje`" class="c-popup__image-small" />
+                <img :src="device.image" :alt="`${device.colorName} potje`" class="c-popup__image-small" loading="lazy" decoding="async" />
                 <span class="c-popup__device-label">{{ device.colorName }}</span>
               </div>
             </div>

@@ -19,7 +19,7 @@ onMounted(() => {
         <h1>Opstelling potjes</h1>
       </div>
 
-      <img class="c-opstelling__image" src="/images/opstelling.png" alt="Opstelling potjes in een 2x2 meter speelveld" />
+      <img class="c-opstelling__image" src="/images/opstelling.png" alt="Opstelling potjes in een 2x2 meter speelveld" loading="lazy" decoding="async" />
 
       <p class="c-opstelling__description">Zet de potjes in een speelveld van 2x2 meter. Laat genoeg ruimte zodat spelers vrij kunnen bewegen.</p>
 
@@ -42,7 +42,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  height: calc(100dvh - 5.5rem);
+  height: calc(var(--app-height, 100vh) - 5.5rem);
   overflow: hidden;
   gap: 3rem;
   margin-top: 3rem;

@@ -15,7 +15,7 @@ onMounted(() => {
 <template>
   <div class="c-onboarding">
     <div class="c-onboarding__inhoud" :class="{ 'is-loaded': isLoaded }">
-      <img class="c-onboarding__image" src="/images/BrainMove-Logo.png" alt="BrainMove Logo" />
+      <img class="c-onboarding__image" src="/images/BrainMove-Logo.png" alt="BrainMove Logo" loading="eager" decoding="async" fetchpriority="high" />
       <div class="c-onboarding__text">
         <h1>BrainMove</h1>
         <h3 class="c-onboarding__h2">Beweeg slimmer, denk scherper</h3>
@@ -42,7 +42,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100dvh;
+  height: var(--app-height, 100vh);
   padding: 0rem 1.25rem;
 
   position: relative;

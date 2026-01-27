@@ -44,7 +44,7 @@ onMounted(async () => {
         <h3>Goed gedaan! Je hebt de training afgerond</h3>
       </div>
 
-      <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" />
+      <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" loading="lazy" decoding="async" />
 
       <ButtonsPrimary url="/resultaten/overzicht" title="Bekijk je resultaten"></ButtonsPrimary>
     </div>
@@ -53,7 +53,7 @@ onMounted(async () => {
 
 <style scoped>
 .c-proficiat {
-  min-height: 100vh;
+  min-height: var(--app-height, 100vh);
   display: grid;
   align-items: center;
   justify-items: center;

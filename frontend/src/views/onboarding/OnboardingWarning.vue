@@ -16,7 +16,7 @@ onMounted(() => {
   <div class="o-container-desktop">
     <div class="c-warning" :class="{ 'is-loaded': isLoaded }">
       <h1>Waarschuwing</h1>
-      <img src="/images/waarschuwing.png" alt="Waarschuwing" class="c-warning__img" />
+      <img src="/images/waarschuwing.png" alt="Waarschuwing" class="c-warning__img" loading="lazy" decoding="async" />
       <p class="c-warning__text">Schakel het systeem altijd uit via de pagina Apparaten. Trek nooit de stekker uit het stopcontact, dit kan het systeem beschadigen.</p>
       <div class="c-warning__progress">
         <div class="c-warning__progess-blocks">
@@ -36,7 +36,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  height: calc(100dvh - 5.5rem);
+  height: calc(var(--app-height, 100vh) - 5.5rem);
   gap: 3rem;
   margin-top: 3rem;
   opacity: 0;

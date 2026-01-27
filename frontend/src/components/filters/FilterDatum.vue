@@ -17,6 +17,7 @@ function openDatePicker(event) {
     <p>Datum</p>
     <div class="c-filter-datum__filter" @click="openDatePicker">
       <Calendar class="c-filter-datum__icon" />
+      <span v-if="!modelValue" class="c-filter-datum__placeholder">Kies datum</span>
       <input ref="dateRef" type="date" v-model="modelValue" class="c-filter-datum__input" @click.stop />
     </div>
   </div>
@@ -26,7 +27,7 @@ function openDatePicker(event) {
 .c-filter-datum {
   display: flex;
   flex-direction: column;
-  gap: 0.3125rem;
+  gap: 0.5rem;
   font-size: 0.875rem;
 }
 
@@ -38,6 +39,7 @@ function openDatePicker(event) {
   border: solid 1px var(--gray-40);
   padding: 0.5rem 0.625rem;
   cursor: pointer;
+  position: relative;
 }
 
 .c-filter-datum__icon {
@@ -51,6 +53,21 @@ function openDatePicker(event) {
   flex-grow: 1;
   cursor: pointer;
   height: 100%;
+}
+
+.c-filter-datum__placeholder {
+  position: absolute;
+  left: calc(1.25rem + 1rem);
+  right: 0.625rem;
+  color: var(--gray-50);
+  pointer-events: none;
+  line-height: 1;
+}
+
+@media (min-width: 768px) {
+  .c-filter-datum__placeholder {
+    display: none;
+  }
 }
 
 .c-filter-datum__input::-webkit-calendar-picker-indicator {

@@ -419,7 +419,7 @@ async function startGame() {
     </div>
 
     <div class="c-game-detail__right">
-      <img class="c-game-detail__img" :src="gameImage" :alt="`${gameName} illustration`" />
+      <img class="c-game-detail__img" :src="gameImage" :alt="`${gameName} illustration`" loading="eager" decoding="async" fetchpriority="high" />
       <div class="c-game-detail__info">
         <h1>{{ gameName }}</h1>
         <p>{{ gameDescription }}</p>

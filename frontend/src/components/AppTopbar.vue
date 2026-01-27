@@ -72,7 +72,7 @@ function isActive(targetPath) {
         <h3>Terug</h3>
       </router-link>
       <div v-else class="c-topbar-desktop__left">
-        <img src="/images/BrainMove-Logo.png" alt="BrainMove Logo" class="c-topbar-desktop__logo" />
+        <img src="/images/BrainMove-Logo.png" alt="BrainMove Logo" class="c-topbar-desktop__logo" loading="eager" decoding="async" fetchpriority="high" />
         <nav class="c-topbar-desktop__nav">
           <ul class="c-topbar-desktop__list">
             <li class="c-topbar-desktop__item">

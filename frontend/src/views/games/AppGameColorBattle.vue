@@ -158,7 +158,7 @@ onUnmounted(() => {
   <div class="c-game-root">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Color Battle" text="Twee spelers, één strijd. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="4000" title="Color Battle" text="Twee spelers, één strijd. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
 
     <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
@@ -197,14 +197,14 @@ onUnmounted(() => {
 
 <style scoped>
 .c-game-root {
-  height: 100vh;
+  height: var(--app-height, 100vh);
   width: 100vw;
 }
 
 .c-game {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-height, 100vh);
   width: 100vw;
 }
 
