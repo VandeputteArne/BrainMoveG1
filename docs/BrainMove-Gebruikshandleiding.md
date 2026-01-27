@@ -61,6 +61,8 @@ Wacht tot je apparaat verbonden is met het WiFi-netwerk.
 
 ### Stap 4: Open de Webapp
 
+> **iPhone gebruikers:** We raden aan om **Google Chrome** te gebruiken in plaats van Safari voor de beste ervaring met de webapp.
+
 **Optie A: Scan de QR-code (aanbevolen)**
 
 <img src="images/qr-brainmove.png" alt="Webapp QR-code" width="400"/> 
