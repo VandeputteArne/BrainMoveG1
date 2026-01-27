@@ -10,7 +10,6 @@ const router = useRouter();
 
 onMounted(async () => {
   await loadConfettiScript();
-
   setTimeout(() => {
     fireConfetti();
 
@@ -22,6 +21,16 @@ onMounted(async () => {
       if (playPromise !== undefined) {
         playPromise.catch((error) => {
           console.log('Audio autoplay geblokkeerd:', error.message);
+          const playOnInteraction = () => {
+            audioRef.value?.play().catch(() => {});
+            document.removeEventListener('click', playOnInteraction);
+            document.removeEventListener('keydown', playOnInteraction);
+            document.removeEventListener('touchstart', playOnInteraction);
+          };
+
+          document.addEventListener('click', playOnInteraction, { once: true });
+          document.addEventListener('keydown', playOnInteraction, { once: true });
+          document.addEventListener('touchstart', playOnInteraction, { once: true });
         });
       }
     } else if (audioRef.value) {
