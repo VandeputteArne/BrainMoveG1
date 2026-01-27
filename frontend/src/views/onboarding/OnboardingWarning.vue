@@ -56,6 +56,8 @@ onMounted(() => {
     min-height: var(--app-height, 100vh);
     overflow: auto;
     padding-bottom: 2rem;
+    justify-content: center;
+    overflow: hidden;
   }
 
   .c-warning__text {
