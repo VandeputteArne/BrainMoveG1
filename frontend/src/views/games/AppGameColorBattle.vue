@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameTimer } from '../../composables/useGameTimer.js';
 import { useGameCountdown } from '../../composables/useGameCountdown.js';
+import { useGameDeviceGuard } from '../../composables/useGameDeviceGuard.js';
 import GameCountdown from '../../components/game/GameCountdown.vue';
 import GameHeader from '../../components/game/GameHeader.vue';
 import GameProgress from '../../components/game/GameProgress.vue';
@@ -63,6 +64,8 @@ try {
     detectedGameId = parsed.gameId || parsed.game_id || parsed.spelId || parsed.spel_id || parsed.id || parsed.game || detectedGameId;
   }
 } catch (e) {}
+
+useGameDeviceGuard(detectedGameId);
 
 const { formattedTime, startTimer, stopTimer } = useGameTimer();
 const { countdown, showCountdown, countdownText, startCountdown } = useGameCountdown({

@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router';
 import { Timer, OctagonX } from 'lucide-vue-next';
 import { connectSocket, disconnectSocket } from '../../services/socket.js';
 import { getApiUrl } from '../../config/api.js';
+import { useGameDeviceGuard } from '../../composables/useGameDeviceGuard.js';
 
 const countdown = ref(3);
 const showCountdown = ref(true);
@@ -50,6 +51,7 @@ const kleuren = {
 
 let _socket = null;
 let chosenColors = [];
+let detectedGameId = 1;
 try {
   const raw = sessionStorage.getItem('lastGamePayload');
   if (raw) {
@@ -57,10 +59,13 @@ try {
     if (Array.isArray(parsed.kleuren)) {
       chosenColors = parsed.kleuren.map((c) => String(c).toLowerCase());
     }
+    detectedGameId = parsed.gameId || parsed.game_id || parsed.spelId || parsed.spel_id || parsed.id || parsed.game || detectedGameId;
   }
 } catch (e) {
   chosenColors = [];
 }
+
+useGameDeviceGuard(detectedGameId);
 
 onMounted(async () => {
   try {

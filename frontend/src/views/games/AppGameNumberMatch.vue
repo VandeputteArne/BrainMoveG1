@@ -374,7 +374,7 @@ function goBack() {
   inset: 0;
 }
 .c-game__number {
-  font-size: 6rem;
+  font-size: 7rem;
   color: white;
   font-weight: 800;
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
