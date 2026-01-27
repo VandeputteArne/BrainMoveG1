@@ -16,4 +16,14 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', setAppHeight);
 }
 
+function preloadImages(sources: string[]) {
+  sources.forEach((src: string) => {
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = src;
+  });
+}
+
+preloadImages(['/images/training-afgerond.png']);
+
 createApp(App).use(router).mount('#app');
