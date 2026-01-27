@@ -153,5 +153,18 @@ onMounted(() => {
       transform: translateY(-15px) scale(1.05);
     }
   }
+
+  @media (max-height: 700px) {
+    justify-content: flex-start;
+    height: auto;
+    min-height: var(--app-height, 100vh);
+    overflow: auto;
+    padding-bottom: 2rem;
+
+    .c-onboarding__progress {
+      position: static;
+      margin-top: 2rem;
+    }
+  }
 }
 </style>
