@@ -312,8 +312,7 @@ Om alle potjes en de Raspberry uit te schakelen (bijv. aan het einde van de dag)
 
 **Oplossingen:**
 1. **Laad het potje op** met de USB-kabel
-2. Bij batterij kleiner of gelijk aan 5% gaat het potje automatisch in slaapstand
-3. Een volle oplading duurt ongeveer 2 uur
+2. Een volle oplading duurt ongeveer 2 uur
 
 ### Webapp Laadt Niet
 

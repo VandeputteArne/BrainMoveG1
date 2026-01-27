@@ -123,11 +123,6 @@ void loop() {
 
     Serial.print("Battery % sent: ");
     Serial.println(batterijPercentage);
-    if (batterijPercentage <= BATTERIJ_KRITIEK_PERCENTAGE) {
-      Serial.println("Kritieke batterij - ga slapen...");
-      speelBatterijLeegGeluid();
-      gaaDiepeSlaap();
-    }
   }
 
 
