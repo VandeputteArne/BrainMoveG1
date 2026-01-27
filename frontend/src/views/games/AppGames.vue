@@ -107,6 +107,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 1.5rem;
   transition: all 0.3s ease;
+  margin-bottom: 5rem;
 
   @media (width >= 768px) {
     display: grid;
@@ -121,6 +122,7 @@ onUnmounted(() => {
   grid-template-columns: repeat(2, 1fr);
   gap: 1rem;
   transition: all 0.3s ease;
+  margin-bottom: 5rem;
 
   @media (width >= 768px) {
     display: flex;
