@@ -1,0 +1,216 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600;1,700&display=swap');
+
+:root {
+  --app-height: 100vh;
+  /* ========== Base colors ========== */
+  --color-black: #17191c;
+  --color-white: #ffffff;
+
+  /* ========== Brand / Accent colors ========== */
+  --color-yellow: #ffc400;
+  --color-orange: #ff8f00;
+  --color-red: #f91818;
+  --color-green: #66bb6a;
+
+  /* ========== Strong variants ========== */
+  --color-yellow-100: #eeff00;
+  --color-green-100: #00b709;
+
+  /* ========== Blue scale (primary UI color) ========== */
+  --blue-100: #2979ff;
+  --blue-90: #3c85ff;
+  --blue-80: #5091ff;
+  --blue-70: #639eff;
+  --blue-60: #77aaff;
+  --blue-50: #8ab6ff;
+  --blue-40: #8ab6ff;
+  --blue-30: #b1ceff;
+  --blue-20: #c5daff;
+  --blue-10: #d8e7ff;
+
+  /* ========== Gray scale (UI neutrals) ========== */
+  --gray-90: #313335;
+  --gray-80: #4b4c4e;
+  --gray-70: #646668;
+  --gray-60: #7e7f81;
+  --gray-50: #98999a;
+  --gray-40: #b2b2b3;
+  --gray-30: #cbcccd;
+  --gray-20: #e5e5e6;
+  --gray-10: #f2f2f2;
+
+  /* Spacing */
+  --spacing-blocks: 1rem;
+  --spacing-title: 1.5rem;
+
+  /* Fonts */
+  --font-family: 'Poppins', sans-serif;
+
+  /* Border Radius */
+  --radius-40: 2.5rem;
+  --radius-20: 1.25rem;
+  --radius-15: 0.625rem;
+
+  /* Shadows */
+  --shadow: 0 -1px 8px 0 rgba(0, 0, 0, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: var(--font-family);
+}
+
+body {
+  color: var(--gray-80);
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: bold;
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+p {
+  font-size: 0.875rem;
+  font-weight: normal;
+}
+
+.small {
+  font-size: 0.75rem;
+  font-weight: normal;
+}
+
+.title {
+  margin-bottom: var(--spacing-blocks);
+}
+
+.c-button {
+  display: flex;
+  height: 3.1875rem;
+  padding: 0.8125rem 5.0625rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 6.25rem;
+  background: var(--blue-100);
+  color: var(--color-white);
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+
+  .c-button__icon {
+    display: flex;
+    align-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &:hover {
+    background: var(--blue-90);
+  }
+}
+
+.error {
+  position: relative;
+  display: inline-block;
+  background-color: var(--color-red);
+  color: var(--color-white);
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--radius-15);
+  margin-left: 0.5rem;
+  margin-top: 0.2rem;
+  width: fit-content;
+}
+.error::before {
+  content: '';
+  position: absolute;
+  left: 1rem;
+  top: -0.4rem;
+  width: 0;
+  height: 0;
+  border-left: 0.45rem solid transparent;
+  border-right: 0.45rem solid transparent;
+  border-bottom: 0.45rem solid var(--color-red);
+}
+
+.c-button {
+  display: flex;
+  height: 3.1875rem;
+  padding: 0.8125rem 2rem;
+  justify-content: center;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 6.25rem;
+  background: var(--blue-100);
+  color: var(--color-white);
+  text-decoration: none;
+  width: 100%;
+
+  .c-button__icon {
+    display: flex;
+    align-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &:hover {
+    background: var(--blue-90);
+  }
+}
+
+.c-button--disabled {
+  background: var(--gray-40);
+  cursor: not-allowed;
+
+  &:hover {
+    background: var(--gray-40);
+  }
+}
+
+.o-container-desktop {
+  @media (min-width: 768px) {
+    max-width: 70rem;
+    margin: 0 auto;
+    padding: 0 1.25rem;
+  }
+}
+
+.c-reveal {
+  width: 100%;
+  opacity: 0;
+  transform: translateY(16px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.c-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
