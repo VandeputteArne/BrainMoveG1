@@ -81,6 +81,13 @@ onMounted(() => {
     align-items: start;
     gap: 3rem;
   }
+
+  @media (max-height: 700px) {
+    height: auto;
+    min-height: var(--app-height, 100vh);
+    overflow: auto;
+    padding-bottom: 2rem;
+  }
 }
 
 .c-setup__potjes {
@@ -134,6 +141,11 @@ onMounted(() => {
   @media (width >= 768px) {
     left: 50%;
     transform: translateX(-50%);
+  }
+
+  @media (max-height: 700px) {
+    position: static;
+    margin-top: 2rem;
   }
 }
 

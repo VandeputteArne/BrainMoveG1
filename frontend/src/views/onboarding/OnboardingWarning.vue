@@ -51,6 +51,13 @@ onMounted(() => {
     transform: translateY(0);
   }
 
+  @media (max-height: 700px) {
+    height: auto;
+    min-height: var(--app-height, 100vh);
+    overflow: auto;
+    padding-bottom: 2rem;
+  }
+
   .c-warning__text {
     text-align: center;
     padding: 0 1rem;
@@ -77,6 +84,11 @@ onMounted(() => {
 
     @media (width >= 768px) {
       max-width: 30rem;
+    }
+
+    @media (max-height: 700px) {
+      position: static;
+      margin-top: 2rem;
     }
   }
 
