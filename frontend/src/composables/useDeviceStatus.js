@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue';
-import { connectSocket, disconnectSocket } from '../services/socket.js';
+import { connectSocket } from '../services/socket.js';
 import { getApiUrl } from '../config/api.js';
 
 const allDevicesConnected = ref(false);
@@ -7,6 +7,7 @@ const connectedDevices = ref([]);
 const disconnectedDevices = ref([]);
 let socket = null;
 let listenerCount = 0;
+let listenersAttached = false;
 const monitoringPaused = ref(false);
 
 function loadFromSessionStorage() {
@@ -133,52 +134,56 @@ export function useDeviceStatus() {
       loadFromSessionStorage();
     }
 
-    socket.on('all_devices_connected', (data) => {
-      if (monitoringPaused.value) return;
-      console.log('[useDeviceStatus] all_devices_connected:', data);
-      allDevicesConnected.value = true;
-      if (data?.apparaten) {
-        connectedDevices.value = data.apparaten.map(normalizeDevice);
-        disconnectedDevices.value = [];
-      }
-      saveToSessionStorage();
-    });
+    if (!listenersAttached) {
+      socket.on('all_devices_connected', (data) => {
+        if (monitoringPaused.value) return;
+        console.log('[useDeviceStatus] all_devices_connected:', data);
+        allDevicesConnected.value = true;
+        if (data?.apparaten) {
+          connectedDevices.value = data.apparaten.map(normalizeDevice);
+          disconnectedDevices.value = [];
+        }
+        saveToSessionStorage();
+      });
 
-    socket.on('device_connected', (data) => {
-      if (monitoringPaused.value) return;
-      console.log('[useDeviceStatus] device_connected:', data);
-      const dev = normalizeDevice(data);
-      const existingIndex = connectedDevices.value.findIndex((d) => d.kleur === dev.kleur);
-      if (existingIndex >= 0) {
-        connectedDevices.value[existingIndex] = { ...connectedDevices.value[existingIndex], ...dev };
-      } else {
-        connectedDevices.value = [...connectedDevices.value, dev];
-      }
-      disconnectedDevices.value = disconnectedDevices.value.filter((d) => d.kleur !== dev.kleur);
-      saveToSessionStorage();
-    });
+      socket.on('device_connected', (data) => {
+        if (monitoringPaused.value) return;
+        console.log('[useDeviceStatus] device_connected:', data);
+        const dev = normalizeDevice(data);
+        const existingIndex = connectedDevices.value.findIndex((d) => d.kleur === dev.kleur);
+        if (existingIndex >= 0) {
+          connectedDevices.value[existingIndex] = { ...connectedDevices.value[existingIndex], ...dev };
+        } else {
+          connectedDevices.value = [...connectedDevices.value, dev];
+        }
+        disconnectedDevices.value = disconnectedDevices.value.filter((d) => d.kleur !== dev.kleur);
+        saveToSessionStorage();
+      });
 
-    socket.on('device_disconnected', (data) => {
-      if (monitoringPaused.value) return;
-      console.log('[useDeviceStatus] device_disconnected:', data);
-      allDevicesConnected.value = false;
-      const dev = normalizeDevice(data);
-      connectedDevices.value = connectedDevices.value.filter((d) => d.kleur !== dev.kleur);
-      const existingIndex = disconnectedDevices.value.findIndex((d) => d.kleur === dev.kleur);
-      if (existingIndex >= 0) {
-        disconnectedDevices.value[existingIndex] = { ...disconnectedDevices.value[existingIndex], ...dev };
-      } else {
-        disconnectedDevices.value = [...disconnectedDevices.value, dev];
-      }
-      saveToSessionStorage();
-    });
+      socket.on('device_disconnected', (data) => {
+        if (monitoringPaused.value) return;
+        console.log('[useDeviceStatus] device_disconnected:', data);
+        allDevicesConnected.value = false;
+        const dev = normalizeDevice(data);
+        connectedDevices.value = connectedDevices.value.filter((d) => d.kleur !== dev.kleur);
+        const existingIndex = disconnectedDevices.value.findIndex((d) => d.kleur === dev.kleur);
+        if (existingIndex >= 0) {
+          disconnectedDevices.value[existingIndex] = { ...disconnectedDevices.value[existingIndex], ...dev };
+        } else {
+          disconnectedDevices.value = [...disconnectedDevices.value, dev];
+        }
+        saveToSessionStorage();
+      });
 
-    socket.on('device_battery_update', (data) => {
-      if (monitoringPaused.value) return;
-      console.log('[useDeviceStatus] device_battery_update:', data);
-      const updated = applyBatteryUpdate(data);
-      if (updated) saveToSessionStorage();
-    });
+      socket.on('device_battery_update', (data) => {
+        if (monitoringPaused.value) return;
+        console.log('[useDeviceStatus] device_battery_update:', data);
+        const updated = applyBatteryUpdate(data);
+        if (updated) saveToSessionStorage();
+      });
+
+      listenersAttached = true;
+    }
 
     isActive.value = true;
     listenerCount++;
@@ -194,8 +199,7 @@ export function useDeviceStatus() {
       socket.off('device_connected');
       socket.off('device_disconnected');
       socket.off('device_battery_update');
-      disconnectSocket();
-      socket = null;
+      listenersAttached = false;
       isActive.value = false;
     }
   }
