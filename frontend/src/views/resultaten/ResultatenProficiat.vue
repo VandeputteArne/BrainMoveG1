@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import ButtonsPrimary from '../../components/buttons/ButtonsPrimary.vue';
 import { loadConfettiScript, fireConfetti } from '../../utils/confetti.js';
+import { getSoundPreference } from '../../services/sound.js';
 
 const audioRef = ref(null);
 const router = useRouter();
@@ -13,7 +14,8 @@ onMounted(async () => {
   setTimeout(() => {
     fireConfetti();
 
-    if (audioRef.value) {
+    const shouldPlay = getSoundPreference();
+    if (audioRef.value && shouldPlay) {
       audioRef.value.volume = 0.5;
       const playPromise = audioRef.value.play();
 
@@ -22,6 +24,9 @@ onMounted(async () => {
           console.log('Audio autoplay geblokkeerd:', error.message);
         });
       }
+    } else if (audioRef.value) {
+      audioRef.value.pause?.();
+      audioRef.value.currentTime = 0;
     }
   }, 100);
 });
@@ -29,7 +34,7 @@ onMounted(async () => {
 
 <template>
   <div class="o-container-desktop">
-    <audio ref="audioRef" autoplay preload="auto">
+    <audio ref="audioRef" preload="auto">
       <source src="/images/sounds/1gift-confetti-447240.mp3" type="audio/mpeg" />
     </audio>
 

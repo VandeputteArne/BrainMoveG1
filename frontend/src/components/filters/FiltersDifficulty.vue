@@ -60,6 +60,7 @@ const starCount = computed(() => {
   border: 1px solid var(--blue-50);
   background: transparent;
   width: 100%;
+  transition: transform 160ms ease, background-color 160ms ease, border-color 160ms ease;
 }
 
 .c-filter-difficulty__stars {
@@ -77,11 +78,28 @@ const starCount = computed(() => {
 .c-filter-difficulty__input:checked + .c-filter-difficulty__visual {
   background: var(--blue-100);
   border-color: var(--blue-100);
+  animation: difficulty-pop 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 .c-filter-difficulty__input:checked + .c-filter-difficulty__visual .c-filter-difficulty__star {
   color: var(--color-white);
   fill: currentColor;
   stroke: currentColor;
+}
+
+.c-filter-difficulty:active .c-filter-difficulty__visual {
+  transform: scale(0.96);
+}
+
+@keyframes difficulty-pop {
+  0% {
+    transform: scale(0.96);
+  }
+  70% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>

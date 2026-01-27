@@ -60,6 +60,7 @@ function onChange(event) {
   align-items: center;
   justify-content: center;
   margin-top: 0.3125rem;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 
 .c-filter-color__input {
@@ -76,5 +77,25 @@ function onChange(event) {
 
 .c-filter-color__label.is-unchecked {
   opacity: 0.5;
+}
+
+.c-filter-color__label.is-checked {
+  animation: color-pop 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.c-filter-color__label:active {
+  transform: scale(0.92);
+}
+
+@keyframes color-pop {
+  0% {
+    transform: scale(0.9);
+  }
+  70% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 </style>
