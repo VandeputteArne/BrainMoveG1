@@ -284,8 +284,7 @@ class DataRepository:
                     game_naam=row['GameNaam']
                 )
                 games.append(game)
-        #we halen de gameid 5 (colorbattle) eruit
-        games = [game for game in games if game.game_id != 5]
+        
         
         return games
     
