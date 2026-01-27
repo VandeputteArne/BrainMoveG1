@@ -395,6 +395,7 @@ Om alle potjes en de Raspberry uit te schakelen (bijv. aan het einde van de dag)
 3. **Herstart de Raspberry Pi** door het witte knopje ingedrukt te houden en te wachten tot het lampje op de Raspberry Pi rood wordt. Trek de stekker eruit, en sluit opnieuw aan
 4. Neem contact op met de technische beheerder
 
+<img src="images/raspberry.jpg" alt="Raspberry Pi" width="250"/>
 
 ---
 
