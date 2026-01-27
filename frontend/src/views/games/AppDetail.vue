@@ -11,7 +11,7 @@ import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useDeviceStatus } from '../../composables/useDeviceStatus';
 import { getApiUrl } from '../../config/api.js';
-import { enableAudio } from '../../services/sound.js';
+import { enableAudio, disableAudio, isAudioEnabled, getSoundPreference, setSoundPreference } from '../../services/sound.js';
 import DetailPopup from '../../components/DetailPopup.vue';
 
 const router = useRouter();
@@ -92,6 +92,27 @@ const gameImage = ref('');
 const showDetailPopup = ref(false);
 const detailPopupTitle = ref('');
 const detailPopupMessage = ref('');
+const soundEnabled = ref(true);
+
+async function setSoundEnabled(nextValue) {
+  if (!nextValue) {
+    await disableAudio();
+    soundEnabled.value = false;
+    setSoundPreference(false);
+    return;
+  }
+
+  setSoundPreference(true);
+  const ok = await enableAudio();
+  soundEnabled.value = !!ok;
+  if (!soundEnabled.value) setSoundPreference(false);
+}
+
+async function onSoundToggle(event) {
+  const nextValue = !!event?.target?.checked;
+  if (nextValue === soundEnabled.value) return;
+  await setSoundEnabled(nextValue);
+}
 
 onMounted(async () => {
   try {
@@ -119,6 +140,12 @@ onMounted(async () => {
   }
 
   await fetchLeaderboard();
+
+  try {
+    const pref = getSoundPreference();
+    soundEnabled.value = pref;
+    if (!pref && isAudioEnabled()) await disableAudio();
+  } catch (e) {}
 
   try {
     const raw = sessionStorage.getItem('last_global_popup');
@@ -251,9 +278,7 @@ function buildPayload() {
 
   return {
     game_id: parseInt(gameId.value),
-    ...(isColorBattle.value
-      ? { speler1_naam: username.value || null, speler2_naam: username2.value || null }
-      : { gebruikersnaam: username.value || null }),
+    ...(isColorBattle.value ? { speler1_naam: username.value || null, speler2_naam: username2.value || null } : { gebruikersnaam: username.value || null }),
     moeilijkheids_id: diffId,
     snelheid: diff?.snelheid ?? null,
     ronde_id: rndId,
@@ -302,7 +327,7 @@ async function startGame() {
 
     if (res.ok) {
       try {
-        await enableAudio();
+        if (soundEnabled.value) await enableAudio();
       } catch (e) {}
       router.push(`/games/${gameId.value}/play`);
       return;
@@ -373,6 +398,18 @@ async function startGame() {
             <p v-if="kleurenError" class="error">Selecteer minstens 2 kleuren</p>
           </div>
         </div>
+
+        <div class="c-game-detail__audio">
+          <p class="c-game-detail__audio-label">Geluid</p>
+          <div class="c-game-detail__audio-row">
+            <label class="c-sound-switch">
+              <input class="c-sound-switch__input" type="checkbox" :checked="soundEnabled" @change="onSoundToggle" />
+              <span class="c-sound-switch__track" aria-hidden="true"></span>
+              <span class="c-sound-switch__thumb" aria-hidden="true"></span>
+            </label>
+            <p class="c-game-detail__audio-state">{{ soundEnabled ? 'Audio aan' : 'Audio uit' }}</p>
+          </div>
+        </div>
       </div>
 
       <button :class="'c-button' + (availableColors.length < 2 ? ' c-button--disabled' : '')" type="button" @click="startGame" aria-label="Start het spel" :disabled="availableColors.length < 2">
@@ -388,7 +425,7 @@ async function startGame() {
         <p>{{ gameDescription }}</p>
       </div>
 
-      <div v-if="!isColorBattle" class="c-game-detail__leader">
+      <div class="c-game-detail__leader">
         <h2>Leaderboard</h2>
         <LeaderboardSmall v-for="(entry, index) in smallLeaderboardData" :key="`${entry.name}-${index}`" :name="entry.name" :time="entry.time" :count="index + 1" :full="false" :borderDark="false" :total="smallLeaderboardData.length" :unit="entry.unit" />
       </div>
@@ -450,6 +487,79 @@ async function startGame() {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-blocks);
+  }
+
+  .c-game-detail__audio {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .c-game-detail__audio-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.6rem;
+  }
+
+  .c-game-detail__audio-label {
+    margin: 0;
+  }
+
+  .c-game-detail__audio-state {
+    font-size: 0.9rem;
+    color: var(--gray-60);
+    margin: 0;
+  }
+
+  .c-sound-switch {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 3.2rem;
+    height: 1.8rem;
+  }
+
+  .c-sound-switch__input {
+    position: absolute;
+    inset: 0;
+    margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .c-sound-switch__track {
+    width: 100%;
+    height: 100%;
+    background: var(--gray-20);
+    border-radius: 999px;
+    transition: background-color 160ms ease;
+  }
+
+  .c-sound-switch__thumb {
+    position: absolute;
+    left: 0.2rem;
+    top: 50%;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: var(--gray-0);
+    transform: translateY(-50%);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+    transition: transform 160ms ease;
+  }
+
+  .c-sound-switch__input:checked + .c-sound-switch__track {
+    background: var(--gray-20);
+  }
+
+  .c-sound-switch__input:checked + .c-sound-switch__track + .c-sound-switch__thumb {
+    transform: translate(1.4rem, -50%);
+    background: var(--blue-100);
+  }
+
+  .c-sound-switch__input:focus-visible + .c-sound-switch__track {
+    box-shadow: 0 0 0 3px rgba(41, 121, 255, 0.35);
   }
 
   .c-game-detail__img {

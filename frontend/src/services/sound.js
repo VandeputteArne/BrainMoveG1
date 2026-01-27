@@ -1,5 +1,22 @@
 let audioContext = null;
 let audioEnabled = false;
+const SOUND_PREF_KEY = 'sound_enabled';
+
+export function getSoundPreference() {
+  try {
+    const raw = localStorage.getItem(SOUND_PREF_KEY);
+    if (raw === null) return true;
+    return raw === 'true';
+  } catch (e) {
+    return true;
+  }
+}
+
+export function setSoundPreference(value) {
+  try {
+    localStorage.setItem(SOUND_PREF_KEY, String(!!value));
+  } catch (e) {}
+}
 
 function ensureContext() {
   if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -8,6 +25,7 @@ function ensureContext() {
 
 export async function enableAudio() {
   try {
+    if (!getSoundPreference()) return false;
     const ctx = ensureContext();
     if (ctx.state === 'suspended') await ctx.resume();
     audioEnabled = ctx.state === 'running';
@@ -24,8 +42,24 @@ export function isAudioEnabled() {
   return !!(audioEnabled && audioContext && audioContext.state === 'running');
 }
 
+export async function disableAudio() {
+  try {
+    if (!audioContext) {
+      audioEnabled = false;
+      return false;
+    }
+    if (audioContext.state === 'running') await audioContext.suspend();
+    audioEnabled = false;
+    return true;
+  } catch (e) {
+    audioEnabled = false;
+    return false;
+  }
+}
+
 export function playFlute(duration = 0.14, frequency = 261.63) {
   try {
+    if (!getSoundPreference()) return false;
     if (!audioContext) return false;
     if (audioContext.state !== 'running') return false;
     const now = audioContext.currentTime;
@@ -84,6 +118,7 @@ export function playFlute(duration = 0.14, frequency = 261.63) {
 export async function tryResumeIfExists() {
   if (!audioContext) return false;
   try {
+    if (!getSoundPreference()) return false;
     if (audioContext.state === 'suspended') await audioContext.resume();
     audioEnabled = audioContext.state === 'running';
     return audioEnabled;
