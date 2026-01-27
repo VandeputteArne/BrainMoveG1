@@ -101,8 +101,10 @@ onUnmounted(() => {
 <style scoped>
 .c-game__intro,
 .c-game-memory__intro {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  height: var(--app-height, 100vh);
+  min-height: var(--app-height, 100vh);
   background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
