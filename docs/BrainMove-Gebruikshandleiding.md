@@ -70,7 +70,7 @@ Scan deze QR-code om direct naar de webapp te gaan.
 **Optie B: Handmatig openen**
 
 1. Open een **webbrowser** (Chrome, Safari, Firefox)
-2. Ga naar: **`http://brainmove.local:3000`**
+2. Ga naar: **`http://10.42.0.1:3000`**
 
 
 ---
@@ -370,7 +370,7 @@ Om alle potjes en de Raspberry uit te schakelen (bijv. aan het einde van de dag)
 **Oplossingen:**
 1. Controleer of je verbonden bent met **WiFi "BrainMoveG1"**
 2. Ververs de pagina (pull-to-refresh of F5)
-3. Probeer het **IP-adres** direct: `http://brainmove.local:3000`
+3. Probeer het **IP-adres** direct: `http://10.42.0.1:3000`
 4. Wis de browser cache en probeer opnieuw
 5. Controleer of de hub is ingeschakeld
 
@@ -510,7 +510,7 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 | Potje herstarten | Houd knop 1,5-3 sec ingedrukt (piepje = loslaten) |
 | Knopactie annuleren | Houd knop > 3 sec ingedrukt |
 | Verbinden met WiFi | Netwerk "BrainMoveG1" |
-| Webapp openen | `http://brainmove.local:3000` |
+| Webapp openen | `http://10.42.0.1:3000` |
 | Potjes uitschakelen | Apparaten → Alles uitschakelen |
 | Potje opladen | USB-kabel aansluiten |
 

@@ -13,8 +13,8 @@
 * **Wachtwoord:** `secureajm5!`
 * **OS:** Debian Trixie (via RPi Imager)
 * **Netwerk:** Hotspot `10.42.0.1`, Ethernet `192.168.137.50`
-* **Frontend URL:** `http://brainmove.local:3000`
-* **Backend URL:** `http://brainmove.local:8000`
+* **Frontend URL:** `http://10.42.0.1:3000`
+* **Backend URL:** `http://10.42.0.1:8000`
 * **SSID:** `BrainMoveG1`
 * **Communicatie:** MQTT (Mosquitto broker)
 
@@ -25,13 +25,13 @@
 ```
 Client Device (Telefoon/Laptop)
     │
-    ├── http://brainmove.local:3000  ──►  Frontend (serve)
+    ├── http://10.42.0.1:3000  ──►  Frontend (serve)
     │
-    └── http://brainmove.local:8000  ──►  Backend (uvicorn + Socket.IO)
+    └── http://10.42.0.1:8000  ──►  Backend (uvicorn + Socket.IO)
 
 ESP32 Devices (4x: rood, blauw, geel, groen)
     │
-    └── brainmove.local:1883  ──►  MQTT Broker (mosquitto)
+    └── 10.42.0.1:1883  ──►  MQTT Broker (mosquitto)
 ```
 
 **Opmerking:** Deze setup gebruikt GEEN nginx. Frontend en backend worden direct benaderd op hun respectievelijke poorten voor minimale latency bij real-time Socket.IO communicatie.
@@ -235,7 +235,7 @@ ESP32 Devices (4x: rood, blauw, geel, groen)
 
    Moet bevatten:
    ```env
-   VITE_API_BASE_URL=http://brainmove.local:8000
+   VITE_API_BASE_URL=http://10.42.0.1:8000
    ```
 
 2. **Builden:**
@@ -328,7 +328,7 @@ const char* WIFI_SSID = "BrainMoveG1";
 const char* WIFI_PASSWORD = "bmSecure5!";
 
 // MQTT broker (Raspberry Pi)
-const char* MQTT_HOST = "brainmove.local";
+const char* MQTT_HOST = "10.42.0.1";
 const int MQTT_PORT = 1883;
 
 // Device color (uniek per ESP32)
@@ -343,57 +343,6 @@ const char* DEVICE_COLOR = "rood";  // of: blauw, geel, groen
 
 ---
 
-## Fase 11: Custom Domein Instellen (Optioneel)
-
-*Doel: `brainmove.local` gebruiken in plaats van het IP-adres.*
-
-Dit is optioneel - het IP-adres blijft altijd werken als fallback.
-
-1. **dnsmasq configuratie aanmaken:**
-   ```bash
-   sudo mkdir -p /etc/NetworkManager/dnsmasq.d
-   sudo nano /etc/NetworkManager/dnsmasq.d/brainmove.conf
-   ```
-
-2. **Plak deze inhoud:**
-   ```conf
-   address=/brainmove.local/10.42.0.1
-   address=/brainmove/10.42.0.1
-   ```
-
-3. **NetworkManager herstarten:**
-   ```bash
-   sudo systemctl restart NetworkManager
-   ```
-
-4. **Frontend updaten:**
-   ```bash
-   # Update .env.production
-   nano ~/BrainMove/BrainMoveG1/frontend/.env.production
-   ```
-
-   Verander naar:
-   ```env
-   VITE_API_BASE_URL=http://brainmove.local:8000
-   ```
-
-5. **Frontend rebuilden:**
-   ```bash
-   cd ~/BrainMove/BrainMoveG1/frontend
-   npm run build
-   ```
-
-6. **Services herstarten:**
-   ```bash
-   ./scripts/restart_all.sh
-   ```
-
-**Resultaat:** Webapp bereikbaar via `http://brainmove.local:3000`
-
-> Voor uitgebreide troubleshooting, zie [dnsmasq-setup-guide.md](dnsmasq-setup-guide.md)
-
----
-
 ## Gebruikers Toegang (QR Codes)
 
 Print deze twee QR-codes uit voor op het apparaat:
@@ -402,7 +351,7 @@ Print deze twee QR-codes uit voor op het apparaat:
    * Code: `WIFI:T:WPA;S:BrainMoveG1;P:bmSecure5!;;`
 
 2. **Sticker 2: "Speel het spel"**
-   * Code: `http://brainmove.local:3000`
+   * Code: `http://10.42.0.1:3000`
 
 ---
 
@@ -454,8 +403,8 @@ sudo nmcli connection up BrainMoveG1
 
 | Service | URL/Poort | Doel |
 |---------|-----------|------|
-| Frontend | `http://brainmove.local:3000` | Webapp |
-| Backend API | `http://brainmove.local:8000` | REST API |
-| API Docs | `http://brainmove.local:8000/docs` | Swagger documentatie |
-| MQTT Broker | `brainmove.local:1883` | ESP32 communicatie |
+| Frontend | `http://10.42.0.1:3000` | Webapp |
+| Backend API | `http://10.42.0.1:8000` | REST API |
+| API Docs | `http://10.42.0.1:8000/docs` | Swagger documentatie |
+| MQTT Broker | `10.42.0.1:1883` | ESP32 communicatie |
 | Hotspot | `BrainMoveG1` | WiFi netwerk |
