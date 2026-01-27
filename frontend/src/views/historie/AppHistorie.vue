@@ -196,7 +196,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--spacing-title);
-  margin-bottom: 3rem;
+  margin-bottom: 5rem;
 
   .c-historie__container {
     display: flex;
