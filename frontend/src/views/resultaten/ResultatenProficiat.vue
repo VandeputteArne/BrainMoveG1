@@ -44,7 +44,7 @@ onMounted(async () => {
         <h3>Goed gedaan! Je hebt de training afgerond</h3>
       </div>
 
-      <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" loading="lazy" decoding="async" />
+      <img class="c-proficiat__img" src="/images/training-afgerond.png" alt="Proficiat" loading="eager" decoding="async" fetchpriority="high" />
 
       <ButtonsPrimary url="/resultaten/overzicht" title="Bekijk je resultaten"></ButtonsPrimary>
     </div>
