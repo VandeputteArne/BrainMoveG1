@@ -62,7 +62,7 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
   justify-content: start;
-  height: calc(100dvh - 2.5rem);
+  height: calc(var(--app-height, 100vh) - 2.5rem);
   overflow: hidden;
   gap: 2rem;
   opacity: 0;

@@ -115,7 +115,7 @@ onMounted(() => {
             <LeaderboardPlayer v-if="leaderboardData[0]" :name="leaderboardData[0].name" :rank="1" class="c-leaderboard__player c-leaderboard__player--first" />
             <LeaderboardPlayer v-if="leaderboardData[2]" :name="leaderboardData[2].name" :rank="3" class="c-leaderboard__player c-leaderboard__player--third" />
           </div>
-          <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" />
+          <img src="/images/podium.png" alt="Podium" class="c-leaderboard__image" loading="lazy" decoding="async" />
         </div>
         <div ref="boardRef" class="c-leaderboard__body">
           <div v-for="(entry, index) in leaderboardData" :key="`${entry.rank}-${entry.name}-${index}`" class="c-reveal" data-reveal>
@@ -138,6 +138,7 @@ onMounted(() => {
       flex-direction: row;
       gap: 3rem;
       align-items: flex-start;
+      margin-bottom: 0rem;
     }
   }
 
@@ -176,6 +177,16 @@ onMounted(() => {
 
     @media (width < 576px) {
       max-width: 100%;
+    }
+  }
+
+  @media (width < 768px) {
+    .c-leaderboard__body {
+      padding-bottom: 0.3rem;
+    }
+
+    .c-leaderboard__board {
+      padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
     }
   }
 

@@ -3,6 +3,7 @@ import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useGameTimer } from '../../composables/useGameTimer.js';
 import { useGameCountdown } from '../../composables/useGameCountdown.js';
+import { useGameDeviceGuard } from '../../composables/useGameDeviceGuard.js';
 import GameCountdown from '../../components/game/GameCountdown.vue';
 import GameHeader from '../../components/game/GameHeader.vue';
 import GameProgress from '../../components/game/GameProgress.vue';
@@ -63,6 +64,8 @@ try {
     detectedGameId = parsed.gameId || parsed.game_id || parsed.spelId || parsed.spel_id || parsed.id || parsed.game || detectedGameId;
   }
 } catch (e) {}
+
+useGameDeviceGuard(detectedGameId);
 
 const { formattedTime, startTimer, stopTimer } = useGameTimer();
 const { countdown, showCountdown, countdownText, startCountdown } = useGameCountdown({
@@ -158,7 +161,7 @@ onUnmounted(() => {
   <div class="c-game-root">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Color Battle" text="Twee spelers, één strijd. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="4000" title="Color Battle" text="Twee spelers, één strijd. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
 
     <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
@@ -197,14 +200,14 @@ onUnmounted(() => {
 
 <style scoped>
 .c-game-root {
-  height: 100vh;
+  height: var(--app-height, 100vh);
   width: 100vw;
 }
 
 .c-game {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-height, 100vh);
   width: 100vw;
 }
 

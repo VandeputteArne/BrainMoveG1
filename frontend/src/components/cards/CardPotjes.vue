@@ -33,7 +33,7 @@ const isOffline = computed(() => !props.status);
 
 <template>
   <div class="c-potje">
-    <img :src="`/images/potjes/${props.kleur}.png`" :alt="`Potje ${props.kleur}`" class="c-potje__image" />
+    <img :src="`/images/potjes/${props.kleur}.png`" :alt="`Potje ${props.kleur}`" class="c-potje__image" loading="lazy" decoding="async" />
     <div class="c-potje__header">
       <p class="c-potje__label">{{ props.label }}</p>
       <div v-if="showBattery" class="c-potje__batterij">

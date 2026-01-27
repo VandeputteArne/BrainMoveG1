@@ -226,7 +226,7 @@ function goBack() {
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
     <!-- Intro instruction overlay shown before countdown (click anywhere to start) -->
-    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Number Match" text="Onthoud welke kleur bij welk nummer hoort. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="4000" title="Number Match" text="Onthoud welke kleur bij welk nummer hoort. Wacht op het startsignaal." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
 
     <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
@@ -264,7 +264,7 @@ function goBack() {
 .c-game {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-height, 100vh);
   width: 100vw;
 }
 
@@ -374,7 +374,7 @@ function goBack() {
   inset: 0;
 }
 .c-game__number {
-  font-size: 6rem;
+  font-size: 7rem;
   color: white;
   font-weight: 800;
   text-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);

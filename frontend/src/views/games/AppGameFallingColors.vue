@@ -206,7 +206,7 @@ onUnmounted(() => {
   <div class="c-game-root c-game-falling">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <IntroOverlay v-model="showIntro" :durationMs="2000" title="Falling Colors" text="Kijk goed welke kleur er naar beneden valt!" overlayClass="c-game__intro" contentClass="c-game__intro-content" @exiting="onOverlayExiting" @done="beginGame" />
+    <IntroOverlay v-model="showIntro" :durationMs="4000" title="Falling Colors" text="Kijk goed welke kleur er naar beneden valt!" overlayClass="c-game__intro" contentClass="c-game__intro-content" @exiting="onOverlayExiting" @done="beginGame" />
 
     <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
@@ -294,7 +294,7 @@ onUnmounted(() => {
 .c-game {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-height, 100vh);
   width: 100vw;
   font-family: 'Varela Round', 'Comic Sans MS', sans-serif;
   overflow: hidden;

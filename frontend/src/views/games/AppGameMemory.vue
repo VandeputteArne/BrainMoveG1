@@ -184,7 +184,7 @@ onUnmounted(() => {
   <div class="c-game-root">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="2000" title="Memory" text="Wacht tot de kleuren getoond zijn. Kijk goed en probeer ze te onthouden." overlayClass="c-game-memory__intro" contentClass="c-game-memory__intro-content" @done="beginGame" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="4000" title="Memory" text="Wacht tot de kleuren getoond zijn. Kijk goed en probeer ze te onthouden." overlayClass="c-game-memory__intro" contentClass="c-game-memory__intro-content" @done="beginGame" />
 
     <div v-if="!showIntro" class="c-game-memory">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
@@ -217,7 +217,7 @@ onUnmounted(() => {
 .c-game-memory {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: var(--app-height, 100vh);
   overflow: hidden;
 }
 
