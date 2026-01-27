@@ -132,7 +132,7 @@ function goBack() {
   <div class="c-game-root">
     <GameCountdown v-if="showCountdown" :countdown="countdown" :text="countdownText" />
 
-    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="4000" title="Color Game" text="Wacht op het startsignaal en reageer zo snel mogelijk." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
+    <IntroOverlay v-model="showIntro" @exiting="onOverlayExiting" :durationMs="4000" title="Color Sprint" text="Wacht op het startsignaal en reageer zo snel mogelijk." overlayClass="c-game__intro" contentClass="c-game__intro-content" @done="beginGame" />
 
     <div v-if="!showIntro" class="c-game">
       <GameHeader :formatted-time="formattedTime" @stop="goBack" />
