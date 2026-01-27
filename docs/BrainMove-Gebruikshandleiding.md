@@ -1,9 +1,12 @@
 # BrainMoveAJM: Gebruikershandleiding
 
 > **Voor wie is deze handleiding?** Deze handleiding is bedoeld voor dagelijks gebruik van het BrainMove systeem. Voor installatie en technische setup, zie de brainmove-installatiehandleiding.
+
 ---
 
+
 ## Wat is BrainMove?
+
 
 BrainMove is een interactief trainingssysteem met cognitieve en motorische oefeningen. Het systeem bestaat uit:
 
@@ -11,13 +14,15 @@ BrainMove is een interactief trainingssysteem met cognitieve en motorische oefen
 - **Een centrale hub** (Raspberry Pi) die alles verbindt
 - **Een webapp** om spellen te spelen en resultaten te bekijken
 
+
 ---
+
 
 ## Systeem Opstarten
 
 ### Stap 1: Hub Inschakelen
 
-1. **Sluit de USB-C voeding aan** op de Raspberry Pi of steek de stekker in het stopcontact.
+1. **Sluit de USB-C voeding aan** op de Raspberry Pi of steek de **stekker in het stopcontact**.
 2. Wacht **2 minuten** tot het systeem volledig is opgestart.
 3. Het WiFi-netwerk `BrainMoveG1` wordt automatisch actief.
 
@@ -42,7 +47,7 @@ BrainMove is een interactief trainingssysteem met cognitieve en motorische oefen
 
 **Optie A: Scan de QR-code (aanbevolen)**
 
-![WiFi QR-code](qr-hotspot%20.png)
+<img src="images/qr-hotspot.png" alt="  QR-code WiFi" width="400"/>
 
 Scan deze QR-code met je telefoon camera om automatisch te verbinden.
 
@@ -58,7 +63,7 @@ Wacht tot je apparaat verbonden is met het WiFi-netwerk.
 
 **Optie A: Scan de QR-code (aanbevolen)**
 
-![Webapp QR-code](qr-brainmove.png)
+<img src="images/qr-brainmove.png" alt="Webapp QR-code" width="400"/> 
 
 Scan deze QR-code om direct naar de webapp te gaan.
 
@@ -67,7 +72,9 @@ Scan deze QR-code om direct naar de webapp te gaan.
 1. Open een **webbrowser** (Chrome, Safari, Firefox)
 2. Ga naar: **`http://brainmove.local:3000`**
 
+
 ---
+
 
 ## Onboarding
 
@@ -83,7 +90,18 @@ Bij het openen van de app zie je het welkomstscherm met:
 
 Tik op de pijl-knop om naar het volgende scherm te gaan.
 
-### Scherm 2: Potjes Aanzetten (indien nog niet gedaan)
+<img src="images/onboarding-start.png" alt="Webapp QR-code" width="250"/> 
+
+### Stap 2: Potjes Op Hun Plaats Zetten
+
+Plaats de 4 potjes in een vierkant op een vlakke ondergrond, met 2 meter tussenruimte.
+
+
+<img src="images/onboarding-setup.png" alt="Kegels" width="250"/>
+
+**We raden deze opstelling aan voor de beste ervaring, maar als je wilt kun je de potjes ook op uw eigen manier plaatsen.**
+
+### Scherm 3: Potjes Aanzetten (indien nog niet gedaan)
 
 Op dit scherm zie je de 4 gekleurde potjes (rood, blauw, groen, geel) met hun verbindingsstatus.
 
@@ -93,7 +111,9 @@ Op dit scherm zie je de 4 gekleurde potjes (rood, blauw, groen, geel) met hun ve
 3. Je hoort een **geluid** wanneer een potje succesvol verbindt
 4. Herhaal voor alle 4 de potjes (rood, blauw, geel, groen)
 
-### Scherm 3: Waarschuwing
+<img src="images/onboarding-kegels.png" alt="Webapp QR-code" width="250"/> 
+
+### Scherm 4: Waarschuwing
 
 Dit scherm toont een belangrijke waarschuwing:
 
@@ -101,7 +121,11 @@ Dit scherm toont een belangrijke waarschuwing:
 
 Tik op **"Begin met trainen"** om naar het spellenvenster te gaan.
 
+<img src="images/onboarding-waarschuwing.png" alt="Webapp QR-code" width="250"/>
+
+
 ---
+
 
 ## Navigatie
 
@@ -114,7 +138,9 @@ Na de onboarding kom je in het hoofdmenu. Onderaan het scherm vind je de navigat
 | Trofee | **Ranglijst** | Top scores van alle spelers |
 | Potjes | **Apparaten** | Status van de kegels bekijken |
 
+
 ---
+
 
 ## Spellen
 
@@ -124,8 +150,11 @@ In het **Spellenvenster** zie je alle 5 de spellen. Elk spel toont:
 - De **naam** van het spel
 - Je **hoogste score** (indien beschikbaar)
 - Een **tag** met het type oefening
+- Boven rechts zie je een knop om de weergave van de spellen aan te passen
 
 Tik op een spel om naar de detailpagina te gaan.
+
+<img src="images/games-list.png" alt="Webapp QR-code" width="250"/>
 
 ### Speldetails & Configuratie
 
@@ -148,71 +177,6 @@ Tik op **"Start het spel"** om te beginnen.
 > - Er minder dan 2 kleuren geselecteerd zijn
 > - Er minder dan 2 potjes online zijn
 
-### De 5 Spellen
-
-BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
-
-#### Spel 1: Kleur Sprint (Reactiesnelheid)
-
-**Doel:** Tik zo snel mogelijk op het potje met de getoonde kleur.
-
-**Hoe werkt het:**
-1. Een kleur verschijnt op het scherm
-2. Tik op het potje met die kleur
-3. Je reactietijd wordt gemeten
-4. Na de laatste ronde zie je je resultaten
-
-**Score:** Gemiddelde reactietijd (lager = beter)
-
-#### Spel 2: Geheugen (Onthouden)
-
-**Doel:** Onthoud en herhaal steeds langere kleurenreeksen.
-
-**Hoe werkt het:**
-1. Het systeem toont een reeks kleuren op het scherm
-2. Wacht tot alle kleuren zijn getoond
-3. Tik de potjes aan **in dezelfde volgorde**
-4. Elke ronde wordt de reeks 1 kleur langer
-5. Bij een fout eindigt het spel
-
-**Score:** Hoogste niveau bereikt + gemiddelde reactietijd
-
-#### Spel 3: Nummer Match (Cognitief)
-
-**Doel:** Koppel nummers aan kleuren en tik het juiste potje aan.
-
-**Hoe werkt het:**
-1. Je ziet een nummer-kleur mapping (bijv. 1=Rood, 2=Blauw, etc.)
-2. Een nummer verschijnt op het scherm
-3. Tik op het potje met de bijbehorende kleur
-
-**Score:** Gemiddelde reactietijd + nauwkeurigheid
-
-#### Spel 4: Vallende Kleuren (Precisie)
-
-**Doel:** Tik op de kleur voordat deze "valt" naar de onderkant.
-
-**Hoe werkt het:**
-1. Een kleur verschijnt bovenaan het scherm en "valt" naar beneden
-2. Tik op het juiste potje voordat de kleur de onderkant bereikt
-3. Tik je op het verkeerde potje? Game over!
-4. Mis je de kleur? Game over!
-
-**Score:** Aantal succesvol gevangen kleuren
-
-#### Spel 5: Color Battle (2 Spelers)
-
-**Doel:** Versla je tegenstander door sneller te reageren op jouw kleur.
-
-**Hoe werkt het:**
-1. Twee spelers spelen tegen elkaar
-2. Elke ronde krijgt elke speler een **andere kleur** te zien
-3. Race om als eerste jouw kleur aan te tikken
-4. De snelste speler wint de ronde
-5. Na alle rondes wint de speler met de meeste gewonnen rondes
-
-**Score:** Aantal gewonnen rondes (bij gelijkstand telt de totale reactietijd)
-
 ### Moeilijkheidsgraden
 
 Elk spel heeft 3 moeilijkheidsgraden:
@@ -225,12 +189,81 @@ Elk spel heeft 3 moeilijkheidsgraden:
 
 > **Tip:** Begin met "Makkelijk" om het spel te leren kennen, en verhoog de moeilijkheid naarmate je verbetert.
 
+<img src="images/games-instellingen.png" alt="Webapp QR-code" width="250"/>
+
+### De 5 Spellen
+
+BrainMove bevat 5 verschillende spellen, elk gericht op andere vaardigheden.
+
+#### **Spel 1: Kleur Sprint (Reactiesnelheid)**
+
+**Doel:** Tik zo snel mogelijk op het potje met de getoonde kleur.
+
+**Hoe werkt het:**
+1. Een kleur verschijnt op het scherm
+2. Tik op het potje met die kleur
+3. Je reactietijd wordt gemeten
+4. Na de laatste ronde zie je je resultaten
+
+**Score:** Gemiddelde reactietijd (lager = beter)
+
+#### **Spel 2: Geheugen (Onthouden)**
+
+**Doel:** Onthoud en herhaal steeds langere kleurenreeksen.
+
+**Hoe werkt het:**
+1. Het systeem toont een reeks kleuren op het scherm
+2. Wacht tot alle kleuren zijn getoond
+3. Tik de potjes aan **in dezelfde volgorde**
+4. Elke ronde wordt de reeks 1 kleur langer
+5. Bij een fout eindigt het spel
+
+**Score:** Hoogste niveau bereikt + gemiddelde reactietijd
+
+#### **Spel 3: Nummer Match (Cognitief)**
+
+**Doel:** Koppel nummers aan kleuren en tik het juiste potje aan.
+
+**Hoe werkt het:**
+1. Je ziet een nummer-kleur mapping (bijv. 1=Rood, 2=Blauw, etc.)
+2. Een nummer verschijnt op het scherm
+3. Tik op het potje met de bijbehorende kleur
+
+**Score:** Gemiddelde reactietijd + nauwkeurigheid
+
+#### **Spel 4: Vallende Kleuren (Precisie)**
+
+**Doel:** Tik op de kleur voordat deze "valt" naar de onderkant.
+
+**Hoe werkt het:**
+1. Een kleur verschijnt bovenaan het scherm en "valt" naar beneden
+2. Tik op het juiste potje voordat de kleur de onderkant bereikt
+3. Tik je op het verkeerde potje? Game over!
+4. Mis je de kleur? Game over!
+
+**Score:** Aantal succesvol gevangen kleuren
+
+#### **Spel 5: Color Battle (2 Spelers)**
+
+**Doel:** Versla je tegenstander door sneller te reageren op jouw kleur.
+
+**Hoe werkt het:**
+1. Twee spelers spelen tegen elkaar
+2. Elke ronde krijgt elke speler een **andere kleur** te zien
+3. Race om als eerste jouw kleur aan te tikken
+4. De snelste speler wint de ronde
+5. Na alle rondes wint de speler met de meeste gewonnen rondes
+
+**Score:** Aantal gewonnen rondes (bij gelijkstand telt de totale reactietijd)
+
 ### Na het Spel
 
 Na afloop van het spel zie je:
 
 1. **Proficiat-scherm**: Felicitatie met confetti!
 2. Tik op **"Bekijk je resultaten"** voor gedetailleerde statistieken
+
+
 
 ### Resultaten
 
@@ -241,7 +274,11 @@ Na afloop van een spel zie je het **Proficiat-scherm** met confetti. Tik op **"B
 - **Je ranking** vergeleken met andere spelers
 - **Grafiek** van je prestaties per ronde
 
+<img src="images/resultaten.png" alt="Webapp QR-code" width="250"/>
+
+
 ---
+
 
 ## Geschiedenis
 
@@ -252,7 +289,11 @@ Bekijk al je eerdere trainingen:
 3. Tik op een training voor gedetailleerde statistieken
 4. **Exporteer** naar Excel voor verdere analyse
 
+<img src="images/history.png" alt="Webapp QR-code" width="250"/>
+
+
 ---
+
 
 ## Ranglijst (Leaderboard)
 
@@ -263,7 +304,11 @@ Vergelijk je scores met andere spelers:
 3. Filter op **moeilijkheidsgraad**
 4. Bekijk de **Top 10** spelers
 
+<img src="images/leaderboard.png" alt="Webapp QR-code" width="250"/>
+
+
 ---
+
 
 ## Apparaten
 
@@ -292,7 +337,11 @@ Om alle potjes en de Raspberry uit te schakelen (bijv. aan het einde van de dag)
 3. Voer het **beheerderswachtwoord** in **`debestebrainmove`**
 4. Alle potjes gaan in slaapstand
 
+<img src="images/apparaten.png" alt="Webapp QR-code" width="250"/>
+
+
 ---
+
 
 ## Problemen Oplossen
 
@@ -346,7 +395,9 @@ Om alle potjes en de Raspberry uit te schakelen (bijv. aan het einde van de dag)
 3. **Herstart de Raspberry Pi** door het witte knopje ingedrukt te houden en te wachten tot het lampje op de Raspberry Pi rood wordt. Trek de stekker eruit, en sluit opnieuw aan
 4. Neem contact op met de technische beheerder
 
+
 ---
+
 
 ## Knopbediening Potjes
 
@@ -368,7 +419,9 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 > **Tip:** Bij het herstarten hoor je een kort piepje wanneer je de 1,5 seconden bereikt. Laat dan de knop los om te herstarten. Houd je langer dan 3 seconden vast, dan wordt de actie geannuleerd.
 
+
 ---
+
 
 ## Potjes Opladen
 
@@ -389,7 +442,9 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 
 > **Tip:** Laad de potjes 's avonds op zodat ze de volgende dag klaar zijn voor gebruik.
 
+
 ---
+
 
 ## Systeem Afsluiten
 
@@ -401,7 +456,9 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 4. Ontkoppel de **voeding** van de Raspberry Pi
 5. Druk op de knop van elk potje om ze in slaapstand te zetten (kort indrukken)
 
+
 ---
+
 
 ## Tips voor Optimaal Gebruik
 
@@ -426,7 +483,9 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 - **Exporteer** data indien nodig
 - Laad potjes op indien nodig
 
+
 ---
+
 
 ## Veiligheidsinstructies
 
@@ -437,7 +496,9 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 - Houd de potjes **droog** (niet geschikt voor buiten als het vochtig is)
 - Gebruik alleen de **meegeleverde voeding** voor de hub
 
+
 ---
+
 
 ## Snelle Referentie
 
@@ -453,7 +514,9 @@ Elk potje heeft één knop met verschillende functies afhankelijk van hoe lang j
 | Potjes uitschakelen | Apparaten → Alles uitschakelen |
 | Potje opladen | USB-kabel aansluiten |
 
+
 ---
+
 
 ## Contact & Ondersteuning
 
