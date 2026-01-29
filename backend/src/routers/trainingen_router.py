@@ -104,22 +104,29 @@ async def get_laatste_rondewaarden():
         # Bereken statistieken per speler
         speler1_correct = len([r for r in speler1_waarden if r.uitkomst.lower() == 'correct'])
         speler1_fout = len([r for r in speler1_waarden if r.uitkomst.lower() == 'te laat'])
-        speler1_totaal_tijd = sum(float(r.waarde) for r in speler1_waarden)
         
         speler2_correct = len([r for r in speler2_waarden if r.uitkomst.lower() == 'correct'])
         speler2_fout = len([r for r in speler2_waarden if r.uitkomst.lower() == 'te laat'])
-        speler2_totaal_tijd = sum(float(r.waarde) for r in speler2_waarden)
         
-        # Bepaal winnaar
-        winnaar = None
+        # Bepaal winnaar: eerst op aantal correct, dan op gemiddelde reactietijd
         if speler1_correct > speler2_correct:
             winnaar = speler1_naam
         elif speler2_correct > speler1_correct:
             winnaar = speler2_naam
-        elif speler1_totaal_tijd < speler2_totaal_tijd:
-            winnaar = speler1_naam
-        elif speler2_totaal_tijd < speler1_totaal_tijd:
-            winnaar = speler2_naam
+        else:
+            # Gelijkspel qua aantal correct -> kijk naar gemiddelde reactietijd
+            speler1_correcte_tijden = [float(r.waarde) for r in speler1_waarden if r.uitkomst.lower() == 'correct']
+            speler2_correcte_tijden = [float(r.waarde) for r in speler2_waarden if r.uitkomst.lower() == 'correct']
+            
+            speler1_gemiddelde = sum(speler1_correcte_tijden) / len(speler1_correcte_tijden) if speler1_correcte_tijden else float('inf')
+            speler2_gemiddelde = sum(speler2_correcte_tijden) / len(speler2_correcte_tijden) if speler2_correcte_tijden else float('inf')
+            
+            if speler1_gemiddelde < speler2_gemiddelde:
+                winnaar = speler1_naam
+            elif speler2_gemiddelde < speler1_gemiddelde:
+                winnaar = speler2_naam
+            else:
+                winnaar = "Gelijkspel"
         
         # Bouw lijst met correcte rondes voor grafiek
         lijst_voor_grafiek = []
@@ -200,20 +207,47 @@ async def get_training_details(training_id: int):
         )
     
     if(game_id == 5):
+        spelernamen = DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)
+        speler1_naam = spelernamen[0]
+        speler2_naam = spelernamen[1]
+        
+        speler1_correct = len([item for item in rondewaarden[::2] if item.uitkomst == 'correct'])
+        speler2_correct = len([item for item in rondewaarden[1::2] if item.uitkomst == 'correct'])
+        
+        # Bepaal winnaar: eerst op aantal correct, dan op gemiddelde reactietijd
+        if speler1_correct > speler2_correct:
+            winnaar = speler1_naam
+        elif speler2_correct > speler1_correct:
+            winnaar = speler2_naam
+        else:
+            # Gelijkspel qua aantal correct -> kijk naar gemiddelde reactietijd
+            speler1_correcte_tijden = [float(item.waarde) for item in rondewaarden[::2] if item.uitkomst == 'correct']
+            speler2_correcte_tijden = [float(item.waarde) for item in rondewaarden[1::2] if item.uitkomst == 'correct']
+            
+            speler1_gemiddelde = sum(speler1_correcte_tijden) / len(speler1_correcte_tijden) if speler1_correcte_tijden else float('inf')
+            speler2_gemiddelde = sum(speler2_correcte_tijden) / len(speler2_correcte_tijden) if speler2_correcte_tijden else float('inf')
+            
+            if speler1_gemiddelde < speler2_gemiddelde:
+                winnaar = speler1_naam
+            elif speler2_gemiddelde < speler1_gemiddelde:
+                winnaar = speler2_naam
+            else:
+                winnaar = "Gelijkspel"
+        
         return StatistiekenVoorColorBattle(
             game_id=game_id,
-            speler1_naam=DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[0],
-            speler2_naam=DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[1],
-            speler1_correct=len([item for item in rondewaarden[::2] if item.uitkomst == 'correct']),
-            speler2_correct=len([item for item in rondewaarden[1::2] if item.uitkomst == 'correct']),
+            speler1_naam=speler1_naam,
+            speler2_naam=speler2_naam,
+            speler1_correct=speler1_correct,
+            speler2_correct=speler2_correct,
             speler1_fout=len([item for item in rondewaarden[::2] if item.uitkomst == 'te laat']),
             speler2_fout=len([item for item in rondewaarden[1::2] if item.uitkomst == 'te laat']),
-            winnaar=DataRepository.get_colorbattle_winnaar_by_trainingid(training_id),
+            winnaar=winnaar,
             lijst_voor_grafiek=[
                 ColorBattleCorrecteRonde(
                     ronde_nummer=item.ronde_nummer,
                     waarde=float(item.waarde),
-                    speler_naam=DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[0] if index % 2 == 0 else DataRepository.get_colorbattle_spelernamen_by_trainingid(training_id)[1]
+                    speler_naam=speler1_naam if index % 2 == 0 else speler2_naam
                 )
                 for index, item in enumerate(rondewaarden) if item.uitkomst == 'correct'
             ]
